@@ -9,7 +9,7 @@ export {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardContent,
+  CardBody,
   CardFooter,
 } from './card';
 export {

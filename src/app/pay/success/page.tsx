@@ -1,12 +1,9 @@
-'use client';
-
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import PrintButton from '@/components/print-button';
 
-export default function PaymentSuccessPage() {
-  const searchParams = useSearchParams();
-  const invoiceId = searchParams.get('invoice');
+export default function PaymentSuccessPage(props: any) {
+  const invoiceId = props?.searchParams?.invoice || 'N/A';
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -46,12 +43,9 @@ export default function PaymentSuccessPage() {
             Return to Sceneside
           </Link>
           
-          <button
-            onClick={() => window.print()}
-            className="block w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-          >
+          <PrintButton className="block w-full py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
             Print Receipt
-          </button>
+          </PrintButton>
         </div>
 
         {/* Footer */}

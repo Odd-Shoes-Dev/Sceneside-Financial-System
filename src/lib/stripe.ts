@@ -1,13 +1,16 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 
-// Initialize Stripe with the secret key
-// Note: Set STRIPE_SECRET_KEY in your environment variables
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
-});
+// Lazily initialize Stripe to avoid requiring STRIPE_SECRET_KEY at module import time
+let stripeClient: Stripe | null = null;
 
-export default stripe;
+export async function getStripe(): Promise<Stripe> {
+  if (stripeClient) return stripeClient;
+  const StripeModule = (await import('stripe')).default as any;
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) throw new Error('STRIPE_SECRET_KEY is not configured on the server');
+  stripeClient = new StripeModule(apiKey, { apiVersion: '2025-02-24.acacia', typescript: true });
+  return stripeClient as Stripe;
+}
 
 // Types for Stripe integration
 export interface CreatePaymentIntentParams {
@@ -48,6 +51,7 @@ export async function createPaymentIntent({
   metadata = {},
 }: CreatePaymentIntentParams) {
   try {
+    const stripe = await getStripe();
     const paymentIntent = await stripe.paymentIntents.create({
       amount, // amount in cents
       currency,
@@ -84,6 +88,7 @@ export async function createStripeCustomer({
 }: CreateCustomerParams) {
   try {
     // Check if customer already exists
+    const stripe = await getStripe();
     const existingCustomers = await stripe.customers.list({
       email,
       limit: 1,
@@ -139,6 +144,7 @@ export async function createStripeCustomer({
  */
 export async function getPaymentIntent(paymentIntentId: string) {
   try {
+    const stripe = await getStripe();
     return await stripe.paymentIntents.retrieve(paymentIntentId);
   } catch (error) {
     console.error('Error retrieving payment intent:', error);
@@ -151,6 +157,7 @@ export async function getPaymentIntent(paymentIntentId: string) {
  */
 export async function listCustomerPayments(customerId: string, limit = 10) {
   try {
+    const stripe = await getStripe();
     return await stripe.paymentIntents.list({
       customer: customerId,
       limit,
@@ -170,6 +177,7 @@ export async function createRefund(
   reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer'
 ) {
   try {
+    const stripe = await getStripe();
     return await stripe.refunds.create({
       payment_intent: paymentIntentId,
       amount, // If not provided, refunds the entire amount
@@ -200,6 +208,7 @@ export async function createCheckoutSession({
   cancelUrl: string;
 }) {
   try {
+    const stripe = await getStripe();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -235,12 +244,13 @@ export async function createCheckoutSession({
 /**
  * Verify webhook signature
  */
-export function verifyWebhookSignature(
+export async function verifyWebhookSignature(
   payload: string | Buffer,
   signature: string,
   webhookSecret: string
 ) {
   try {
+    const stripe = await getStripe();
     return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   } catch (error) {
     console.error('Error verifying webhook signature:', error);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button, Card, CardHeader, CardTitle, CardContent, Input, Select, Textarea, LoadingSpinner } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardBody, Input, Select, Textarea, LoadingSpinner } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface Invoice {
@@ -222,7 +222,7 @@ export default function RecordPaymentPage() {
 
       {/* Invoice Summary */}
       <Card className="mb-6">
-        <CardContent className="pt-6">
+        <CardBody className="pt-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">Customer</p>
@@ -241,7 +241,7 @@ export default function RecordPaymentPage() {
               <p className="font-semibold text-red-600">{formatCurrency(balanceDue)}</p>
             </div>
           </div>
-        </CardContent>
+        </CardBody>
       </Card>
 
       {/* Payment Form */}
@@ -249,7 +249,7 @@ export default function RecordPaymentPage() {
         <CardHeader>
           <CardTitle>Payment Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardBody>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
@@ -319,7 +319,7 @@ export default function RecordPaymentPage() {
               </Link>
             </div>
           </form>
-        </CardContent>
+        </CardBody>
       </Card>
     </div>
   );

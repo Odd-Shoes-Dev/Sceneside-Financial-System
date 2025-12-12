@@ -2,10 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/invoices/[id] - Get single invoice with lines
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
 
@@ -42,10 +40,8 @@ export async function GET(
 }
 
 // PATCH /api/invoices/[id] - Update invoice
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -151,10 +147,8 @@ export async function PATCH(
 }
 
 // DELETE /api/invoices/[id] - Delete or void invoice
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);

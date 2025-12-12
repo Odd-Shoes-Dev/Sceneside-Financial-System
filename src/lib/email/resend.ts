@@ -1,6 +1,11 @@
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazily construct Resend client inside functions so missing API keys don't throw during
+// module import (which can break builds when environment variables are not provided).
+async function getResendClient() {
+  const { Resend } = await import('resend');
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('RESEND_API_KEY is not configured on the server');
+  return new Resend(apiKey);
+}
 
 interface SendInvoiceEmailParams {
   to: string;
@@ -134,6 +139,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   `;
 
   try {
+    const resend = await getResendClient();
     const { data, error } = await resend.emails.send({
       from: 'Sceneside L.L.C <invoices@sceneside.com>',
       to: [to],
@@ -276,6 +282,7 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
   `;
 
   try {
+    const resend = await getResendClient();
     const { data, error } = await resend.emails.send({
       from: 'Sceneside L.L.C <receipts@sceneside.com>',
       to: [to],

@@ -2,10 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/invoices/[id]/payments - Record payment
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -150,10 +148,8 @@ export async function POST(
 }
 
 // GET /api/invoices/[id]/payments - List payments
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
 

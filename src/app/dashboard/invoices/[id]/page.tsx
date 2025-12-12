@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button, Card, CardHeader, CardTitle, CardContent, Badge, LoadingSpinner } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner } from '@/components/ui';
 import {
   ArrowLeftIcon,
   PrinterIcon,
@@ -287,7 +287,7 @@ export default function InvoiceDetailPage() {
             <CardHeader>
               <CardTitle>Invoice Details</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardBody>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Invoice Date</p>
@@ -306,7 +306,7 @@ export default function InvoiceDetailPage() {
                   <p className="font-medium capitalize">{invoice.status}</p>
                 </div>
               </div>
-            </CardContent>
+            </CardBody>
           </Card>
 
           {/* Line Items */}
@@ -314,7 +314,7 @@ export default function InvoiceDetailPage() {
             <CardHeader>
               <CardTitle>Line Items</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardBody>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -373,7 +373,7 @@ export default function InvoiceDetailPage() {
                   </>
                 )}
               </div>
-            </CardContent>
+            </CardBody>
           </Card>
 
           {/* Notes */}
@@ -382,9 +382,9 @@ export default function InvoiceDetailPage() {
               <CardHeader>
                 <CardTitle>Notes</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardBody>
                 <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
-              </CardContent>
+              </CardBody>
             </Card>
           )}
         </div>
@@ -396,7 +396,7 @@ export default function InvoiceDetailPage() {
             <CardHeader>
               <CardTitle>Customer</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardBody>
               <div className="space-y-2">
                 <p className="font-medium">{invoice.customer?.name}</p>
                 {invoice.customer?.email && (
@@ -420,7 +420,7 @@ export default function InvoiceDetailPage() {
                   View Customer
                 </Button>
               </Link>
-            </CardContent>
+            </CardBody>
           </Card>
 
           {/* Payment Summary */}
@@ -428,7 +428,7 @@ export default function InvoiceDetailPage() {
             <CardHeader>
               <CardTitle>Payment Summary</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardBody>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Total Amount</span>
@@ -461,7 +461,7 @@ export default function InvoiceDetailPage() {
                   <span className="text-sm font-medium">Paid in Full</span>
                 </div>
               )}
-            </CardContent>
+            </CardBody>
           </Card>
 
           {/* Payment History */}
@@ -470,7 +470,7 @@ export default function InvoiceDetailPage() {
               <CardHeader>
                 <CardTitle>Payment History</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardBody>
                 <div className="space-y-3">
                   {payments.map((payment) => (
                     <div key={payment.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
@@ -485,7 +485,7 @@ export default function InvoiceDetailPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
+              </CardBody>
             </Card>
           )}
         </div>

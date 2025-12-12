@@ -2,10 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/vendors/[id]
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
 
@@ -39,10 +37,8 @@ export async function GET(
 }
 
 // PATCH /api/vendors/[id]
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -75,10 +71,8 @@ export async function PATCH(
 }
 
 // DELETE /api/vendors/[id]
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, context: any) {
+  const { params } = context || {};
   try {
     const supabase = await createClient();
 
