@@ -1,0 +1,167 @@
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+// GET /api/bills - List bills
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    
+    const status = searchParams.get('status');
+    const vendorId = searchParams.get('vendor_id');
+    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from('bills')
+      .select(
+        `
+        *,
+        vendors (id, name, company_name)
+      `,
+        { count: 'exact' }
+      )
+      .order('bill_date', { ascending: false });
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    if (vendorId) {
+      query = query.eq('vendor_id', vendorId);
+    }
+
+    if (search) {
+      query = query.ilike('bill_number', `%${search}%`);
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// POST /api/bills - Create bill
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const body = await request.json();
+
+    if (!body.vendor_id || !body.bill_date || !body.due_date) {
+      return NextResponse.json(
+        { error: 'Missing required fields: vendor_id, bill_date, due_date' },
+        { status: 400 }
+      );
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Generate bill number
+    const { data: billNumber, error: numError } = await supabase.rpc('generate_bill_number');
+    if (numError) {
+      return NextResponse.json({ error: 'Failed to generate bill number' }, { status: 500 });
+    }
+
+    // Get AP account
+    const { data: apAccount } = await supabase
+      .from('accounts')
+      .select('id')
+      .eq('code', '2000')
+      .single();
+
+    // Calculate totals
+    const lines = body.lines || [];
+    let subtotal = 0;
+    let taxAmount = 0;
+
+    lines.forEach((line: any) => {
+      const lineSubtotal = line.quantity * line.unit_cost;
+      const lineTax = lineSubtotal * (line.tax_rate || 0);
+      subtotal += lineSubtotal;
+      taxAmount += lineTax;
+    });
+
+    const total = subtotal + taxAmount;
+    const balanceDue = total;
+
+    const { data: bill, error: billError } = await supabase
+      .from('bills')
+      .insert({
+        bill_number: billNumber,
+        vendor_id: body.vendor_id,
+        bill_date: body.bill_date,
+        due_date: body.due_date,
+        vendor_invoice_number: body.vendor_invoice_number || null,
+        notes: body.notes || null,
+        subtotal,
+        tax_amount: taxAmount,
+        total,
+        amount_paid: 0,
+        balance_due: balanceDue,
+        status: body.status || 'draft',
+        currency: body.currency || 'USD',
+        exchange_rate: body.exchange_rate || 1,
+        payment_terms: body.payment_terms || 30,
+        ap_account_id: apAccount?.id,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (billError) {
+      return NextResponse.json({ error: billError.message }, { status: 400 });
+    }
+
+    // Create bill lines
+    if (lines.length > 0) {
+      const billLines = lines.map((line: any, index: number) => ({
+        bill_id: bill.id,
+        line_number: index + 1,
+        expense_account_id: line.expense_account_id || null,
+        product_id: line.product_id || null,
+        project_id: line.project_id || null,
+        department: line.department || null,
+        description: line.description,
+        quantity: line.quantity,
+        unit_cost: line.unit_cost,
+        tax_rate: line.tax_rate || 0,
+        tax_amount: line.quantity * line.unit_cost * (line.tax_rate || 0),
+        line_total: line.quantity * line.unit_cost,
+      }));
+
+      const { error: linesError } = await supabase
+        .from('bill_lines')
+        .insert(billLines);
+
+      if (linesError) {
+        await supabase.from('bills').delete().eq('id', bill.id);
+        return NextResponse.json({ error: linesError.message }, { status: 400 });
+      }
+    }
+
+    return NextResponse.json({ data: bill }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

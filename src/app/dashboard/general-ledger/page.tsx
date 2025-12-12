@@ -1,0 +1,279 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  BookOpenIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from '@heroicons/react/24/outline';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
+
+interface JournalEntry {
+  id: string;
+  entry_date: string;
+  entry_number: string;
+  description: string;
+  reference: string;
+  source: string;
+  is_posted: boolean;
+  lines: Array<{
+    id: string;
+    account_code: string;
+    account_name: string;
+    debit_amount: number;
+    credit_amount: number;
+    description: string;
+  }>;
+}
+
+export default function GeneralLedgerPage() {
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    search: '',
+    showPostedOnly: false,
+  });
+
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
+  const fetchEntries = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/journal-entries');
+      const result = await response.json();
+      setEntries(result.data || []);
+    } catch (error) {
+      console.error('Failed to fetch entries:', error);
+      setEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleEntry = (id: string) => {
+    setExpandedEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const filteredEntries = entries.filter((entry) => {
+    if (filters.showPostedOnly && !entry.is_posted) return false;
+    if (filters.startDate && entry.entry_date < filters.startDate) return false;
+    if (filters.endDate && entry.entry_date > filters.endDate) return false;
+    if (
+      filters.search &&
+      !entry.description.toLowerCase().includes(filters.search.toLowerCase()) &&
+      !entry.entry_number.toLowerCase().includes(filters.search.toLowerCase())
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">General Ledger</h1>
+          <p className="text-gray-600">Journal entries and transactions</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <FunnelIcon className="w-5 h-5 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Filters:</span>
+          </div>
+
+          <div className="relative flex-1 max-w-xs">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search entries..."
+              value={filters.search}
+              onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            />
+          </div>
+
+          <input
+            type="date"
+            value={filters.startDate}
+            onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+          />
+          <span className="text-gray-400">to</span>
+          <input
+            type="date"
+            value={filters.endDate}
+            onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+          />
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filters.showPostedOnly}
+              onChange={(e) => setFilters((f) => ({ ...f, showPostedOnly: e.target.checked }))}
+              className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
+            />
+            <span className="text-sm text-gray-700">Posted only</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Entries List */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <BookOpenIcon className="w-5 h-5 text-[#1e3a5f]" />
+            <h2 className="font-semibold text-gray-900">Journal Entries</h2>
+            <span className="text-sm text-gray-500">
+              {filteredEntries.length} entries
+            </span>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] mx-auto"></div>
+            <p className="text-gray-500 mt-4">Loading entries...</p>
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <div className="p-8 text-center">
+            <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No journal entries found</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {filteredEntries.map((entry) => {
+              const isExpanded = expandedEntries.has(entry.id);
+              const totalDebit = entry.lines?.reduce((sum, l) => sum + (l.debit_amount || 0), 0) || 0;
+              const totalCredit = entry.lines?.reduce((sum, l) => sum + (l.credit_amount || 0), 0) || 0;
+
+              return (
+                <div key={entry.id}>
+                  <button
+                    onClick={() => toggleEntry(entry.id)}
+                    className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    {isExpanded ? (
+                      <ChevronDownIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    ) : (
+                      <ChevronRightIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">
+                          {entry.entry_number}
+                        </span>
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                            entry.is_posted
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          )}
+                        >
+                          {entry.is_posted ? 'Posted' : 'Draft'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{entry.description}</p>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-medium text-gray-900 tabular-nums">
+                        {formatCurrency(totalDebit)}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatDate(entry.entry_date)}</p>
+                    </div>
+                  </button>
+
+                  {/* Expanded Lines */}
+                  {isExpanded && entry.lines && entry.lines.length > 0 && (
+                    <div className="px-6 pb-4">
+                      <div className="ml-8 bg-gray-50 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">
+                                Account
+                              </th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">
+                                Description
+                              </th>
+                              <th className="px-4 py-2 text-right font-medium text-gray-600">
+                                Debit
+                              </th>
+                              <th className="px-4 py-2 text-right font-medium text-gray-600">
+                                Credit
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {entry.lines.map((line) => (
+                              <tr key={line.id}>
+                                <td className="px-4 py-2">
+                                  <span className="font-mono text-xs text-gray-500 mr-2">
+                                    {line.account_code}
+                                  </span>
+                                  {line.account_name}
+                                </td>
+                                <td className="px-4 py-2 text-gray-600">{line.description}</td>
+                                <td className="px-4 py-2 text-right tabular-nums">
+                                  {line.debit_amount > 0 ? formatCurrency(line.debit_amount) : ''}
+                                </td>
+                                <td className="px-4 py-2 text-right tabular-nums">
+                                  {line.credit_amount > 0 ? formatCurrency(line.credit_amount) : ''}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-100 font-medium">
+                            <tr>
+                              <td className="px-4 py-2" colSpan={2}>
+                                Total
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {formatCurrency(totalDebit)}
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {formatCurrency(totalCredit)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                      {entry.reference && (
+                        <p className="ml-8 mt-2 text-xs text-gray-500">
+                          Reference: {entry.reference}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

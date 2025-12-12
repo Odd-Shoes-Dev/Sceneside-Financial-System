@@ -1,0 +1,309 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ReceiptPercentIcon,
+  EyeIcon,
+} from '@heroicons/react/24/outline';
+import type { Expense } from '@/types/database';
+
+type ExpenseStatus = 'all';
+
+interface ExpenseWithDetails extends Expense {
+  vendors?: { name: string } | null;
+  accounts?: { name: string; code: string } | null;
+}
+
+export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState<ExpenseWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
+
+  useEffect(() => {
+    loadExpenses();
+  }, [searchQuery, statusFilter, currentPage]);
+
+  const loadExpenses = async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('expenses')
+        .select(`
+          *,
+          vendors (name),
+          accounts:expense_account_id (name, code)
+        `, { count: 'exact' })
+        .order('expense_date', { ascending: false });
+
+      if (searchQuery) {
+        query = query.or(`expense_number.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      }
+
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+
+      setExpenses(data || []);
+      setTotalCount(count || 0);
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      pending: 'badge-warning',
+      approved: 'badge-info',
+      rejected: 'badge-error',
+      paid: 'badge-success',
+    };
+    return styles[status] || 'badge-gray';
+  };
+
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
+          <p className="text-gray-500 mt-1">Track and manage business expenses</p>
+        </div>
+        <Link href="/dashboard/expenses/new" className="btn-primary">
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Record Expense
+        </Link>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="card">
+        <div className="card-body">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search expenses..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="input pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <FunnelIcon className="w-5 h-5 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as ExpenseStatus);
+                  setCurrentPage(1);
+                }}
+                className="input w-auto"
+              >
+                <option value="all">All Expenses</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card">
+          <div className="card-body">
+            <p className="text-sm text-gray-500">This Month</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">$0.00</p>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-sm text-gray-500">Pending Approval</p>
+            <p className="text-2xl font-bold text-amber-600 mt-1">0</p>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-sm text-gray-500">Approved</p>
+            <p className="text-2xl font-bold text-blue-600 mt-1">0</p>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-sm text-gray-500">Paid</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">0</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Expenses List */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600" />
+        </div>
+      ) : expenses.length === 0 ? (
+        <div className="card">
+          <div className="card-body text-center py-12">
+            <ReceiptPercentIcon className="w-12 h-12 text-gray-400 mx-auto" />
+            <p className="text-gray-500 mt-2">No expenses found.</p>
+            <Link href="/dashboard/expenses/new" className="btn-primary mt-4 inline-flex">
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Record Your First Expense
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-hidden">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Expense #</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Vendor</th>
+                  <th className="text-right">Amount</th>
+                  <th>Method</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((expense) => (
+                  <tr key={expense.id}>
+                    <td className="whitespace-nowrap">{formatDate(expense.expense_date)}</td>
+                    <td>
+                      <span className="font-mono text-sm">{expense.expense_number || '-'}</span>
+                    </td>
+                    <td>
+                      <p className="max-w-xs truncate">{expense.description}</p>
+                    </td>
+                    <td>
+                      <span className="text-sm text-gray-600">
+                        {expense.accounts?.name || '-'}
+                      </span>
+                    </td>
+                    <td>{expense.vendors?.name || expense.payee || '-'}</td>
+                    <td className="text-right font-medium">
+                      {formatCurrency(expense.total)}
+                    </td>
+                    <td>
+                      <span className="badge badge-gray">
+                        {expense.payment_method}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <Link
+                        href={`/dashboard/expenses/${expense.id}`}
+                        className="btn-ghost p-2"
+                      >
+                        <EyeIcon className="w-5 h-5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden grid gap-4">
+            {expenses.map((expense) => (
+              <div key={expense.id} className="card">
+                <div className="card-body">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-gray-900 truncate max-w-[200px]">
+                        {expense.description}
+                      </p>
+                      <p className="text-sm text-gray-500">{formatDate(expense.expense_date)}</p>
+                    </div>
+                    <span className="badge badge-gray">
+                      {expense.payment_method}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1.5 text-sm">
+                    {expense.accounts && (
+                      <p className="text-gray-600">{expense.accounts.name}</p>
+                    )}
+                    {(expense.vendors || expense.payee) && (
+                      <p className="text-gray-600">Payee: {expense.vendors?.name || expense.payee}</p>
+                    )}
+                  </div>
+                  <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                    <span className="text-lg font-bold text-gray-900">
+                      {formatCurrency(expense.total)}
+                    </span>
+                    <Link
+                      href={`/dashboard/expenses/${expense.id}`}
+                      className="text-navy-600 font-medium text-sm"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} expenses
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="btn-secondary disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="btn-secondary disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,460 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
+import { useForm, useFieldArray } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import {
+  ArrowLeftIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
+import type { Customer, Product } from '@/types/database';
+
+interface InvoiceLineInput {
+  product_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  discount_percent: number;
+  tax_rate: number;
+}
+
+interface InvoiceFormData {
+  customer_id: string;
+  invoice_date: string;
+  due_date: string;
+  payment_terms: number;
+  po_number: string;
+  notes: string;
+  lines: InvoiceLineInput[];
+}
+
+export default function NewInvoicePage() {
+  const router = useRouter();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [taxRate] = useState(0.0625); // MA sales tax
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<InvoiceFormData>({
+    defaultValues: {
+      invoice_date: new Date().toISOString().split('T')[0],
+      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      payment_terms: 30,
+      lines: [
+        {
+          product_id: '',
+          description: '',
+          quantity: 1,
+          unit_price: 0,
+          discount_percent: 0,
+          tax_rate: taxRate,
+        },
+      ],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'lines',
+  });
+
+  const watchLines = watch('lines');
+  const watchPaymentTerms = watch('payment_terms');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    // Update due date when payment terms change
+    const invoiceDate = watch('invoice_date');
+    if (invoiceDate && watchPaymentTerms) {
+      const due = new Date(invoiceDate);
+      due.setDate(due.getDate() + watchPaymentTerms);
+      setValue('due_date', due.toISOString().split('T')[0]);
+    }
+  }, [watchPaymentTerms, watch('invoice_date')]);
+
+  const loadData = async () => {
+    try {
+      const [customersRes, productsRes] = await Promise.all([
+        supabase.from('customers').select('*').eq('is_active', true).order('name'),
+        supabase.from('products').select('*').eq('is_active', true).order('name'),
+      ]);
+
+      setCustomers(customersRes.data || []);
+      setProducts(productsRes.data || []);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  };
+
+  const handleProductChange = (index: number, productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setValue(`lines.${index}.description`, product.name);
+      setValue(`lines.${index}.unit_price`, product.unit_price);
+      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+    }
+  };
+
+  const calculateLineTotal = (line: InvoiceLineInput) => {
+    const subtotal = line.quantity * line.unit_price;
+    const discount = subtotal * (line.discount_percent / 100);
+    return subtotal - discount;
+  };
+
+  const calculateLineTax = (line: InvoiceLineInput) => {
+    return calculateLineTotal(line) * line.tax_rate;
+  };
+
+  const calculateSubtotal = () => {
+    return watchLines.reduce((sum, line) => sum + calculateLineTotal(line), 0);
+  };
+
+  const calculateTax = () => {
+    return watchLines.reduce((sum, line) => sum + calculateLineTax(line), 0);
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + calculateTax();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  const onSubmit = async (data: InvoiceFormData) => {
+    if (data.lines.length === 0) {
+      toast.error('Please add at least one line item');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Generate invoice number
+      const { data: invoiceNumber, error: numError } = await supabase.rpc('generate_invoice_number');
+      if (numError) throw numError;
+
+      // Calculate totals
+      const subtotal = calculateSubtotal();
+      const tax_amount = calculateTax();
+      const total = calculateTotal();
+
+      // Get AR account
+      const { data: arAccount } = await supabase
+        .from('accounts')
+        .select('id')
+        .eq('code', '1200')
+        .single();
+
+      // Create invoice
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          invoice_number: invoiceNumber,
+          customer_id: data.customer_id,
+          invoice_date: data.invoice_date,
+          due_date: data.due_date,
+          payment_terms: data.payment_terms,
+          po_number: data.po_number || null,
+          notes: data.notes || null,
+          subtotal,
+          tax_amount,
+          discount_amount: 0,
+          total,
+          amount_paid: 0,
+          status: 'draft',
+          ar_account_id: arAccount?.id,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Create invoice lines
+      const invoiceLines = data.lines.map((line, index) => ({
+        invoice_id: invoice.id,
+        line_number: index + 1,
+        product_id: line.product_id || null,
+        description: line.description,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        discount_percent: line.discount_percent,
+        discount_amount: calculateLineTotal(line) - (line.quantity * line.unit_price),
+        tax_rate: line.tax_rate,
+        tax_amount: calculateLineTax(line),
+        line_total: calculateLineTotal(line),
+      }));
+
+      const { error: linesError } = await supabase
+        .from('invoice_lines')
+        .insert(invoiceLines);
+
+      if (linesError) throw linesError;
+
+      toast.success('Invoice created successfully!');
+      router.push(`/dashboard/invoices/${invoice.id}`);
+    } catch (error: any) {
+      console.error('Failed to create invoice:', error);
+      toast.error(error.message || 'Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/invoices" className="btn-ghost p-2">
+          <ArrowLeftIcon className="w-5 h-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">New Invoice</h1>
+          <p className="text-gray-500 mt-1">Create a new customer invoice</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Customer and dates */}
+        <div className="card">
+          <div className="card-body">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="form-group md:col-span-2">
+                <label className="label">Customer *</label>
+                <select
+                  {...register('customer_id', { required: 'Customer is required' })}
+                  className={`input ${errors.customer_id ? 'input-error' : ''}`}
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.customer_id && (
+                  <p className="form-error">{errors.customer_id.message}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="label">Invoice Date *</label>
+                <input
+                  type="date"
+                  {...register('invoice_date', { required: 'Invoice date is required' })}
+                  className={`input ${errors.invoice_date ? 'input-error' : ''}`}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Payment Terms</label>
+                <select {...register('payment_terms', { valueAsNumber: true })} className="input">
+                  <option value={15}>Net 15</option>
+                  <option value={30}>Net 30</option>
+                  <option value={45}>Net 45</option>
+                  <option value={60}>Net 60</option>
+                  <option value={0}>Due on Receipt</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="label">Due Date *</label>
+                <input
+                  type="date"
+                  {...register('due_date', { required: 'Due date is required' })}
+                  className={`input ${errors.due_date ? 'input-error' : ''}`}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">PO Number</label>
+                <input
+                  type="text"
+                  {...register('po_number')}
+                  className="input"
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Line items */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="font-semibold text-gray-900">Line Items</h2>
+          </div>
+          <div className="card-body space-y-4">
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="grid grid-cols-12 gap-3 items-end p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="col-span-12 md:col-span-2">
+                  <label className="label text-xs">Product</label>
+                  <select
+                    {...register(`lines.${index}.product_id`)}
+                    onChange={(e) => handleProductChange(index, e.target.value)}
+                    className="input text-sm"
+                  >
+                    <option value="">Custom item</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-12 md:col-span-3">
+                  <label className="label text-xs">Description *</label>
+                  <input
+                    type="text"
+                    {...register(`lines.${index}.description`, { required: true })}
+                    className="input text-sm"
+                    placeholder="Description"
+                  />
+                </div>
+
+                <div className="col-span-4 md:col-span-1">
+                  <label className="label text-xs">Qty</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`lines.${index}.quantity`, { valueAsNumber: true, min: 0.01 })}
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="col-span-4 md:col-span-2">
+                  <label className="label text-xs">Unit Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`lines.${index}.unit_price`, { valueAsNumber: true, min: 0 })}
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="col-span-4 md:col-span-1">
+                  <label className="label text-xs">Disc %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`lines.${index}.discount_percent`, { valueAsNumber: true, min: 0, max: 100 })}
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="col-span-6 md:col-span-2">
+                  <label className="label text-xs">Line Total</label>
+                  <div className="input bg-gray-100 text-sm">
+                    {formatCurrency(calculateLineTotal(watchLines[index] || {
+                      quantity: 0,
+                      unit_price: 0,
+                      discount_percent: 0,
+                    }))}
+                  </div>
+                </div>
+
+                <div className="col-span-6 md:col-span-1 flex justify-end">
+                  {fields.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="btn-ghost text-red-600 hover:bg-red-50 p-2"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() =>
+                append({
+                  product_id: '',
+                  description: '',
+                  quantity: 1,
+                  unit_price: 0,
+                  discount_percent: 0,
+                  tax_rate: taxRate,
+                })
+              }
+              className="btn-secondary"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Add Line
+            </button>
+          </div>
+        </div>
+
+        {/* Notes and totals */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="card">
+            <div className="card-body">
+              <label className="label">Notes</label>
+              <textarea
+                {...register('notes')}
+                className="input min-h-[120px]"
+                placeholder="Notes to appear on the invoice..."
+              />
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-body space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Tax (6.25%)</span>
+                <span className="font-medium">{formatCurrency(calculateTax())}</span>
+              </div>
+              <div className="border-t pt-3 flex justify-between">
+                <span className="font-semibold text-gray-900">Total</span>
+                <span className="text-xl font-bold text-gray-900">
+                  {formatCurrency(calculateTotal())}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3">
+          <Link href="/dashboard/invoices" className="btn-secondary">
+            Cancel
+          </Link>
+          <button type="submit" disabled={loading} className="btn-primary">
+            {loading ? 'Creating...' : 'Create Invoice'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
