@@ -8,6 +8,20 @@ import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 
 export default function SignUpPage() {
+  const signupsEnabled = process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true';
+  if (!signupsEnabled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-sceneside-navy via-sceneside-purple to-sceneside-magenta flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="bg-white rounded-xl p-8 shadow-lg">
+            <h1 className="text-2xl font-semibold mb-4">Signups are currently disabled</h1>
+            <p className="text-gray-600 mb-6">Account creation is temporarily disabled. Please contact your administrator for access.</p>
+            <Link href="/login" className="btn btn-primary">Return to Sign In</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');

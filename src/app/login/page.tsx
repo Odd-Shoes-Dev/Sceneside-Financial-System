@@ -148,9 +148,13 @@ export default function LoginPage() {
           <div className="card-footer text-center">
             <p className="text-sm text-gray-600">
               Need an account?{' '}
-              <Link href="/signup" className="text-sceneside-magenta hover:underline font-medium">
-                Contact administrator
-              </Link>
+              {process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true' ? (
+                <Link href="/signup" className="text-sceneside-magenta hover:underline font-medium">
+                  Contact administrator
+                </Link>
+              ) : (
+                <span className="text-gray-500">Contact administrator</span>
+              )}
             </p>
           </div>
         </div>

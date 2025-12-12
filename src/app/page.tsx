@@ -24,12 +24,18 @@ export default function Home() {
             >
               Sign In
             </Link>
-            <Link
-              href="/signup"
-              className="btn bg-sceneside-purple text-white hover:bg-sceneside-purple/90"
-            >
-              Get Started
-            </Link>
+            {process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true' ? (
+              <Link
+                href="/signup"
+                className="btn bg-sceneside-purple text-white hover:bg-sceneside-purple/90"
+              >
+                Get Started
+              </Link>
+            ) : (
+              <button className="btn bg-gray-300 text-white cursor-not-allowed" disabled>
+                Signups Disabled
+              </button>
+            )}
           </div>
         </nav>
 

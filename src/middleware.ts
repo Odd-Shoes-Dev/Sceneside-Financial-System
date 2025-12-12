@@ -72,6 +72,15 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith(path)
   );
 
+  // If signups are disabled, block access to the signup page
+  const signupsEnabled = process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true';
+  if (!signupsEnabled && req.nextUrl.pathname.startsWith('/signup')) {
+    // Redirect to login with a hint
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('signup', 'disabled');
+    return NextResponse.redirect(redirectUrl);
+  }
+
   if (isAuthPath && session) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
