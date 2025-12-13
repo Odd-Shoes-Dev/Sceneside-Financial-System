@@ -285,55 +285,55 @@ export default function DashboardPage() {
 
       {/* Quick stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DocumentTextIcon className="w-5 h-5 text-blue-600" />
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <DocumentTextIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {recentInvoices.length}
               </p>
-              <p className="text-sm text-gray-500">Total Invoices</p>
+              <p className="text-xs text-gray-500 truncate">Total Invoices</p>
             </div>
           </div>
         </div>
-        <div className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <BanknotesIcon className="w-5 h-5 text-green-600" />
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <BanknotesIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {recentBills.length}
               </p>
-              <p className="text-sm text-gray-500">Total Bills</p>
+              <p className="text-xs text-gray-500 truncate">Total Bills</p>
             </div>
           </div>
         </div>
-        <div className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <CubeIcon className="w-5 h-5 text-purple-600" />
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CubeIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-purple-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {formatCurrency(stats?.inventoryValue || 0)}
               </p>
-              <p className="text-sm text-gray-500">Inventory Value</p>
+              <p className="text-xs text-gray-500 truncate">Inventory Value</p>
             </div>
           </div>
         </div>
-        <div className="card p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <ArrowTrendingUpIcon className="w-5 h-5 text-orange-600" />
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <ArrowTrendingUpIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-orange-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 truncate">
                 {formatCurrency(stats?.totalRevenue || 0)}
               </p>
-              <p className="text-sm text-gray-500">Total Revenue</p>
+              <p className="text-xs text-gray-500 truncate">Total Revenue</p>
             </div>
           </div>
         </div>
@@ -365,34 +365,34 @@ function StatCard({
   };
 
   return (
-    <div className="card p-4 sm:p-6">
-      <div className="flex items-start justify-between">
+    <div className="card p-3 sm:p-4 lg:p-6">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm text-gray-500 truncate">{title}</p>
-          <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 truncate">{value}</p>
+          <p className="text-xs text-gray-500 truncate">{title}</p>
+          <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-0.5 truncate">{value}</p>
           {trend !== undefined && (
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1 mt-1">
               {trend >= 0 ? (
-                <ArrowUpIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                <ArrowUpIcon className="w-3 h-3 text-green-600" />
               ) : (
-                <ArrowDownIcon className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
+                <ArrowDownIcon className="w-3 h-3 text-red-600" />
               )}
               <span
-                className={`text-xs sm:text-sm font-medium ${
+                className={`text-xs font-medium ${
                   trend >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}
               >
                 {Math.abs(trend)}%
               </span>
-              <span className="text-xs sm:text-sm text-gray-500">vs last month</span>
+              <span className="text-xs text-gray-500 hidden sm:inline">vs last month</span>
             </div>
           )}
           {subtitle && (
-            <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">{subtitle}</p>
+            <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>
           )}
         </div>
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 ${colorClasses[color]} rounded-lg flex items-center justify-center flex-shrink-0 ml-3`}>
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        <div className={`w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 ${colorClasses[color]} rounded-lg flex items-center justify-center flex-shrink-0`}>
+          <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-white" />
         </div>
       </div>
     </div>

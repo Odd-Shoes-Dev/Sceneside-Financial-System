@@ -51,6 +51,8 @@ export default function DashboardLayout({
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -67,7 +69,67 @@ export default function DashboardLayout({
     };
 
     getUser();
+    fetchNotifications();
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      // Fetch recent notifications based on overdue invoices, bills, etc.
+      const { data: overdueInvoices } = await supabase
+        .from('invoices')
+        .select(`
+          id, 
+          invoice_number, 
+          customer_id, 
+          due_date,
+          customers!inner(name)
+        `)
+        .eq('status', 'overdue')
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      const { data: overdueBills } = await supabase
+        .from('bills')
+        .select(`
+          id, 
+          bill_number, 
+          vendor_id, 
+          due_date,
+          vendors!inner(name)
+        `)
+        .eq('status', 'overdue')
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      const notificationList: any[] = [];
+      
+      overdueInvoices?.forEach((invoice: any) => {
+        notificationList.push({
+          id: `invoice-${invoice.id}`,
+          type: 'overdue_invoice',
+          title: `Invoice ${invoice.invoice_number} is overdue`,
+          message: `From ${invoice.customers?.name || 'Unknown Customer'}`,
+          time: new Date(invoice.due_date).toLocaleDateString(),
+          href: `/dashboard/invoices/${invoice.id}`
+        });
+      });
+
+      overdueBills?.forEach((bill: any) => {
+        notificationList.push({
+          id: `bill-${bill.id}`,
+          type: 'overdue_bill',
+          title: `Bill ${bill.bill_number} is overdue`,
+          message: `To ${bill.vendors?.name || 'Unknown Vendor'}`,
+          time: new Date(bill.due_date).toLocaleDateString(),
+          href: `/dashboard/bills`
+        });
+      });
+
+      setNotifications(notificationList.slice(0, 10));
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -149,10 +211,78 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-3">
             {/* Notifications */}
-            <button className="p-2 rounded-lg hover:bg-gray-100 relative">
-              <BellIcon className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-sceneside-magenta rounded-full" />
-            </button>
+            <div className="relative">
+              <button 
+                className="p-2 rounded-lg hover:bg-gray-100 relative"
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+              >
+                <BellIcon className="w-5 h-5 text-gray-600" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-sceneside-magenta rounded-full" />
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setNotificationsOpen(false)}
+                  />
+                  <div className="dropdown animate-fade-in w-60 sm:w-80 -right-20 sm:right-0 max-w-[calc(100vw-1rem)]">
+                    <div className="p-3 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                        <span className="text-xs text-gray-500">{notifications.length} items</span>
+                      </div>
+                    </div>
+                    <div className="py-1 max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <BellIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm">No new notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <Link
+                            key={notification.id}
+                            href={notification.href}
+                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            onClick={() => setNotificationsOpen(false)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 ${
+                                notification.type === 'overdue_invoice' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {notification.message} • {notification.time}
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="p-3 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setNotificationsOpen(false);
+                            router.push('/dashboard/reports');
+                          }}
+                          className="text-sm text-sceneside-navy hover:underline"
+                        >
+                          View all reports
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* User menu */}
             <div className="relative">
