@@ -136,9 +136,10 @@ function generateNextRun(schedule: Omit<ScheduledReport, 'id' | 'createdAt' | 'l
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const schedule = scheduledReports.find(s => s.id === params.id);
     
     if (!schedule) {
@@ -160,9 +161,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const data = await request.json();
     const scheduleIndex = scheduledReports.findIndex(s => s.id === params.id);
     
@@ -197,9 +199,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const scheduleIndex = scheduledReports.findIndex(s => s.id === params.id);
     
     if (scheduleIndex === -1) {
