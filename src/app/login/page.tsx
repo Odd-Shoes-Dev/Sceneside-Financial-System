@@ -43,20 +43,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center p-4 py-8">
+      <div className="w-full max-w-md mx-auto">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <Link href="/" className="inline-block">
             <Image
               src="/Sceneside assets/Sceneside_logo_name.png"
               alt="Sceneside L.L.C"
               width={270}
               height={108}
-              className="mx-auto -mb-6"
+              className="mx-auto -mb-4"
             />
           </Link>
-          <p className="text-sceneside-navy font-semibold text-lg -mt-8">
+          <p className="text-sceneside-navy font-semibold text-lg -mt-6">
             Financial Management System
           </p>
         </div>
