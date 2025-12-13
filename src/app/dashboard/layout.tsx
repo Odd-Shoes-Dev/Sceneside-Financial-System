@@ -49,6 +49,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -56,21 +57,49 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        setUser(profile);
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          router.push('/login');
+          return;
+        }
+        
+        if (session?.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profileError) {
+            console.error('Profile error:', profileError);
+            // If profile doesn't exist, redirect to login
+            if (profileError.code === 'PGRST116') {
+              setIsLoading(false);
+              router.push('/login');
+              return;
+            }
+          }
+          
+          setUser(profile);
+          setIsLoading(false);
+        } else {
+          // No session, redirect to login
+          setIsLoading(false);
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error in getUser:', error);
+        setIsLoading(false);
+        router.push('/login');
       }
     };
 
     getUser();
     fetchNotifications();
-  }, []);
+  }, [router]);
 
   const fetchNotifications = async () => {
     try {
@@ -135,6 +164,23 @@ export default function DashboardLayout({
     await supabase.auth.signOut();
     router.push('/login');
   };
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sceneside-navy mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if no user (should redirect to login)
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -297,9 +343,9 @@ export default function DashboardLayout({
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium text-gray-900">
-                    {user?.full_name || 'User'}
+                    {user.full_name || user.email || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 capitalize">{user?.role || 'Loading...'}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user.role || 'User'}</p>
                 </div>
                 <ChevronDownIcon className="w-4 h-4 text-gray-500" />
               </button>

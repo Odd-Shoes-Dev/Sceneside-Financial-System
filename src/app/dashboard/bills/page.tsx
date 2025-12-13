@@ -119,25 +119,25 @@ export default function BillsPage() {
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Unpaid</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">$0.00</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Due This Week</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">$0.00</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Overdue</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">$0.00</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Paid This Month</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">$0.00</p>
           </div>
         </div>
       </div>

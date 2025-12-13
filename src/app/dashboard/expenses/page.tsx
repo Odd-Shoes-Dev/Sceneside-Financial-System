@@ -144,25 +144,25 @@ export default function ExpensesPage() {
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">This Month</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">$0.00</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Pending Approval</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">0</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Approved</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1">0</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Paid</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">0</p>
           </div>
         </div>
       </div>

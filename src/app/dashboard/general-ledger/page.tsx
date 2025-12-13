@@ -88,14 +88,14 @@ export default function GeneralLedgerPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">General Ledger</h1>
-          <p className="text-gray-600">Journal entries and transactions</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">General Ledger</h1>
+          <p className="text-sm sm:text-base text-gray-600">Journal entries and transactions</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <span className="text-sm font-medium text-gray-700">Filters:</span>
@@ -140,11 +140,11 @@ export default function GeneralLedgerPage() {
 
       {/* Entries List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <BookOpenIcon className="w-5 h-5 text-[#1e3a5f]" />
-            <h2 className="font-semibold text-gray-900">Journal Entries</h2>
-            <span className="text-sm text-gray-500">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <BookOpenIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#1e3a5f]" />
+            <h2 className="text-sm sm:text-base font-semibold text-gray-900">Journal Entries</h2>
+            <span className="text-xs sm:text-sm text-gray-500">
               {filteredEntries.length} entries
             </span>
           </div>
@@ -171,7 +171,7 @@ export default function GeneralLedgerPage() {
                 <div key={entry.id}>
                   <button
                     onClick={() => toggleEntry(entry.id)}
-                    className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-gray-50 transition-colors text-left"
                   >
                     {isExpanded ? (
                       <ChevronDownIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -181,7 +181,7 @@ export default function GeneralLedgerPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
+                        <span className="text-sm sm:text-base font-medium text-gray-900">
                           {entry.entry_number}
                         </span>
                         <span
@@ -199,7 +199,7 @@ export default function GeneralLedgerPage() {
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-medium text-gray-900 tabular-nums">
+                      <p className="text-xs sm:text-sm font-medium text-gray-900 tabular-nums">
                         {formatCurrency(totalDebit)}
                       </p>
                       <p className="text-xs text-gray-500">{formatDate(entry.entry_date)}</p>
@@ -208,21 +208,21 @@ export default function GeneralLedgerPage() {
 
                   {/* Expanded Lines */}
                   {isExpanded && entry.lines && entry.lines.length > 0 && (
-                    <div className="px-6 pb-4">
-                      <div className="ml-8 bg-gray-50 rounded-lg overflow-hidden">
-                        <table className="w-full text-sm">
+                    <div className="px-4 sm:px-6 pb-3 sm:pb-4">
+                      <div className="ml-4 sm:ml-8 bg-gray-50 rounded-lg overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm">
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="px-4 py-2 text-left font-medium text-gray-600">
+                              <th className="px-2 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm font-medium text-gray-600">
                                 Account
                               </th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-600">
+                              <th className="px-2 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm font-medium text-gray-600">
                                 Description
                               </th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-600">
+                              <th className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm font-medium text-gray-600">
                                 Debit
                               </th>
-                              <th className="px-4 py-2 text-right font-medium text-gray-600">
+                              <th className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm font-medium text-gray-600">
                                 Credit
                               </th>
                             </tr>
@@ -230,17 +230,17 @@ export default function GeneralLedgerPage() {
                           <tbody className="divide-y divide-gray-200">
                             {entry.lines.map((line) => (
                               <tr key={line.id}>
-                                <td className="px-4 py-2">
-                                  <span className="font-mono text-xs text-gray-500 mr-2">
+                                <td className="px-2 sm:px-4 py-1.5 sm:py-2">
+                                  <span className="font-mono text-xs text-gray-500 mr-1 sm:mr-2 block sm:inline">
                                     {line.account_code}
                                   </span>
-                                  {line.account_name}
+                                  <span className="text-xs sm:text-sm">{line.account_name}</span>
                                 </td>
-                                <td className="px-4 py-2 text-gray-600">{line.description}</td>
-                                <td className="px-4 py-2 text-right tabular-nums">
+                                <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600">{line.description}</td>
+                                <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
                                   {line.debit_amount > 0 ? formatCurrency(line.debit_amount) : ''}
                                 </td>
-                                <td className="px-4 py-2 text-right tabular-nums">
+                                <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
                                   {line.credit_amount > 0 ? formatCurrency(line.credit_amount) : ''}
                                 </td>
                               </tr>
@@ -248,13 +248,13 @@ export default function GeneralLedgerPage() {
                           </tbody>
                           <tfoot className="bg-gray-100 font-medium">
                             <tr>
-                              <td className="px-4 py-2" colSpan={2}>
+                              <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm" colSpan={2}>
                                 Total
                               </td>
-                              <td className="px-4 py-2 text-right tabular-nums">
+                              <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
                                 {formatCurrency(totalDebit)}
                               </td>
-                              <td className="px-4 py-2 text-right tabular-nums">
+                              <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right text-xs sm:text-sm tabular-nums">
                                 {formatCurrency(totalCredit)}
                               </td>
                             </tr>
@@ -262,7 +262,7 @@ export default function GeneralLedgerPage() {
                         </table>
                       </div>
                       {entry.reference && (
-                        <p className="ml-8 mt-2 text-xs text-gray-500">
+                        <p className="ml-4 sm:ml-8 mt-2 text-xs text-gray-500">
                           Reference: {entry.reference}
                         </p>
                       )}

@@ -132,25 +132,25 @@ export default function InventoryPage() {
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Items</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Value</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalValue)}</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalValue)}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Low Stock</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{stats.lowStock}</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">{stats.lowStock}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Out of Stock</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">{stats.outOfStock}</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">{stats.outOfStock}</p>
           </div>
         </div>
       </div>

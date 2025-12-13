@@ -1,5 +1,5 @@
 import '@/styles/globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 
@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Sceneside Financial',
   },
+};
+
+export const viewport: Viewport = {
   themeColor: '#1e3a5f',
 };
 

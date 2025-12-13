@@ -437,7 +437,7 @@ export default function NewInvoicePage() {
               </div>
               <div className="border-t pt-3 flex justify-between">
                 <span className="font-semibold text-gray-900">Total</span>
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
                   {formatCurrency(calculateTotal())}
                 </span>
               </div>

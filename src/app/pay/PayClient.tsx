@@ -74,7 +74,7 @@ function PaymentForm({ invoice, clientSecret }: { invoice: Invoice; clientSecret
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
         <div className="flex justify-between items-center">
           <span className="text-gray-600">Amount Due</span>
-          <span className="text-2xl font-bold text-gray-900">
+          <span className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900">
             {formatCurrency(amountDue)}
           </span>
         </div>

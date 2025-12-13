@@ -141,29 +141,21 @@ export default function AssetsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Active Assets</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalAssets}</p>
-          </div>
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <p className="text-sm text-gray-500">Active Assets</p>
+          <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-0.5">{stats.totalAssets}</p>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Total Cost</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalCost)}</p>
-          </div>
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <p className="text-sm text-gray-500">Total Cost</p>
+          <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-0.5">{formatCurrency(stats.totalCost)}</p>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Accumulated Depreciation</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{formatCurrency(stats.totalDepreciation)}</p>
-          </div>
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <p className="text-sm text-gray-500">Accumulated Depreciation</p>
+          <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-0.5">{formatCurrency(stats.totalDepreciation)}</p>
         </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Net Book Value</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(stats.totalBookValue)}</p>
-          </div>
+        <div className="card p-3 sm:p-4 lg:p-6">
+          <p className="text-sm text-gray-500">Net Book Value</p>
+          <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-0.5">{formatCurrency(stats.totalBookValue)}</p>
         </div>
       </div>
 

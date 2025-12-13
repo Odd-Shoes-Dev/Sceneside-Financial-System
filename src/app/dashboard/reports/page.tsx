@@ -160,19 +160,19 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="text-gray-500 mt-1">Generate and view financial reports</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Reports</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1">Generate and view financial reports</p>
       </div>
 
       {/* Category Filter */}
       <div className="card">
-        <div className="card-body">
+        <div className="p-3 sm:p-4 lg:p-6">
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                   selectedCategory === category
                     ? 'bg-navy-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -188,22 +188,22 @@ export default function ReportsPage() {
       {/* Reports Grid */}
       {Object.entries(groupedReports).map(([category, categoryReports]) => (
         <div key={category}>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{category}</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{category}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {categoryReports.map((report) => (
               <Link
                 key={report.href}
                 href={report.href}
                 className="card hover:shadow-md transition-shadow"
               >
-                <div className="card-body">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-navy-50 rounded-lg">
-                      <report.icon className="w-6 h-6 text-navy-600" />
+                <div className="p-3 sm:p-4 lg:p-6">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="p-2 sm:p-3 bg-navy-50 rounded-lg flex-shrink-0">
+                      <report.icon className="w-5 h-5 sm:w-6 sm:h-6 text-navy-600" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{report.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{report.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-medium text-gray-900">{report.title}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-1">{report.description}</p>
                     </div>
                   </div>
                 </div>
@@ -215,11 +215,11 @@ export default function ReportsPage() {
 
       {/* Custom Report Builder */}
       <div className="card bg-gradient-to-br from-purple-50 to-magenta-50 border-purple-200">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
-              <h3 className="font-semibold text-gray-900">Custom Report Builder</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">Custom Report Builder</h3>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 Create custom reports with your own filters, date ranges, and groupings
               </p>
             </div>
@@ -232,17 +232,17 @@ export default function ReportsPage() {
 
       {/* Scheduled Reports */}
       <div className="card">
-        <div className="card-header flex justify-between items-center">
-          <h2 className="font-semibold text-gray-900">Scheduled Reports</h2>
-          <Link href="/dashboard/reports/scheduled" className="text-sm text-navy-600 font-medium">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-sm sm:text-base font-semibold text-gray-900">Scheduled Reports</h2>
+          <Link href="/dashboard/reports/scheduled" className="text-xs sm:text-sm text-navy-600 font-medium">
             Manage Schedules
           </Link>
         </div>
-        <div className="card-body">
-          <div className="text-center py-8 text-gray-500">
-            <CalendarIcon className="w-12 h-12 mx-auto text-gray-400" />
-            <p className="mt-2">No scheduled reports</p>
-            <p className="text-sm">Set up automatic report delivery to your email</p>
+        <div className="p-4 sm:p-6">
+          <div className="text-center py-6 sm:py-8 text-gray-500">
+            <CalendarIcon className="w-8 h-8 sm:w-12 sm:h-12 mx-auto text-gray-400" />
+            <p className="mt-2 text-sm sm:text-base">No scheduled reports</p>
+            <p className="text-xs sm:text-sm">Set up automatic report delivery to your email</p>
             <Link href="/dashboard/reports/scheduled/new" className="btn-secondary mt-4 inline-flex">
               Schedule a Report
             </Link>
