@@ -18,15 +18,15 @@ export async function GET(request: NextRequest) {
 
     // Get all posted journal entry lines up to the date
     const { data: entries } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
-        journal_entries!inner (entry_date, status)
+        journal_entry:journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entries.status', 'posted')
-      .lte('journal_entries.entry_date', asOfDate);
+      .eq('journal_entry.status', 'posted')
+      .lte('journal_entry.entry_date', asOfDate);
 
     // Calculate balances by account
     const accountTotals: Record<string, { debit: number; credit: number }> = {};

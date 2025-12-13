@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
       .from('journal_entries')
       .select(`
         *,
-        lines:journal_entry_lines(
+        lines:journal_lines(
           id,
           account_id,
-          debit_amount,
-          credit_amount,
+          debit,
+          credit,
           description,
-          account:chart_of_accounts(account_code, account_name)
+          account:accounts(code, name)
         )
       `)
       .order('entry_date', { ascending: false })
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       ...entry,
       lines: entry.lines?.map((line: any) => ({
         id: line.id,
-        account_code: line.account?.account_code || line.account_id,
+        account_code: line.account?.code || line.account_id,
         account_name: line.account?.account_name || '',
         debit_amount: line.debit_amount,
         credit_amount: line.credit_amount,
@@ -136,13 +136,13 @@ export async function POST(request: NextRequest) {
     const lineInserts = lines.map((line: any) => ({
       journal_entry_id: entry.id,
       account_id: line.account_id,
-      debit_amount: line.debit_amount || 0,
-      credit_amount: line.credit_amount || 0,
+      debit: line.debit_amount || 0,
+      credit: line.credit_amount || 0,
       description: line.description || '',
     }));
 
     const { error: linesError } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .insert(lineInserts);
 
     if (linesError) {

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, context: any) {
       .from('invoices')
       .select(`
         *,
-        customers (id, name, email, phone, billing_address_line1, billing_address_line2, billing_city, billing_state, billing_postal_code),
+        customers (id, name, email, phone, address_line1, address_line2, city, state, zip_code),
         invoice_lines (*, products (id, name, sku))
       `)
       .eq('id', params.id)
@@ -23,10 +23,20 @@ export async function GET(request: NextRequest, context: any) {
 
     // Get payments
     const { data: payments } = await supabase
-      .from('invoice_payments')
-      .select('*')
+      .from('payment_applications')
+      .select(`
+        amount_applied,
+        payments_received (
+          id,
+          payment_date,
+          amount,
+          payment_method,
+          reference_number,
+          notes
+        )
+      `)
       .eq('invoice_id', params.id)
-      .order('payment_date', { ascending: false });
+      .order('payments_received.payment_date', { ascending: false });
 
     return NextResponse.json({
       data: {

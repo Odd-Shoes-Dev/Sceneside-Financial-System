@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
 
     // Get journal entry lines for the period
     const { data: entries } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
-        journal_entries!inner (entry_date, status)
+        journal_entry:journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entries.status', 'posted')
-      .gte('journal_entries.entry_date', startDate)
+      .eq('journal_entry.status', 'posted')
+      .gte('journal_entry.entry_date', startDate)
       .lte('journal_entries.entry_date', endDate);
 
     // Calculate totals by account

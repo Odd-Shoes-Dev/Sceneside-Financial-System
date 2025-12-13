@@ -17,15 +17,15 @@ export async function GET(request: NextRequest) {
 
     // Get all posted journal entry lines up to the date
     const { data: entries } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
-        journal_entries!inner (entry_date, status)
+        journal_entry:journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entries.status', 'posted')
-      .lte('journal_entries.entry_date', asOfDate);
+      .eq('journal_entry.status', 'posted')
+      .lte('journal_entry.entry_date', asOfDate);
 
     // Calculate balances by account
     const accountBalances: Record<string, number> = {};
@@ -103,16 +103,16 @@ export async function GET(request: NextRequest) {
     // Calculate retained earnings (net income for all time)
     // This is a simplified calculation - in production you'd close periods
     const { data: incomeEntries } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
         accounts!inner (code),
-        journal_entries!inner (entry_date, status)
+        journal_entry:journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entries.status', 'posted')
-      .lte('journal_entries.entry_date', asOfDate)
+      .eq('journal_entry.status', 'posted')
+      .lte('journal_entry.entry_date', asOfDate)
       .gte('accounts.code', '4000');
 
     let retainedEarnings = 0;

@@ -54,14 +54,23 @@ export async function POST(request: NextRequest) {
               .eq('id', invoiceId);
 
             // Create payment record
-            await supabase.from('invoice_payments').insert([
+            const { data: payment } = await supabase.from('payments_received').insert([
               {
-                invoice_id: invoiceId,
+                customer_id: invoice.customer_id,
+                payment_date: new Date().toISOString().split('T')[0],
                 amount: paymentAmount,
-                payment_date: new Date().toISOString(),
                 payment_method: 'stripe',
-                reference: paymentIntent.id,
+                reference_number: paymentIntent.id,
                 notes: `Stripe payment: ${paymentIntent.id}`,
+              },
+            ]).select().single();
+
+            // Create payment application
+            await supabase.from('payment_applications').insert([
+              {
+                payment_id: payment.id,
+                invoice_id: invoiceId,
+                amount_applied: paymentAmount,
               },
             ]);
 
@@ -72,10 +81,9 @@ export async function POST(request: NextRequest) {
                 {
                   entry_date: new Date().toISOString().split('T')[0],
                   description: `Payment received for Invoice ${invoice.invoice_number}`,
-                  reference: paymentIntent.id,
-                  source: 'stripe_payment',
-                  source_id: invoiceId,
-                  is_posted: true,
+                  source_module: 'stripe_payment',
+                  source_document_id: invoiceId,
+                  status: 'posted',
                 },
               ])
               .select()
@@ -83,19 +91,19 @@ export async function POST(request: NextRequest) {
 
             if (journalEntry) {
               // Debit Cash/Bank, Credit Accounts Receivable
-              await supabase.from('journal_entry_lines').insert([
+              await supabase.from('journal_lines').insert([
                 {
                   journal_entry_id: journalEntry.id,
                   account_id: '1010', // Cash account
-                  debit_amount: paymentAmount,
-                  credit_amount: 0,
+                  debit: paymentAmount,
+                  credit: 0,
                   description: 'Payment received',
                 },
                 {
                   journal_entry_id: journalEntry.id,
                   account_id: '1200', // Accounts Receivable
-                  debit_amount: 0,
-                  credit_amount: paymentAmount,
+                  debit: 0,
+                  credit: paymentAmount,
                   description: 'Payment received',
                 },
               ]);
@@ -145,14 +153,24 @@ export async function POST(request: NextRequest) {
               })
               .eq('id', invoiceId);
 
-            await supabase.from('invoice_payments').insert([
+            // Create payment record
+            const { data: payment } = await supabase.from('payments_received').insert([
               {
-                invoice_id: invoiceId,
+                customer_id: invoice.customer_id,
+                payment_date: new Date().toISOString().split('T')[0],
                 amount: paymentAmount,
-                payment_date: new Date().toISOString(),
                 payment_method: 'stripe',
-                reference: session.payment_intent as string,
+                reference_number: session.payment_intent as string,
                 notes: `Stripe checkout: ${session.id}`,
+              },
+            ]).select().single();
+
+            // Create payment application
+            await supabase.from('payment_applications').insert([
+              {
+                payment_id: payment.id,
+                invoice_id: invoiceId,
+                amount_applied: paymentAmount,
               },
             ]);
           }
@@ -185,11 +203,11 @@ export async function POST(request: NextRequest) {
             .eq('id', invoice.id);
 
           // Create refund record
-          await supabase.from('invoice_payments').insert([
+          const { data: refundPayment } = await supabase.from('payments_received').insert([
             {
-              invoice_id: invoice.id,
+              customer_id: invoice.customer_id,
               amount: -refundAmount, // Negative for refund
-              payment_date: new Date().toISOString(),
+              payment_date: new Date().toISOString().split('T')[0],
               payment_method: 'stripe_refund',
               reference: charge.id,
               notes: `Refund: ${charge.id}`,

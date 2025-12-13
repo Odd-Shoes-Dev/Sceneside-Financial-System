@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       .order('name');
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,contact_name.ilike.%${search}%`);
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,company_name.ilike.%${search}%`);
     }
 
     if (active === 'true') {
@@ -64,36 +64,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate vendor code
+    // Generate vendor number
     const { data: lastVendor } = await supabase
       .from('vendors')
-      .select('vendor_code')
+      .select('vendor_number')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
-    let nextCode = 'VEND-0001';
-    if (lastVendor?.vendor_code) {
-      const num = parseInt(lastVendor.vendor_code.split('-')[1]) + 1;
-      nextCode = `VEND-${num.toString().padStart(4, '0')}`;
+    let nextNumber = 'VEND-0001';
+    if (lastVendor?.vendor_number) {
+      const num = parseInt(lastVendor.vendor_number.split('-')[1]) + 1;
+      nextNumber = `VEND-${num.toString().padStart(4, '0')}`;
     }
 
     const { data, error } = await supabase
       .from('vendors')
       .insert({
-        vendor_code: nextCode,
+        vendor_number: nextNumber,
         name: body.name,
-        contact_name: body.contact_name || null,
+        company_name: body.company_name || null,
         email: body.email || null,
         phone: body.phone || null,
-        website: body.website || null,
         tax_id: body.tax_id || null,
         address_line1: body.address_line1 || null,
         address_line2: body.address_line2 || null,
         city: body.city || null,
         state: body.state || null,
-        postal_code: body.postal_code || null,
-        country: body.country || 'US',
+        zip_code: body.postal_code || null,
+        country: body.country || 'USA',
         payment_terms: body.payment_terms || 30,
         default_expense_account_id: body.default_expense_account_id || null,
         notes: body.notes || null,

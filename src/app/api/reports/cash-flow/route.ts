@@ -11,127 +11,127 @@ export async function GET(request: NextRequest) {
 
     // Get beginning cash balance
     const { data: beginningBalanceData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_code, account_type)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(code, account_type)
       `)
       .lt('journal_entry.entry_date', startDate)
-      .eq('journal_entry.is_posted', true)
-      .in('account.account_code', ['1010', '1020', '1030']); // Cash accounts
+      .eq('journal_entry.status', 'posted')
+      .in('account.code', ['1010', '1020', '1030']); // Cash accounts
 
     const beginningCash = beginningBalanceData?.reduce((sum, line) => {
-      return sum + (line.debit_amount || 0) - (line.credit_amount || 0);
+      return sum + (line.debit || 0) - (line.credit || 0);
     }, 0) || 0;
 
     // Get period transactions for cash accounts
     const { data: periodCashData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted, description, source),
-        account:chart_of_accounts!inner(account_code, account_type, account_name)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status, description, source_module),
+        account:accounts!inner(code, account_type, name)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .in('account.account_code', ['1010', '1020', '1030']);
+      .eq('journal_entry.status', 'posted')
+      .in('account.code', ['1010', '1020', '1030']);
 
     // Calculate net change in cash
     const netChangeInCash = periodCashData?.reduce((sum, line) => {
-      return sum + (line.debit_amount || 0) - (line.credit_amount || 0);
+      return sum + (line.debit || 0) - (line.credit || 0);
     }, 0) || 0;
 
     // Get revenue for period (for net income calculation)
     const { data: revenueData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_type)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(account_type)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .eq('account.account_type', 'Revenue');
+      .eq('journal_entry.status', 'posted')
+      .eq('account.account_type', 'revenue');
 
     const totalRevenue = revenueData?.reduce((sum, line) => {
-      return sum + (line.credit_amount || 0) - (line.debit_amount || 0);
+      return sum + (line.credit || 0) - (line.debit || 0);
     }, 0) || 0;
 
     // Get expenses for period
     const { data: expenseData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_type)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(account_type)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .eq('account.account_type', 'Expense');
+      .eq('journal_entry.status', 'posted')
+      .eq('account.account_type', 'expense');
 
     const totalExpenses = expenseData?.reduce((sum, line) => {
-      return sum + (line.debit_amount || 0) - (line.credit_amount || 0);
+      return sum + (line.debit || 0) - (line.credit || 0);
     }, 0) || 0;
 
     const netIncome = totalRevenue - totalExpenses;
 
     // Get depreciation expense
     const { data: depreciationData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_code)
+        debit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(code)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .eq('account.account_code', '6900'); // Depreciation expense
+      .eq('journal_entry.status', 'posted')
+      .eq('account.code', '6900'); // Depreciation expense
 
-    const depreciation = depreciationData?.reduce((sum, line) => sum + (line.debit_amount || 0), 0) || 0;
+    const depreciation = depreciationData?.reduce((sum, line) => sum + (line.debit || 0), 0) || 0;
 
     // Get changes in AR
     const { data: arChangeData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_code)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(code)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .eq('account.account_code', '1200'); // AR
+      .eq('journal_entry.status', 'posted')
+      .eq('account.code', '1200'); // AR
 
     const arChange = arChangeData?.reduce((sum, line) => {
-      return sum + (line.debit_amount || 0) - (line.credit_amount || 0);
+      return sum + (line.debit || 0) - (line.credit || 0);
     }, 0) || 0;
 
     // Get changes in AP
     const { data: apChangeData } = await supabase
-      .from('journal_entry_lines')
+      .from('journal_lines')
       .select(`
-        debit_amount,
-        credit_amount,
-        journal_entry:journal_entries!inner(entry_date, is_posted),
-        account:chart_of_accounts!inner(account_code)
+        debit,
+        credit,
+        journal_entry:journal_entries!inner(entry_date, status),
+        account:accounts!inner(code)
       `)
       .gte('journal_entry.entry_date', startDate)
       .lte('journal_entry.entry_date', endDate)
-      .eq('journal_entry.is_posted', true)
-      .eq('account.account_code', '2010'); // AP
+      .eq('journal_entry.status', 'posted')
+      .eq('account.code', '2010'); // AP
 
     const apChange = apChangeData?.reduce((sum, line) => {
-      return sum + (line.credit_amount || 0) - (line.debit_amount || 0);
+      return sum + (line.credit || 0) - (line.debit || 0);
     }, 0) || 0;
 
     // Get fixed asset purchases

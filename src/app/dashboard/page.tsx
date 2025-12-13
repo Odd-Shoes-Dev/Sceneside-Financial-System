@@ -365,34 +365,34 @@ function StatCard({
   };
 
   return (
-    <div className="card p-6">
+    <div className="card p-4 sm:p-6">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm text-gray-500 truncate">{title}</p>
+          <p className="text-lg sm:text-2xl font-bold text-gray-900 mt-1 truncate">{value}</p>
           {trend !== undefined && (
             <div className="flex items-center gap-1 mt-2">
               {trend >= 0 ? (
-                <ArrowUpIcon className="w-4 h-4 text-green-600" />
+                <ArrowUpIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
               ) : (
-                <ArrowDownIcon className="w-4 h-4 text-red-600" />
+                <ArrowDownIcon className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
               )}
               <span
-                className={`text-sm font-medium ${
+                className={`text-xs sm:text-sm font-medium ${
                   trend >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}
               >
                 {Math.abs(trend)}%
               </span>
-              <span className="text-sm text-gray-500">vs last month</span>
+              <span className="text-xs sm:text-sm text-gray-500">vs last month</span>
             </div>
           )}
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">{subtitle}</p>
           )}
         </div>
-        <div className={`w-10 h-10 ${colorClasses[color]} rounded-lg flex items-center justify-center`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 ${colorClasses[color]} rounded-lg flex items-center justify-center flex-shrink-0 ml-3`}>
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
         </div>
       </div>
     </div>

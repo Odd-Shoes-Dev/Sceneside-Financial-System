@@ -20,11 +20,11 @@ export async function GET(request: NextRequest) {
       .order('name');
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,barcode.ilike.%${search}%`);
+      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     if (category) {
-      query = query.eq('category', category);
+      query = query.eq('category_id', category);
     }
 
     // Apply pagination unless we need to post-filter for low stock

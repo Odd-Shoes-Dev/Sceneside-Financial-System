@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sceneside-navy via-sceneside-purple to-sceneside-magenta flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -51,11 +51,14 @@ export default function LoginPage() {
             <Image
               src="/Sceneside assets/Sceneside_logo_name.png"
               alt="Sceneside L.L.C"
-              width={180}
-              height={72}
-              className="mx-auto"
+              width={270}
+              height={108}
+              className="mx-auto -mb-6"
             />
           </Link>
+          <p className="text-sceneside-navy font-semibold text-lg -mt-8">
+            Financial Management System
+          </p>
         </div>
 
         {/* Login Card */}
@@ -160,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-8">
+        <p className="text-center text-gray-500 text-sm mt-8">
           &copy; {new Date().getFullYear()} Sceneside L.L.C
         </p>
       </div>

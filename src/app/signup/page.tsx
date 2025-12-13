@@ -11,12 +11,14 @@ export default function SignUpPage() {
   const signupsEnabled = process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true';
   if (!signupsEnabled) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sceneside-navy via-sceneside-purple to-sceneside-magenta flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
-          <div className="bg-white rounded-xl p-8 shadow-lg">
-            <h1 className="text-2xl font-semibold mb-4">Signups are currently disabled</h1>
-            <p className="text-gray-600 mb-6">Account creation is temporarily disabled. Please contact your administrator for access.</p>
-            <Link href="/login" className="btn btn-primary">Return to Sign In</Link>
+          <div className="card">
+            <div className="card-body text-center">
+              <h1 className="text-2xl font-semibold mb-4">Signups are currently disabled</h1>
+              <p className="text-gray-600 mb-6">Account creation is temporarily disabled. Please contact your administrator for access.</p>
+              <Link href="/login" className="btn-primary">Return to Sign In</Link>
+            </div>
           </div>
         </div>
       </div>
@@ -74,7 +76,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sceneside-navy via-sceneside-purple to-sceneside-magenta flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -204,7 +206,7 @@ export default function SignUpPage() {
 
         {/* Back to home */}
         <div className="text-center mt-6">
-          <Link href="/" className="text-white/80 hover:text-white text-sm">
+          <Link href="/" className="text-gray-500 hover:text-gray-700 text-sm">
             ← Back to home
           </Link>
         </div>
