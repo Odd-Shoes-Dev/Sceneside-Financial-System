@@ -56,7 +56,7 @@ export default function LoginPage() {
               className="mx-auto -mb-4"
             />
           </Link>
-          <p className="text-sceneside-navy font-semibold text-lg -mt-6">
+          <p className="text-sceneside-navy font-semibold text-lg mt-6">
             Financial Management System
           </p>
         </div>
