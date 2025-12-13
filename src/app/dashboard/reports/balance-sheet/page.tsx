@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   ScaleIcon,
   ArrowDownTrayIcon,
+  ArrowLeftIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -318,9 +320,14 @@ export default function BalanceSheetPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Balance Sheet</h1>
-          <p className="text-sm sm:text-base text-gray-600">Financial position as of a specific date</p>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link href="/dashboard/reports" className="btn-ghost p-1.5 sm:p-2">
+            <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+          </Link>
+          <div>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Balance Sheet</h1>
+            <p className="text-sm sm:text-base text-gray-600">Financial position as of a specific date</p>
+          </div>
         </div>
         <button
           onClick={exportToPDF}
