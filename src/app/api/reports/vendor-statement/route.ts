@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       .filter(t => t.type === 'Payment')
       .reduce((sum, t) => sum + t.amount, 0));
     const totalAdjustments = transactions
-      .filter(t => t.type === 'Credit' || t.type === 'Adjustment')
+      .filter(t => t.type === 'Credit')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const endingBalance = transactions.length > 0 ? transactions[transactions.length - 1].balance : beginningBalance;
 
