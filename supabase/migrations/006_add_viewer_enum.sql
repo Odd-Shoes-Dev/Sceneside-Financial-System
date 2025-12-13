@@ -1,3 +1,4 @@
+
 -- Add `viewer` to user_role enum if it doesn't exist
 DO $$
 BEGIN
