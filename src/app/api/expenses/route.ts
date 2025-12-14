@@ -93,12 +93,15 @@ export async function POST(request: NextRequest) {
     const { data: expense, error: expenseError } = await supabase
       .from('expenses')
       .insert({
+        expense_number: body.reference || ref,
         reference: body.reference || ref,
         expense_date: body.expense_date,
         vendor_id: body.vendor_id || null,
         expense_account_id: body.expense_account_id,
+        payment_account_id: body.bank_account_id || body.expense_account_id,
         amount: body.amount,
         tax_amount: body.tax_amount || 0,
+        total: (body.amount || 0) + (body.tax_amount || 0),
         description: body.description || null,
         payment_method: body.payment_method || 'cash',
         bank_account_id: body.bank_account_id || null,

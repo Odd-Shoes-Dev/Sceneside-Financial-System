@@ -185,8 +185,8 @@ export default function ExpensesPage() {
         </div>
       ) : (
         <>
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-hidden">
+          {/* Desktop & Tablet Table */}
+          <div className="card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
@@ -215,11 +215,11 @@ export default function ExpensesPage() {
                         {expense.accounts?.name || '-'}
                       </span>
                     </td>
-                    <td>{expense.vendors?.name || expense.payee || '-'}</td>
-                    <td className="text-right font-medium">
+                    <td className="whitespace-nowrap">{expense.vendors?.name || expense.payee || '-'}</td>
+                    <td className="text-right font-medium whitespace-nowrap">
                       {formatCurrency(expense.total)}
                     </td>
-                    <td>
+                    <td className="whitespace-nowrap">
                       <span className="badge badge-gray">
                         {expense.payment_method}
                       </span>
@@ -238,8 +238,8 @@ export default function ExpensesPage() {
             </table>
           </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden grid gap-4">
+          {/* Mobile Cards - Hidden by default, can be shown if preferred */}
+          <div className="hidden grid gap-4">
             {expenses.map((expense) => (
               <div key={expense.id} className="card">
                 <div className="card-body">

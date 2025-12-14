@@ -365,7 +365,7 @@ export default function BalanceSheetPage() {
           {/* Report Header */}
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <div className="flex items-center gap-3">
-              <ScaleIcon className="w-6 h-6 text-[#1e3a5f]" />
+              <ScaleIcon className="w-6 h-6 text-[#52b53b]" />
               <div>
                 <h2 className="font-semibold text-gray-900">Sceneside L.L.C</h2>
                 <p className="text-sm text-gray-600">Balance Sheet as of {formatDate(data.asOfDate)}</p>
@@ -525,9 +525,9 @@ export default function BalanceSheetPage() {
             </div>
 
             {/* Total Liabilities and Equity */}
-            <div className="flex justify-between py-3 sm:py-4 border-t-4 border-double border-[#1e3a5f] bg-[#1e3a5f]/5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-lg">
-              <span className="text-base sm:text-lg font-bold text-[#1e3a5f]">TOTAL LIABILITIES & EQUITY</span>
-              <span className="text-base sm:text-lg font-bold text-[#1e3a5f] tabular-nums">
+            <div className="flex justify-between py-3 sm:py-4 border-t-4 border-double border-[#52b53b] bg-[#52b53b]/5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-lg">
+              <span className="text-base sm:text-lg font-bold text-[#52b53b]">TOTAL LIABILITIES & EQUITY</span>
+              <span className="text-base sm:text-lg font-bold text-[#52b53b] tabular-nums">
                 {formatCurrency(data.totalLiabilitiesAndEquity || 0)}
               </span>
             </div>

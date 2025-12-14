@@ -199,64 +199,66 @@ export default function BillsPage() {
         </div>
       ) : (
         <>
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-hidden">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Bill #</th>
-                  <th>Vendor</th>
-                  <th>Bill Date</th>
-                  <th>Due Date</th>
-                  <th className="text-right">Amount</th>
-                  <th className="text-right">Balance</th>
-                  <th>Status</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bills.map((bill) => (
-                  <tr key={bill.id}>
-                    <td>
-                      <Link
-                        href={`/dashboard/bills/${bill.id}`}
-                        className="font-mono font-medium text-navy-600 hover:underline"
-                      >
-                        {bill.bill_number}
-                      </Link>
-                    </td>
-                    <td>{bill.vendors?.name || '-'}</td>
-                    <td className="whitespace-nowrap">{formatDate(bill.bill_date)}</td>
-                    <td className={`whitespace-nowrap ${isOverdue(bill) ? 'text-red-600 font-medium' : ''}`}>
-                      {formatDate(bill.due_date)}
-                    </td>
-                    <td className="text-right font-medium">
-                      {formatCurrency(bill.total)}
-                    </td>
-                    <td className="text-right font-medium">
-                      {formatCurrency(bill.total - bill.amount_paid)}
-                    </td>
-                    <td>
-                      <span className={`badge ${isOverdue(bill) ? 'badge-error' : getStatusBadge(bill.status)}`}>
-                        {isOverdue(bill) ? 'Overdue' : bill.status}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <Link
-                        href={`/dashboard/bills/${bill.id}`}
-                        className="btn-ghost p-2"
-                      >
-                        <EyeIcon className="w-5 h-5" />
-                      </Link>
-                    </td>
+          {/* Desktop/Mobile Table with horizontal scroll */}
+          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="inline-block min-w-full align-middle">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Bill #</th>
+                    <th>Vendor</th>
+                    <th>Bill Date</th>
+                    <th>Due Date</th>
+                    <th className="text-right">Amount</th>
+                    <th className="text-right">Balance</th>
+                    <th>Status</th>
+                    <th className="text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {bills.map((bill) => (
+                    <tr key={bill.id}>
+                      <td>
+                        <Link
+                          href={`/dashboard/bills/${bill.id}`}
+                          className="font-mono font-medium text-navy-600 hover:underline"
+                        >
+                          {bill.bill_number}
+                        </Link>
+                      </td>
+                      <td>{bill.vendors?.name || '-'}</td>
+                      <td className="whitespace-nowrap">{formatDate(bill.bill_date)}</td>
+                      <td className={`whitespace-nowrap ${isOverdue(bill) ? 'text-red-600 font-medium' : ''}`}>
+                        {formatDate(bill.due_date)}
+                      </td>
+                      <td className="text-right font-medium">
+                        {formatCurrency(bill.total)}
+                      </td>
+                      <td className="text-right font-medium">
+                        {formatCurrency(bill.total - bill.amount_paid)}
+                      </td>
+                      <td>
+                        <span className={`badge ${isOverdue(bill) ? 'badge-error' : getStatusBadge(bill.status)}`}>
+                          {isOverdue(bill) ? 'Overdue' : bill.status}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <Link
+                          href={`/dashboard/bills/${bill.id}`}
+                          className="btn-ghost p-2"
+                        >
+                          <EyeIcon className="w-5 h-5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden grid gap-4">
+          {/* Mobile Cards - Hidden */}
+          <div className="hidden">
             {bills.map((bill) => (
               <div key={bill.id} className="card">
                 <div className="card-body">

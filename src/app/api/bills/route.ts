@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
     });
 
     const total = subtotal + taxAmount;
-    const balanceDue = total;
 
     const { data: bill, error: billError } = await supabase
       .from('bills')
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
         tax_amount: taxAmount,
         total,
         amount_paid: 0,
-        balance_due: balanceDue,
         status: body.status || 'draft',
         currency: body.currency || 'USD',
         exchange_rate: body.exchange_rate || 1,

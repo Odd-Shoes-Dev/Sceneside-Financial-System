@@ -131,7 +131,7 @@ export default function GeneralLedgerPage() {
               type="checkbox"
               checked={filters.showPostedOnly}
               onChange={(e) => setFilters((f) => ({ ...f, showPostedOnly: e.target.checked }))}
-              className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#1e3a5f]"
+              className="rounded border-gray-300 text-[#52b53b] focus:ring-[#52b53b]"
             />
             <span className="text-sm text-gray-700">Posted only</span>
           </label>
@@ -142,7 +142,7 @@ export default function GeneralLedgerPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 sm:gap-3">
-            <BookOpenIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#1e3a5f]" />
+            <BookOpenIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#52b53b]" />
             <h2 className="text-sm sm:text-base font-semibold text-gray-900">Journal Entries</h2>
             <span className="text-xs sm:text-sm text-gray-500">
               {filteredEntries.length} entries

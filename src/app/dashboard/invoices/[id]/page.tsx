@@ -87,16 +87,36 @@ export default function InvoiceDetailPage() {
         .single();
 
       if (invoiceError) throw invoiceError;
-      setInvoice(invoiceData);
+      
+      // Parse numeric fields that come as strings from Supabase
+      const parsedInvoice = {
+        ...invoiceData,
+        subtotal: parseFloat(invoiceData.subtotal || 0),
+        tax_amount: parseFloat(invoiceData.tax_amount || 0),
+        discount_amount: parseFloat(invoiceData.discount_amount || 0),
+        total_amount: parseFloat(invoiceData.total || 0),
+        amount_paid: parseFloat(invoiceData.amount_paid || 0),
+        tax_rate: parseFloat(invoiceData.tax_rate || 0),
+      };
+      
+      setInvoice(parsedInvoice);
 
       // Fetch line items
       const { data: itemsData } = await supabase
-        .from('invoice_line_items')
+        .from('invoice_lines')
         .select('*')
         .eq('invoice_id', params.id)
         .order('line_number');
 
-      setLineItems(itemsData || []);
+      // Parse line item numeric fields
+      const parsedItems = (itemsData || []).map(item => ({
+        ...item,
+        quantity: parseFloat(item.quantity || 0),
+        unit_price: parseFloat(item.unit_price || 0),
+        amount: parseFloat(item.amount || 0),
+      }));
+
+      setLineItems(parsedItems);
 
       // Fetch payments
       const { data: paymentsData } = await supabase
@@ -105,7 +125,13 @@ export default function InvoiceDetailPage() {
         .eq('invoice_id', params.id)
         .order('payment_date', { ascending: false });
 
-      setPayments(paymentsData || []);
+      // Parse payment numeric fields
+      const parsedPayments = (paymentsData || []).map(payment => ({
+        ...payment,
+        amount: parseFloat(payment.amount || 0),
+      }));
+
+      setPayments(parsedPayments);
     } catch (error) {
       console.error('Error fetching invoice:', error);
     } finally {
