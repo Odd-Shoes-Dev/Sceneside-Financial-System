@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeftIcon,
   CreditCardIcon,
-  PaperClipIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
 
@@ -21,32 +20,64 @@ interface Account {
   code: string;
 }
 
-export default function NewExpensePage() {
+interface Expense {
+  id: string;
+  expense_number: string;
+  expense_date: string;
+  payee: string | null;
+  vendor_id: string | null;
+  amount: number;
+  tax_amount: number;
+  payment_method: string;
+  reference_number: string | null;
+  expense_account_id: string;
+  payment_account_id: string;
+  category: string | null;
+  department: string | null;
+  description: string | null;
+  is_reimbursable: boolean;
+  is_billable: boolean;
+}
+
+export default function EditExpensePage() {
+  const params = useParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [expenseAccounts, setExpenseAccounts] = useState<Account[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<Account[]>([]);
+  const [expense, setExpense] = useState<Expense | null>(null);
 
   const [formData, setFormData] = useState({
     vendor_id: '',
-    expense_date: new Date().toISOString().split('T')[0],
+    payee: '',
+    expense_date: '',
     category: '',
+    department: '',
     expense_account_id: '',
+    payment_account_id: '',
     description: '',
     amount: 0,
     tax_amount: 0,
     payment_method: 'bank_transfer',
     reference_number: '',
+    is_reimbursable: false,
     is_billable: false,
-    notes: '',
   });
 
-  const [attachments, setAttachments] = useState<File[]>([]);
   useEffect(() => {
-    fetchVendors();
-    fetchExpenseAccounts();
-  }, []);
+    const loadData = async () => {
+      await Promise.all([
+        fetchVendors(),
+        fetchExpenseAccounts(),
+        fetchPaymentAccounts(),
+      ]);
+      await loadExpense();
+    };
+    loadData();
+  }, [params.id]);
 
   const fetchVendors = async () => {
     try {
@@ -64,13 +95,57 @@ export default function NewExpensePage() {
       const response = await fetch('/api/accounts?type=expense&active=true');
       const result = await response.json();
       setExpenseAccounts(result.data || []);
-      // Set default expense account if available
-      if (result.data && result.data.length > 0) {
-        setFormData(prev => ({ ...prev, expense_account_id: result.data[0].id }));
-      }
     } catch (error) {
       console.error('Failed to fetch expense accounts:', error);
       setExpenseAccounts([]);
+    }
+  };
+
+  const fetchPaymentAccounts = async () => {
+    try {
+      const response = await fetch('/api/accounts?type=asset&active=true');
+      const result = await response.json();
+      setPaymentAccounts(result.data || []);
+    } catch (error) {
+      console.error('Failed to fetch payment accounts:', error);
+      setPaymentAccounts([]);
+    }
+  };
+
+  const loadExpense = async () => {
+    try {
+      setLoading(true);
+
+      const { data, error: expenseError } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (expenseError) throw expenseError;
+
+      setExpense(data);
+      setFormData({
+        vendor_id: data.vendor_id || '',
+        payee: data.payee || '',
+        expense_date: data.expense_date,
+        category: data.category || '',
+        department: data.department || '',
+        expense_account_id: data.expense_account_id,
+        payment_account_id: data.payment_account_id,
+        description: data.description || '',
+        amount: parseFloat(data.amount),
+        tax_amount: parseFloat(data.tax_amount),
+        payment_method: data.payment_method,
+        reference_number: data.reference_number || '',
+        is_reimbursable: data.is_reimbursable,
+        is_billable: data.is_billable,
+      });
+    } catch (error) {
+      console.error('Failed to load expense:', error);
+      setError('Failed to load expense');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,82 +161,39 @@ export default function NewExpensePage() {
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newFiles = Array.from(files).filter(file => {
-        const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        return validTypes.includes(file.type) && file.size <= maxSize;
-      });
-      setAttachments(prev => [...prev, ...newFiles]);
-    }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      let receiptUrl = null;
+      const total = formData.amount + formData.tax_amount;
 
-      // Upload attachment if exists
-      if (attachments.length > 0) {
-        const file = attachments[0]; // Take the first file
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `expense-receipts/${fileName}`;
+      const { error: updateError } = await supabase
+        .from('expenses')
+        .update({
+          vendor_id: formData.vendor_id || null,
+          payee: formData.payee || null,
+          expense_date: formData.expense_date,
+          category: formData.category || null,
+          department: formData.department || null,
+          expense_account_id: formData.expense_account_id,
+          payment_account_id: formData.payment_account_id,
+          description: formData.description,
+          amount: formData.amount,
+          tax_amount: formData.tax_amount,
+          total: total,
+          payment_method: formData.payment_method,
+          reference_number: formData.reference_number || null,
+          is_reimbursable: formData.is_reimbursable,
+          is_billable: formData.is_billable,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', params.id);
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('receipts')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
+      if (updateError) throw updateError;
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error('Failed to upload receipt');
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('receipts')
-          .getPublicUrl(filePath);
-
-        receiptUrl = publicUrl;
-      }
-
-      // Prepare the payload
-      const payload = {
-        expense_date: formData.expense_date,
-        amount: formData.amount,
-        expense_account_id: formData.expense_account_id,
-        vendor_id: formData.vendor_id || null,
-        description: formData.description,
-        payment_method: formData.payment_method,
-        reference: formData.reference_number || null,
-        notes: formData.notes || null,
-        receipt_url: receiptUrl,
-      };
-
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create expense');
-      }
-
-      router.push('/dashboard/expenses');
+      router.push(`/dashboard/expenses/${params.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -194,19 +226,38 @@ export default function NewExpensePage() {
     { value: 'other', label: 'Other' },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sceneside-navy"></div>
+      </div>
+    );
+  }
+
+  if (!expense) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Expense not found</p>
+        <Link href="/dashboard/expenses" className="btn-primary mt-4">
+          Back to Expenses
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href="/dashboard/expenses"
+          href={`/dashboard/expenses/${params.id}`}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Record Expense</h1>
-          <p className="text-gray-600">Log a new business expense</p>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Expense</h1>
+          <p className="text-gray-600">{expense.expense_number}</p>
         </div>
       </div>
 
@@ -241,22 +292,35 @@ export default function NewExpensePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Expense Account <span className="text-red-500">*</span>
+                Vendor
               </label>
               <select
-                name="expense_account_id"
-                value={formData.expense_account_id}
+                name="vendor_id"
+                value={formData.vendor_id}
                 onChange={handleChange}
-                required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
               >
-                <option value="">Select account...</option>
-                {expenseAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.code} - {account.name}
+                <option value="">Select vendor...</option>
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payee (if no vendor)
+              </label>
+              <input
+                type="text"
+                name="payee"
+                value={formData.payee}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="Enter payee name"
+              />
             </div>
 
             <div>
@@ -280,18 +344,33 @@ export default function NewExpensePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor
+                Department
               </label>
-              <select
-                name="vendor_id"
-                value={formData.vendor_id}
+              <input
+                type="text"
+                name="department"
+                value={formData.department}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="Department"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expense Account <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="expense_account_id"
+                value={formData.expense_account_id}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
               >
-                <option value="">No vendor / General expense</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.name}
+                <option value="">Select account...</option>
+                {expenseAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.code} - {account.name}
                   </option>
                 ))}
               </select>
@@ -299,17 +378,19 @@ export default function NewExpensePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method
+                Payment Account <span className="text-red-500">*</span>
               </label>
               <select
-                name="payment_method"
-                value={formData.payment_method}
+                name="payment_account_id"
+                value={formData.payment_account_id}
                 onChange={handleChange}
+                required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
               >
-                {paymentMethods.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
+                <option value="">Select account...</option>
+                {paymentAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.code} - {account.name}
                   </option>
                 ))}
               </select>
@@ -380,18 +461,43 @@ export default function NewExpensePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Total
               </label>
-              <div className="h-10 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-900">
-                ${(formData.amount + formData.tax_amount).toFixed(2)}
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={(formData.amount + formData.tax_amount).toFixed(2)}
+                  disabled
+                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm bg-gray-50"
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Additional Details */}
+        {/* Payment Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Additional Details</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">Payment Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Method <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="payment_method"
+                value={formData.payment_method}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              >
+                {paymentMethods.map((method) => (
+                  <option key={method.value} value={method.value}>
+                    {method.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Reference / Receipt Number
@@ -405,85 +511,42 @@ export default function NewExpensePage() {
                 placeholder="Receipt #, check #, etc."
               />
             </div>
+          </div>
+        </div>
 
-            <div className="flex items-center">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="is_billable"
-                  checked={formData.is_billable}
-                  onChange={handleChange}
-                  className="rounded border-gray-300 text-[#52b53b] focus:ring-[#52b53b]"
-                />
-                <span className="text-sm text-gray-700">Billable to customer</span>
-              </label>
-            </div>
+        {/* Additional Options */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Additional Options</h2>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="Additional notes..."
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Attachments
-              </label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type="file"
-                id="file-upload"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="hidden"
+                type="checkbox"
+                name="is_reimbursable"
+                checked={formData.is_reimbursable}
+                onChange={handleChange}
+                className="rounded border-gray-300 text-[#52b53b] focus:ring-[#52b53b]"
               />
-              <label
-                htmlFor="file-upload"
-                className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
-              >
-                <PaperClipIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
-                  Drag & drop receipt or click to upload
-                </p>
-                <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG up to 10MB</p>
-              </label>
-              
-              {attachments.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <PaperClipIcon className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+              <span className="text-sm text-gray-700">Reimbursable expense</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="is_billable"
+                checked={formData.is_billable}
+                onChange={handleChange}
+                className="rounded border-gray-300 text-[#52b53b] focus:ring-[#52b53b]"
+              />
+              <span className="text-sm text-gray-700">Billable to customer</span>
+            </label>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
           <Link
-            href="/dashboard/expenses"
+            href={`/dashboard/expenses/${params.id}`}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel
@@ -493,7 +556,7 @@ export default function NewExpensePage() {
             disabled={isSubmitting}
             className="px-6 py-2 bg-[#52b53b] text-white rounded-lg text-sm font-medium hover:bg-[#449932] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Recording...' : 'Record Expense'}
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>
