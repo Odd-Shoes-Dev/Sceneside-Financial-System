@@ -129,7 +129,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
           <!-- Footer -->
           <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #999;">
-              Sceneside L.L.C • 231 River St, Waltham, MA 02453 • 857-384-2899
+              Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899
             </p>
           </div>
         </div>
@@ -272,7 +272,7 @@ export async function sendPaymentReceiptEmail(params: SendPaymentReceiptParams) 
           <!-- Footer -->
           <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #999;">
-              Sceneside L.L.C • 231 River St, Waltham, MA 02453 • 857-384-2899
+              Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899
             </p>
           </div>
         </div>

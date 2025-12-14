@@ -257,7 +257,7 @@ export default function CustomerStatementPage() {
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" />
             <div class="company-info">
               <h1>Sceneside L.L.C</h1>
-              <div class="address">231 River St, Waltham, MA 02453</div>
+              <div class="address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="address">Phone: (857) 384-2899</div>
             </div>
           </div>

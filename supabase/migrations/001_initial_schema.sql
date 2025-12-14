@@ -1,7 +1,7 @@
 -- =====================================================
 -- SCENESIDE L.L.C FINANCIAL SYSTEM DATABASE SCHEMA
 -- Company: Sceneside L.L.C
--- Address: 231 River St, Waltham, MA 02453
+-- Address: 121 Bedford Street, Waltham, MA 02453
 -- EIN: 99-3334108
 -- Bank: Bank of America, Acc: 466021944682
 -- =====================================================
@@ -49,7 +49,7 @@ CREATE TABLE company_settings (
   name VARCHAR(255) NOT NULL DEFAULT 'Sceneside L.L.C',
   legal_name VARCHAR(255) DEFAULT 'Sceneside L.L.C',
   ein VARCHAR(20) DEFAULT '99-3334108',
-  address_line1 VARCHAR(255) DEFAULT '231 River St',
+  address_line1 VARCHAR(255) DEFAULT '121 Bedford Street',
   address_line2 VARCHAR(255),
   city VARCHAR(100) DEFAULT 'Waltham',
   state VARCHAR(50) DEFAULT 'MA',

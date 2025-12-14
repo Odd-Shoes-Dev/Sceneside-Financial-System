@@ -378,7 +378,7 @@ function generateInvoiceHTML(invoice: any, customer: any, lineItems: any[]): str
           <div class="info-block">
             <h3>From</h3>
             <p><strong>Sceneside L.L.C</strong></p>
-            <p>231 River St</p>
+            <p>121 Bedford Street</p>
             <p>Waltham, MA 02453</p>
             <p>857-384-2899</p>
           </div>
@@ -482,7 +482,7 @@ function generateInvoiceHTML(invoice: any, customer: any, lineItems: any[]): str
 
         <div class="footer">
           <p class="thanks">Thank you for your business!</p>
-          <p>Sceneside L.L.C • 231 River St, Waltham, MA 02453 • 857-384-2899</p>
+          <p>Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899</p>
           <p style="margin-top: 8px;">Questions? Contact us at accounts@sceneside.com</p>
         </div>
       </div>

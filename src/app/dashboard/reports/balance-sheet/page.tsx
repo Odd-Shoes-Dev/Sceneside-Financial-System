@@ -187,7 +187,7 @@ export default function BalanceSheetPage() {
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside L.L.C" class="logo">
             <div class="company-info">
               <div class="company-name">Sceneside L.L.C</div>
-              <div class="company-address">231 River St, Waltham, MA 02453</div>
+              <div class="company-address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="company-contact">Phone: 857-384-2899</div>
             </div>
           </div>

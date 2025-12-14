@@ -14,6 +14,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
+import { printBill } from '@/lib/pdf/bill';
 
 interface BillLine {
   id: string;
@@ -140,7 +141,13 @@ export default function BillDetailPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (bill && lines) {
+      printBill({
+        bill,
+        vendor: bill.vendors || {},
+        lines,
+      });
+    }
   };
 
   const handleApprove = async () => {

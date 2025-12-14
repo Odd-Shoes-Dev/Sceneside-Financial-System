@@ -10,7 +10,7 @@ INSERT INTO company_settings (
   base_currency, fiscal_year_start_month, sales_tax_rate, inventory_method
 ) VALUES (
   'Sceneside L.L.C', 'Sceneside L.L.C', '99-3334108',
-  '231 River St', 'Waltham', 'MA', '02453', 'USA', '857-384-2899',
+  '121 Bedford Street', 'Waltham', 'MA', '02453', 'USA', '857-384-2899',
   'USD', 1, 0.0625, 'fifo'
 );
 
