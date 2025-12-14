@@ -91,12 +91,32 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Calculate totals
-    const lines = body.lines || [];
+    const lines = body.line_items || body.lines || [];
     let subtotal = 0;
     let taxAmount = 0;
 
+    // Get account IDs from codes if needed
+    const accountCodes = lines
+      .map((line: any) => line.account_code)
+      .filter((code: any) => code);
+    
+    let accountMap: Record<string, string> = {};
+    if (accountCodes.length > 0) {
+      const { data: accounts } = await supabase
+        .from('accounts')
+        .select('id, code')
+        .in('code', accountCodes);
+      
+      if (accounts) {
+        accountMap = Object.fromEntries(
+          accounts.map((acc: any) => [acc.code, acc.id])
+        );
+      }
+    }
+
     lines.forEach((line: any) => {
-      const lineSubtotal = line.quantity * line.unit_cost;
+      const unitCost = line.unit_cost || line.unit_price || 0;
+      const lineSubtotal = line.quantity * unitCost;
       const lineTax = lineSubtotal * (line.tax_rate || 0);
       subtotal += lineSubtotal;
       taxAmount += lineTax;
@@ -133,20 +153,30 @@ export async function POST(request: NextRequest) {
 
     // Create bill lines
     if (lines.length > 0) {
-      const billLines = lines.map((line: any, index: number) => ({
-        bill_id: bill.id,
-        line_number: index + 1,
-        expense_account_id: line.expense_account_id || null,
-        product_id: line.product_id || null,
-        project_id: line.project_id || null,
-        department: line.department || null,
-        description: line.description,
-        quantity: line.quantity,
-        unit_cost: line.unit_cost,
-        tax_rate: line.tax_rate || 0,
-        tax_amount: line.quantity * line.unit_cost * (line.tax_rate || 0),
-        line_total: line.quantity * line.unit_cost,
-      }));
+      const billLines = lines
+        .filter((line: any) => {
+          const unitCost = line.unit_cost || line.unit_price || 0;
+          const hasDescription = line.description && line.description.trim();
+          return hasDescription && (line.quantity * unitCost) > 0;
+        })
+        .map((line: any, index: number) => {
+          const unitCost = line.unit_cost || line.unit_price || 0;
+          const expenseAccountId = line.expense_account_id || (line.account_code ? accountMap[line.account_code] : null);
+          return {
+            bill_id: bill.id,
+            line_number: index + 1,
+            expense_account_id: expenseAccountId,
+            product_id: line.product_id || null,
+            project_id: line.project_id || null,
+            department: line.department || null,
+            description: line.description || '',
+            quantity: line.quantity,
+            unit_cost: unitCost,
+            tax_rate: line.tax_rate || 0,
+            tax_amount: line.quantity * unitCost * (line.tax_rate || 0),
+            line_total: line.quantity * unitCost,
+          };
+        });
 
       const { error: linesError } = await supabase
         .from('bill_lines')

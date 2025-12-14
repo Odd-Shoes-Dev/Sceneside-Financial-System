@@ -8,6 +8,10 @@ import {
   DocumentTextIcon,
   PrinterIcon,
   CreditCardIcon,
+  PencilIcon,
+  CheckIcon,
+  XMarkIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
 
@@ -54,6 +58,7 @@ export default function BillDetailPage() {
   const [bill, setBill] = useState<Bill | null>(null);
   const [lines, setLines] = useState<BillLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -138,6 +143,72 @@ export default function BillDetailPage() {
     window.print();
   };
 
+  const handleApprove = async () => {
+    if (!confirm('Approve this bill for payment?')) return;
+    
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('bills')
+        .update({ status: 'approved' })
+        .eq('id', params.id);
+
+      if (error) throw error;
+      
+      // Reload bill
+      await loadBillDetails();
+    } catch (error) {
+      console.error('Failed to approve bill:', error);
+      alert('Failed to approve bill');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleVoid = async () => {
+    if (!confirm('Void this bill? This action cannot be undone.')) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bills/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error);
+      }
+
+      router.push('/dashboard/bills');
+    } catch (error: any) {
+      console.error('Failed to void bill:', error);
+      alert(error.message || 'Failed to void bill');
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Permanently delete this bill? This action cannot be undone.')) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bills/${params.id}?action=delete`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error);
+      }
+
+      router.push('/dashboard/bills');
+    } catch (error: any) {
+      console.error('Failed to delete bill:', error);
+      alert(error.message || 'Failed to delete bill');
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -180,10 +251,57 @@ export default function BillDetailPage() {
             <PrinterIcon className="w-5 h-5 mr-2" />
             Print
           </button>
-          {balanceDue > 0 && bill.status !== 'void' && (
-            <button className="btn-primary">
-              <CreditCardIcon className="w-5 h-5 mr-2" />
-              Record Payment
+          
+          {bill.status === 'draft' && (
+            <>
+              <Link href={`/dashboard/bills/${params.id}/edit`} className="btn-secondary">
+                <PencilIcon className="w-5 h-5 mr-2" />
+                Edit
+              </Link>
+              <button 
+                onClick={handleApprove} 
+                disabled={actionLoading}
+                className="btn-secondary"
+              >
+                <CheckIcon className="w-5 h-5 mr-2" />
+                Approve
+              </button>
+              <button 
+                onClick={handleDelete} 
+                disabled={actionLoading}
+                className="btn-secondary text-red-600 hover:bg-red-50"
+              >
+                <TrashIcon className="w-5 h-5 mr-2" />
+                Delete
+              </button>
+            </>
+          )}
+
+          {['approved', 'partial', 'overdue'].includes(bill.status) && balanceDue > 0 && (
+            <>
+              <Link href={`/dashboard/bills/${params.id}/payment`} className="btn-primary">
+                <CreditCardIcon className="w-5 h-5 mr-2" />
+                Record Payment
+              </Link>
+              <button 
+                onClick={handleVoid} 
+                disabled={actionLoading}
+                className="btn-secondary text-red-600 hover:bg-red-50"
+              >
+                <XMarkIcon className="w-5 h-5 mr-2" />
+                Void
+              </button>
+            </>
+          )}
+
+          {bill.status === 'paid' && (
+            <button 
+              onClick={handleVoid} 
+              disabled={actionLoading}
+              className="btn-secondary text-red-600 hover:bg-red-50"
+            >
+              <XMarkIcon className="w-5 h-5 mr-2" />
+              Void
             </button>
           )}
         </div>

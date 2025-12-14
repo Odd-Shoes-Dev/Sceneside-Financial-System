@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeftIcon,
@@ -9,7 +9,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 
 interface Vendor {
   id: string;
@@ -21,33 +21,46 @@ interface LineItem {
   id: string;
   description: string;
   quantity: number;
-  unit_price: number;
+  unit_cost: number;
   account_code: string;
+  expense_account_id?: string;
   amount: number;
 }
 
-export default function NewBillPage() {
+interface Bill {
+  id: string;
+  vendor_id: string;
+  bill_number: string;
+  bill_date: string;
+  due_date: string;
+  vendor_invoice_number: string | null;
+  notes: string | null;
+  status: string;
+}
+
+export default function EditBillPage() {
+  const params = useParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [bill, setBill] = useState<Bill | null>(null);
 
   const [formData, setFormData] = useState({
     vendor_id: '',
-    bill_number: '',
-    bill_date: new Date().toISOString().split('T')[0],
+    bill_date: '',
     due_date: '',
-    reference: '',
+    vendor_invoice_number: '',
     notes: '',
   });
 
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: '1', description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
-  ]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+    loadBill();
+  }, [params.id]);
 
   const fetchVendors = async () => {
     try {
@@ -59,28 +72,66 @@ export default function NewBillPage() {
     }
   };
 
+  const loadBill = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch bill
+      const { data: billData, error: billError } = await supabase
+        .from('bills')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (billError) throw billError;
+
+      // Check if bill can be edited
+      if (billData.status !== 'draft') {
+        setError('Only draft bills can be edited');
+        setLoading(false);
+        return;
+      }
+
+      setBill(billData);
+      setFormData({
+        vendor_id: billData.vendor_id,
+        bill_date: billData.bill_date,
+        due_date: billData.due_date,
+        vendor_invoice_number: billData.vendor_invoice_number || '',
+        notes: billData.notes || '',
+      });
+
+      // Fetch bill lines
+      const { data: linesData, error: linesError } = await supabase
+        .from('bill_lines')
+        .select('*')
+        .eq('bill_id', params.id)
+        .order('line_number');
+
+      if (linesError) throw linesError;
+
+      setLineItems(
+        (linesData || []).map((line: any) => ({
+          id: line.id,
+          description: line.description,
+          quantity: parseFloat(line.quantity),
+          unit_cost: parseFloat(line.unit_cost),
+          account_code: '',
+          expense_account_id: line.expense_account_id,
+          amount: parseFloat(line.line_total),
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to load bill:', error);
+      setError('Failed to load bill');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Auto-set due date based on vendor payment terms
-    if (name === 'vendor_id') {
-      const vendor = vendors.find((v) => v.id === value);
-      if (vendor && formData.bill_date) {
-        const billDate = new Date(formData.bill_date);
-        billDate.setDate(billDate.getDate() + (vendor.payment_terms || 30));
-        setFormData((prev) => ({ ...prev, due_date: billDate.toISOString().split('T')[0] }));
-      }
-    }
-
-    if (name === 'bill_date') {
-      const vendor = vendors.find((v) => v.id === formData.vendor_id);
-      if (vendor) {
-        const billDate = new Date(value);
-        billDate.setDate(billDate.getDate() + (vendor.payment_terms || 30));
-        setFormData((prev) => ({ ...prev, due_date: billDate.toISOString().split('T')[0] }));
-      }
-    }
   };
 
   const handleLineItemChange = (id: string, field: keyof LineItem, value: string | number) => {
@@ -88,7 +139,7 @@ export default function NewBillPage() {
       prev.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: value };
-        updated.amount = updated.quantity * updated.unit_price;
+        updated.amount = updated.quantity * updated.unit_cost;
         return updated;
       })
     );
@@ -97,7 +148,7 @@ export default function NewBillPage() {
   const addLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { id: Date.now().toString(), description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
+      { id: Date.now().toString(), description: '', quantity: 1, unit_cost: 0, account_code: '5100', amount: 0 },
     ]);
   };
 
@@ -124,8 +175,8 @@ export default function NewBillPage() {
         throw new Error('Please add at least one line item with description, quantity, and price');
       }
 
-      const response = await fetch('/api/bills', {
-        method: 'POST',
+      const response = await fetch(`/api/bills/${params.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -137,15 +188,22 @@ export default function NewBillPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create bill');
+        throw new Error(data.error || 'Failed to update bill');
       }
 
-      router.push('/dashboard/bills');
+      router.push(`/dashboard/bills/${params.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
   };
 
   const expenseAccounts = [
@@ -161,19 +219,38 @@ export default function NewBillPage() {
     { code: '1500', name: 'Inventory (Asset)' },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="loading"></div>
+      </div>
+    );
+  }
+
+  if (error && !bill) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <Link href="/dashboard/bills" className="btn-primary">
+          Back to Bills
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href="/dashboard/bills"
+          href={`/dashboard/bills/${params.id}`}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Bill</h1>
-          <p className="text-gray-600">Record a bill from a vendor</p>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Bill</h1>
+          <p className="text-gray-600">{bill?.bill_number}</p>
         </div>
       </div>
 
@@ -201,7 +278,7 @@ export default function NewBillPage() {
                 value={formData.vendor_id}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
               >
                 <option value="">Select a vendor...</option>
                 {vendors.map((vendor) => (
@@ -214,29 +291,15 @@ export default function NewBillPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bill Number
+                Vendor Invoice #
               </label>
               <input
                 type="text"
-                name="bill_number"
-                value={formData.bill_number}
+                name="vendor_invoice_number"
+                value={formData.vendor_invoice_number}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
                 placeholder="Vendor's invoice #"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Reference
-              </label>
-              <input
-                type="text"
-                name="reference"
-                value={formData.reference}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="PO #, etc."
               />
             </div>
 
@@ -250,7 +313,7 @@ export default function NewBillPage() {
                 value={formData.bill_date}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
               />
             </div>
 
@@ -264,7 +327,7 @@ export default function NewBillPage() {
                 value={formData.due_date}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
               />
             </div>
           </div>
@@ -304,7 +367,7 @@ export default function NewBillPage() {
                         type="text"
                         value={item.description}
                         onChange={(e) => handleLineItemChange(item.id, 'description', e.target.value)}
-                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#52b53b]"
                         placeholder="Description *"
                         required
                       />
@@ -313,7 +376,7 @@ export default function NewBillPage() {
                       <select
                         value={item.account_code}
                         onChange={(e) => handleLineItemChange(item.id, 'account_code', e.target.value)}
-                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#52b53b]"
                       >
                         {expenseAccounts.map((acc) => (
                           <option key={acc.code} value={acc.code}>
@@ -328,17 +391,17 @@ export default function NewBillPage() {
                         value={item.quantity}
                         onChange={(e) => handleLineItemChange(item.id, 'quantity', Number(e.target.value))}
                         min="1"
-                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#52b53b]"
                       />
                     </td>
                     <td className="py-2 px-2">
                       <input
                         type="number"
-                        value={item.unit_price}
-                        onChange={(e) => handleLineItemChange(item.id, 'unit_price', Number(e.target.value))}
+                        value={item.unit_cost}
+                        onChange={(e) => handleLineItemChange(item.id, 'unit_cost', Number(e.target.value))}
                         min="0"
                         step="0.01"
-                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#52b53b]"
                       />
                     </td>
                     <td className="py-2 px-2 text-right text-sm font-medium tabular-nums">
@@ -385,7 +448,7 @@ export default function NewBillPage() {
             value={formData.notes}
             onChange={handleChange}
             rows={3}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#52b53b]"
             placeholder="Internal notes..."
           />
         </div>
@@ -393,7 +456,7 @@ export default function NewBillPage() {
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
           <Link
-            href="/dashboard/bills"
+            href={`/dashboard/bills/${params.id}`}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel
@@ -403,7 +466,7 @@ export default function NewBillPage() {
             disabled={isSubmitting || !formData.vendor_id || total === 0}
             className="px-6 py-2 bg-[#52b53b] text-white rounded-lg text-sm font-medium hover:bg-[#449932] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Creating...' : 'Create Bill'}
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>
