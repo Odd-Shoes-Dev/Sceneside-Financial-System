@@ -76,7 +76,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -92,7 +92,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Sign Up Card */}
-        <div className="card">
+        <div className="card shadow-xl border border-emerald-100">
           <div className="card-header">
             <h1 className="text-xl font-semibold text-gray-900">Create Account</h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -197,7 +197,7 @@ export default function SignUpPage() {
           <div className="card-footer text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/login" className="text-sceneside-magenta hover:underline font-medium">
+              <Link href="/login" className="text-sceneside-green hover:text-sceneside-green-dark hover:underline font-medium">
                 Sign in
               </Link>
             </p>

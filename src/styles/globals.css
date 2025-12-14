@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 :root {
+  --sceneside-green: #52b53b;
+  --sceneside-green-light: #6bc956;
+  --sceneside-green-dark: #449932;
   --sceneside-navy: #1e3a5f;
   --sceneside-magenta: #c41e7f;
   --sceneside-purple: #6b2d7b;
@@ -20,7 +23,7 @@
   }
 
   .btn-primary {
-    @apply btn bg-sceneside-navy text-white hover:bg-sceneside-navy-light focus:ring-sceneside-navy;
+    @apply btn bg-sceneside-green text-white hover:bg-sceneside-green-dark focus:ring-sceneside-green;
   }
 
   .btn-secondary {
@@ -48,7 +51,7 @@
   }
 
   .input {
-    @apply block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy disabled:bg-gray-100 disabled:cursor-not-allowed;
+    @apply block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sceneside-green focus:border-sceneside-green disabled:bg-gray-100 disabled:cursor-not-allowed;
   }
 
   .input-error {
@@ -148,7 +151,7 @@
   }
 
   .sidebar-link-active {
-    @apply sidebar-link bg-sceneside-navy text-white;
+    @apply sidebar-link bg-sceneside-green text-white;
   }
 
   .sidebar-link-inactive {

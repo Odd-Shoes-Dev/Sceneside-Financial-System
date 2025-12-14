@@ -109,7 +109,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-sceneside-navy border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-sceneside-green border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -139,21 +139,21 @@ export default function DashboardPage() {
           value={formatCurrency(stats?.cashBalance || 0)}
           icon={BanknotesIcon}
           trend={12.5}
-          color="navy"
+          color="green"
         />
         <StatCard
           title="Accounts Receivable"
           value={formatCurrency(stats?.accountsReceivable || 0)}
           icon={DocumentTextIcon}
           subtitle={`${stats?.overdueInvoices || 0} overdue`}
-          color="magenta"
+          color="green"
         />
         <StatCard
           title="Accounts Payable"
           value={formatCurrency(stats?.accountsPayable || 0)}
           icon={CurrencyDollarIcon}
           subtitle={`${stats?.overdueBills || 0} overdue`}
-          color="purple"
+          color="green"
         />
         <StatCard
           title="Net Income"
@@ -188,7 +188,7 @@ export default function DashboardPage() {
             <h2 className="font-semibold text-gray-900">Recent Invoices</h2>
             <Link
               href="/dashboard/invoices"
-              className="text-sm text-sceneside-magenta hover:underline"
+              className="text-sm text-sceneside-green hover:text-sceneside-green-dark hover:underline"
             >
               View all
             </Link>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
             {recentInvoices.length === 0 ? (
               <div className="p-6 text-center text-gray-500">
                 No invoices yet.{' '}
-                <Link href="/dashboard/invoices/new" className="text-sceneside-magenta hover:underline">
+                <Link href="/dashboard/invoices/new" className="text-sceneside-green hover:text-sceneside-green-dark hover:underline">
                   Create your first invoice
                 </Link>
               </div>
@@ -238,7 +238,7 @@ export default function DashboardPage() {
             <h2 className="font-semibold text-gray-900">Recent Bills</h2>
             <Link
               href="/dashboard/bills"
-              className="text-sm text-sceneside-magenta hover:underline"
+              className="text-sm text-sceneside-green hover:text-sceneside-green-dark hover:underline"
             >
               View all
             </Link>
@@ -247,8 +247,8 @@ export default function DashboardPage() {
             {recentBills.length === 0 ? (
               <div className="p-6 text-center text-gray-500">
                 No bills yet.{' '}
-                <Link href="/dashboard/bills/new" className="text-sceneside-magenta hover:underline">
-                  Add your first bill
+                <Link href="/dashboard/bills/new" className="text-sceneside-green hover:text-sceneside-green-dark hover:underline">
+                  Create your first bill
                 </Link>
               </div>
             ) : (
@@ -361,7 +361,7 @@ function StatCard({
     navy: 'bg-sceneside-navy',
     magenta: 'bg-sceneside-magenta',
     purple: 'bg-sceneside-purple',
-    green: 'bg-green-600',
+    green: 'bg-sceneside-green',
   };
 
   return (

@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center p-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex flex-col justify-center p-4 py-8">
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="text-center mb-6">
@@ -56,16 +56,16 @@ export default function LoginPage() {
               className="mx-auto -mb-4"
             />
           </Link>
-          <p className="text-sceneside-navy font-semibold text-lg mt-6">
+          <p className="text-emerald-800 font-semibold text-lg mt-6">
             Financial Management System
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="card">
-          <div className="card-header">
-            <h1 className="text-xl font-semibold text-gray-900">Sign In</h1>
-            <p className="text-sm text-gray-500 mt-1">
+        <div className="card shadow-xl border border-emerald-100">
+          <div className="card-header bg-[#fff]">
+            <h1 className="text-xl font-semibold text-emerald-800">Sign In</h1>
+            <p className="text-sm text-emerald-800 mt-1">
               Access your financial dashboard
             </p>
           </div>
@@ -105,13 +105,13 @@ export default function LoginPage() {
               <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-gray-300 text-sceneside-navy focus:ring-sceneside-navy"
+                  className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 Remember me
               </label>
               <Link
                 href="/forgot-password"
-                className="text-sm text-sceneside-magenta hover:underline"
+                className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
               >
                 Forgot password?
               </Link>
@@ -120,7 +120,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-2.5"
+              className="w-full py-2.5 bg-[#52b53b] hover:bg-[#449932] text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -152,7 +152,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600">
               Need an account?{' '}
               {process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true' ? (
-                <Link href="/signup" className="text-sceneside-magenta hover:underline font-medium">
+                <Link href="/signup" className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium">
                   Contact administrator
                 </Link>
               ) : (
@@ -163,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-gray-500 text-sm mt-8">
+        <p className="text-center text-gray-600 text-sm mt-8">
           &copy; {new Date().getFullYear()} Sceneside L.L.C
         </p>
       </div>
