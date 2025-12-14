@@ -215,7 +215,7 @@ export default function AssetsPage() {
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block overflow-hidden">
+          <div className="hidden md:block card overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
