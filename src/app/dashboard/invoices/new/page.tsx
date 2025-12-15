@@ -11,7 +11,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import type { Customer, Product } from '@/types/database';
+import type { Customer, Product, DocumentType } from '@/types/database';
 
 interface InvoiceLineInput {
   product_id: string;
@@ -24,6 +24,7 @@ interface InvoiceLineInput {
 
 interface InvoiceFormData {
   customer_id: string;
+  document_type: DocumentType;
   invoice_date: string;
   due_date: string;
   payment_terms: number;
@@ -48,6 +49,7 @@ export default function NewInvoicePage() {
     formState: { errors },
   } = useForm<InvoiceFormData>({
     defaultValues: {
+      document_type: 'invoice',
       invoice_date: new Date().toISOString().split('T')[0],
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       payment_terms: 30,
@@ -146,74 +148,23 @@ export default function NewInvoicePage() {
 
     setLoading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Use the API route to create invoice with proper document type handling
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      // Generate invoice number
-      const { data: invoiceNumber, error: numError } = await supabase.rpc('generate_invoice_number');
-      if (numError) throw numError;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create invoice');
+      }
 
-      // Calculate totals
-      const subtotal = calculateSubtotal();
-      const tax_amount = calculateTax();
-      const total = calculateTotal();
-
-      // Get AR account
-      const { data: arAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '1200')
-        .single();
-
-      // Create invoice
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          invoice_number: invoiceNumber,
-          customer_id: data.customer_id,
-          invoice_date: data.invoice_date,
-          due_date: data.due_date,
-          payment_terms: data.payment_terms,
-          po_number: data.po_number || null,
-          notes: data.notes || null,
-          subtotal,
-          tax_amount,
-          discount_amount: 0,
-          total,
-          amount_paid: 0,
-          status: 'draft',
-          ar_account_id: arAccount?.id,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (invoiceError) throw invoiceError;
-
-      // Create invoice lines
-      const invoiceLines = data.lines.map((line, index) => ({
-        invoice_id: invoice.id,
-        line_number: index + 1,
-        product_id: line.product_id || null,
-        description: line.description,
-        quantity: line.quantity,
-        unit_price: line.unit_price,
-        discount_percent: line.discount_percent,
-        discount_amount: calculateLineTotal(line) - (line.quantity * line.unit_price),
-        tax_rate: line.tax_rate,
-        tax_amount: calculateLineTax(line),
-        line_total: calculateLineTotal(line),
-      }));
-
-      const { error: linesError } = await supabase
-        .from('invoice_lines')
-        .insert(invoiceLines);
-
-      if (linesError) throw linesError;
-
-      toast.success('Invoice created successfully!');
-      router.push(`/dashboard/invoices/${invoice.id}`);
+      const result = await response.json();
+      toast.success(`${data.document_type === 'quotation' ? 'Quotation' : data.document_type === 'proforma' ? 'Proforma Invoice' : 'Invoice'} created successfully!`);
+      router.push(`/dashboard/invoices/${result.data.id}`);
     } catch (error: any) {
       console.error('Failed to create invoice:', error);
       toast.error(error.message || 'Failed to create invoice');
@@ -256,6 +207,21 @@ export default function NewInvoicePage() {
                 {errors.customer_id && (
                   <p className="form-error">{errors.customer_id.message}</p>
                 )}
+              </div>
+
+              <div className="form-group md:col-span-2">
+                <label className="label">Document Type *</label>
+                <select
+                  {...register('document_type', { required: 'Document type is required' })}
+                  className={`input ${errors.document_type ? 'input-error' : ''}`}
+                >
+                  <option value="invoice">Invoice</option>
+                  <option value="quotation">Quotation</option>
+                  <option value="proforma">Proforma Invoice</option>
+                </select>
+                <p className="text-sm text-gray-500 mt-1">
+                  Select the type of document to generate
+                </p>
               </div>
 
               <div className="form-group">

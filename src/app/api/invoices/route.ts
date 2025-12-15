@@ -76,10 +76,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate invoice number
-    const { data: invoiceNumber, error: numError } = await supabase.rpc('generate_invoice_number');
-    if (numError) {
-      return NextResponse.json({ error: 'Failed to generate invoice number' }, { status: 500 });
+    // Determine document type and generate appropriate number
+    const documentType = body.document_type || 'invoice';
+    let documentNumber;
+    let numberField;
+
+    switch (documentType) {
+      case 'quotation':
+        const { data: quotationNum, error: quotationErr } = await supabase.rpc('generate_quotation_number');
+        if (quotationErr) {
+          return NextResponse.json({ error: 'Failed to generate quotation number' }, { status: 500 });
+        }
+        documentNumber = quotationNum;
+        numberField = 'quotation_number';
+        break;
+      
+      case 'proforma':
+        const { data: proformaNum, error: proformaErr } = await supabase.rpc('generate_proforma_number');
+        if (proformaErr) {
+          return NextResponse.json({ error: 'Failed to generate proforma number' }, { status: 500 });
+        }
+        documentNumber = proformaNum;
+        numberField = 'proforma_number';
+        break;
+      
+      case 'receipt':
+        const { data: receiptNum, error: receiptErr } = await supabase.rpc('generate_receipt_number');
+        if (receiptErr) {
+          return NextResponse.json({ error: 'Failed to generate receipt number' }, { status: 500 });
+        }
+        documentNumber = receiptNum;
+        numberField = 'receipt_number';
+        break;
+      
+      default: // invoice
+        const { data: invoiceNum, error: invoiceErr } = await supabase.rpc('generate_invoice_number');
+        if (invoiceErr) {
+          return NextResponse.json({ error: 'Failed to generate invoice number' }, { status: 500 });
+        }
+        documentNumber = invoiceNum;
+        numberField = 'invoice_number';
     }
 
     // Get AR account
@@ -108,26 +144,43 @@ export async function POST(request: NextRequest) {
 
     const total = subtotal + taxAmount;
 
+    // Build invoice data object with appropriate number field
+    const invoiceData: any = {
+      customer_id: body.customer_id,
+      invoice_date: body.invoice_date,
+      due_date: body.due_date,
+      payment_terms: body.payment_terms || 30,
+      po_number: body.po_number || null,
+      notes: body.notes || null,
+      subtotal,
+      tax_amount: taxAmount,
+      discount_amount: discountAmount,
+      total,
+      amount_paid: 0,
+      status: body.status || 'draft',
+      ar_account_id: arAccount?.id,
+      created_by: user.id,
+      document_type: documentType,
+    };
+
+    // Add the appropriate number field
+    if (documentType === 'quotation') {
+      invoiceData.quotation_number = documentNumber;
+      invoiceData.invoice_number = `TEMP-${Date.now()}`; // Temporary placeholder
+    } else if (documentType === 'proforma') {
+      invoiceData.proforma_number = documentNumber;
+      invoiceData.invoice_number = `TEMP-${Date.now()}`; // Temporary placeholder
+    } else if (documentType === 'receipt') {
+      invoiceData.receipt_number = documentNumber;
+      invoiceData.invoice_number = `TEMP-${Date.now()}`; // Temporary placeholder
+    } else {
+      invoiceData.invoice_number = documentNumber;
+    }
+
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .insert({
-        invoice_number: invoiceNumber,
-        customer_id: body.customer_id,
-        invoice_date: body.invoice_date,
-        due_date: body.due_date,
-        payment_terms: body.payment_terms || 30,
-        po_number: body.po_number || null,
-        notes: body.notes || null,
-        subtotal,
-        tax_amount: taxAmount,
-        discount_amount: discountAmount,
-        total,
-        amount_paid: 0,
-        status: body.status || 'draft',
-        ar_account_id: arAccount?.id,
-        created_by: user.id,
-      })
+      .insert(invoiceData)
       .select()
       .single();
 

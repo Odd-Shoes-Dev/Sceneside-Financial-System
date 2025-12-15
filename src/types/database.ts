@@ -16,6 +16,7 @@ export type JournalStatus = 'draft' | 'pending' | 'posted' | 'void';
 export type PeriodStatus = 'open' | 'closed' | 'locked';
 export type PeriodLevel = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual';
 
+export type DocumentType = 'invoice' | 'receipt' | 'quotation' | 'proforma';
 export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled';
 export type BillStatus = 'draft' | 'pending_approval' | 'approved' | 'partial' | 'paid' | 'overdue' | 'void';
 export type PaymentMethod = 'cash' | 'check' | 'bank_transfer' | 'credit_card' | 'stripe' | 'other';
@@ -300,6 +301,10 @@ export interface Invoice {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  document_type: DocumentType;
+  quotation_number: string | null;
+  proforma_number: string | null;
+  receipt_number: string | null;
 }
 
 export interface InvoiceLine {

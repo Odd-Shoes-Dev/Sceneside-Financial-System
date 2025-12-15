@@ -11,20 +11,26 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   useEffect(() => {
     loadInvoices();
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter]);
 
   const loadInvoices = async () => {
     try {
       let query = supabase
         .from('invoices')
         .select('*, customers(*)')
+        .neq('document_type', 'receipt') // Exclude receipts
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
+      }
+
+      if (typeFilter !== 'all') {
+        query = query.eq('document_type', typeFilter);
       }
 
       const { data, error } = await query;
@@ -64,6 +70,15 @@ export default function InvoicesPage() {
       cancelled: 'status-cancelled',
     };
     return classes[status] || 'badge-gray';
+  };
+
+  const getDocumentTypeBadge = (type: string) => {
+    const config: Record<string, { label: string; class: string }> = {
+      invoice: { label: 'Invoice', class: 'bg-blue-100 text-blue-800' },
+      quotation: { label: 'Quote', class: 'bg-purple-100 text-purple-800' },
+      proforma: { label: 'Proforma', class: 'bg-orange-100 text-orange-800' },
+    };
+    return config[type] || config.invoice;
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -122,6 +137,20 @@ export default function InvoicesPage() {
                 <option value="void">Void</option>
               </select>
             </div>
+
+            {/* Document Type filter */}
+            <div className="flex items-center gap-2">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="input w-auto"
+              >
+                <option value="all">All Types</option>
+                <option value="invoice">Invoices</option>
+                <option value="quotation">Quotations</option>
+                <option value="proforma">Proforma</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -145,6 +174,7 @@ export default function InvoicesPage() {
               <thead>
                 <tr>
                   <th>Invoice #</th>
+                  <th>Type</th>
                   <th>Customer</th>
                   <th>Date</th>
                   <th>Due Date</th>
@@ -154,7 +184,9 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
+                {filteredInvoices.map((invoice) => {
+                  const docType = getDocumentTypeBadge(invoice.document_type || 'invoice');
+                  return (
                   <tr key={invoice.id}>
                     <td>
                       <Link
@@ -163,6 +195,11 @@ export default function InvoicesPage() {
                       >
                         {invoice.invoice_number}
                       </Link>
+                    </td>
+                    <td>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${docType.class}`}>
+                        {docType.label}
+                      </span>
                     </td>
                     <td>{invoice.customers?.name || 'Unknown'}</td>
                     <td>{formatDate(invoice.invoice_date)}</td>
@@ -177,7 +214,8 @@ export default function InvoicesPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

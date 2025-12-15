@@ -24,11 +24,13 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   XMarkIcon,
+  ReceiptPercentIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Invoices', href: '/dashboard/invoices', icon: DocumentTextIcon },
+  { name: 'Receipts', href: '/dashboard/receipts', icon: ReceiptPercentIcon },
   { name: 'Bills', href: '/dashboard/bills', icon: BanknotesIcon },
   { name: 'Expenses', href: '/dashboard/expenses', icon: CurrencyDollarIcon },
   { name: 'Inventory', href: '/dashboard/inventory', icon: CubeIcon },

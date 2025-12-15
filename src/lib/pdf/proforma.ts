@@ -1,37 +1,37 @@
-// Bill PDF Generation Utility
+// Proforma Invoice PDF Generation Utility
 
-interface BillPDFData {
-  bill: any;
-  vendor: any;
-  lines: any[];
+import { Invoice, InvoiceLine, Customer } from '@/types/database';
+
+interface ProformaPDFData {
+  invoice: Invoice;
+  lineItems: InvoiceLine[];
+  customer: Customer;
 }
 
-export function generateBillHTML(data: BillPDFData): string {
-  const { bill, vendor, lines } = data;
-  
+export function generateProformaHTML(data: ProformaPDFData): string {
+  const { invoice, lineItems, customer } = data;
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: invoice.currency || 'USD',
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'long',
       day: 'numeric',
-      year: 'numeric',
     });
   };
-
-  const balanceDue = parseFloat(bill.total) - parseFloat(bill.amount_paid);
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
-      <meta charset="UTF-8">
-      <title>Bill ${bill.bill_number}</title>
+      <meta charset="utf-8">
+      <title>Proforma Invoice ${invoice.proforma_number}</title>
       <style>
         * {
           margin: 0;
@@ -39,14 +39,16 @@ export function generateBillHTML(data: BillPDFData): string {
           box-sizing: border-box;
         }
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          line-height: 1.6;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 14px;
           color: #333;
+          line-height: 1.5;
         }
-        .bill {
+        .proforma {
           max-width: 800px;
           margin: 0 auto;
           padding: 40px;
+          background: white;
         }
         .header {
           display: flex;
@@ -54,7 +56,7 @@ export function generateBillHTML(data: BillPDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #52b53b;
+          border-bottom: 2px solid #f59e0b;
         }
         .logo-section {
           display: flex;
@@ -71,7 +73,7 @@ export function generateBillHTML(data: BillPDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #52b53b;
+          color: #f59e0b;
           margin-bottom: 4px;
         }
         .company-details {
@@ -82,34 +84,34 @@ export function generateBillHTML(data: BillPDFData): string {
         .company-details p {
           margin: 2px 0;
         }
-        .bill-title {
+        .proforma-title {
           text-align: right;
         }
-        .bill-title h1 {
-          font-size: 32px;
-          color: #52b53b;
+        .proforma-title h1 {
+          font-size: 28px;
+          color: #f59e0b;
           margin-bottom: 4px;
         }
-        .bill-number {
+        .proforma-subtitle {
+          font-size: 14px;
+          color: #dc2626;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+        .proforma-number {
           font-size: 16px;
           color: #666;
         }
-        .status-badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
+        .warning-box {
+          background: #fef3c7;
+          border: 2px solid #f59e0b;
+          padding: 12px;
+          border-radius: 6px;
+          margin-bottom: 20px;
+          text-align: center;
+          color: #92400e;
           font-weight: 600;
-          text-transform: uppercase;
-          margin-top: 8px;
         }
-        .status-draft { background: #f3f4f6; color: #6b7280; }
-        .status-pending_approval { background: #fef3c7; color: #d97706; }
-        .status-approved { background: #dbeafe; color: #1d4ed8; }
-        .status-partial { background: #fef3c7; color: #d97706; }
-        .status-paid { background: #d1fae5; color: #059669; }
-        .status-overdue { background: #fee2e2; color: #dc2626; }
-        .status-void { background: #f3f4f6; color: #6b7280; }
         .info-section {
           display: flex;
           justify-content: space-between;
@@ -126,7 +128,7 @@ export function generateBillHTML(data: BillPDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #52b53b;
+          color: #f59e0b;
         }
         .dates-block {
           text-align: right;
@@ -139,7 +141,7 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         .dates-block .label {
           color: #999;
-          min-width: 80px;
+          min-width: 100px;
         }
         .dates-block .value {
           min-width: 120px;
@@ -151,7 +153,7 @@ export function generateBillHTML(data: BillPDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #52b53b;
+          background: #f59e0b;
           color: white;
           padding: 12px;
           text-align: left;
@@ -166,7 +168,7 @@ export function generateBillHTML(data: BillPDFData): string {
           border-bottom: 1px solid #eee;
         }
         .items-table tr:nth-child(even) {
-          background: #f9f9f9;
+          background: #fffbeb;
         }
         .totals-section {
           display: flex;
@@ -185,27 +187,19 @@ export function generateBillHTML(data: BillPDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #52b53b;
-          border-bottom: 2px solid #52b53b;
-          padding-top: 12px;
-        }
-        .totals-row.balance-due {
-          font-size: 18px;
-          font-weight: 700;
-          color: #dc2626;
-          border-top: 2px solid #52b53b;
-          margin-top: 8px;
+          color: #f59e0b;
+          border-bottom: 2px solid #f59e0b;
           padding-top: 12px;
         }
         .payment-info {
-          background: #f5f5f5;
+          background: #fffbeb;
           padding: 20px;
           border-radius: 8px;
           margin-bottom: 30px;
         }
         .payment-info h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #f59e0b;
           margin-bottom: 12px;
         }
         .payment-details {
@@ -223,12 +217,11 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #f59e0b;
           margin-bottom: 8px;
         }
         .notes p {
           color: #666;
-          white-space: pre-line;
         }
         .footer {
           margin-top: 40px;
@@ -238,12 +231,12 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         @media print {
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-          .bill { padding: 20px; }
+          .proforma { padding: 20px; }
         }
       </style>
     </head>
     <body>
-      <div class="bill">
+      <div class="proforma">
         <div class="header">
           <div class="logo-section">
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside" class="logo">
@@ -256,59 +249,70 @@ export function generateBillHTML(data: BillPDFData): string {
               </div>
             </div>
           </div>
-          <div class="bill-title">
-            <h1>BILL</h1>
-            <p class="bill-number">${bill.bill_number}</p>
-            ${bill.vendor_invoice_number ? `<p class="bill-number" style="margin-top: 4px;">Vendor Invoice: ${bill.vendor_invoice_number}</p>` : ''}
-            <span class="status-badge status-${bill.status}">${bill.status.replace('_', ' ')}</span>
+          <div class="proforma-title">
+            <h1>PROFORMA INVOICE</h1>
+            <p class="proforma-subtitle">Not a Tax Invoice</p>
+            <p class="proforma-number">${invoice.proforma_number}</p>
           </div>
+        </div>
+
+        <div class="warning-box">
+          ⚠️ THIS IS A PROFORMA INVOICE - NOT VALID FOR ACCOUNTING PURPOSES ⚠️
         </div>
 
         <div class="info-section">
           <div class="info-block">
-            <h3>Vendor</h3>
-            <p><strong>${vendor.company_name || vendor.name}</strong></p>
-            ${vendor.address_line1 ? `<p>${vendor.address_line1}</p>` : ''}
-            ${vendor.address_line2 ? `<p>${vendor.address_line2}</p>` : ''}
-            ${vendor.city || vendor.state || vendor.zip_code ? `<p>${vendor.city}${vendor.city && vendor.state ? ', ' : ''}${vendor.state} ${vendor.zip_code || ''}</p>` : ''}
-            ${vendor.country && vendor.country !== 'USA' ? `<p>${vendor.country}</p>` : ''}
-            ${vendor.email ? `<p>${vendor.email}</p>` : ''}
-            ${vendor.phone ? `<p>${vendor.phone}</p>` : ''}
+            <h3>Bill To</h3>
+            <p><strong>${customer.name}</strong></p>
+            ${customer.address_line1 ? `<p>${customer.address_line1}</p>` : ''}
+            ${customer.address_line2 ? `<p>${customer.address_line2}</p>` : ''}
+            ${customer.city || customer.state || customer.zip_code ? 
+              `<p>${[customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ')}</p>` : ''}
+            ${customer.email ? `<p>${customer.email}</p>` : ''}
+            ${customer.phone ? `<p>${customer.phone}</p>` : ''}
           </div>
-          <div class="dates-block">
+          <div class="info-block dates-block">
             <div class="date-row">
-              <span class="label">Bill Date:</span>
-              <span class="value"><strong>${formatDate(bill.bill_date)}</strong></span>
+              <span class="label">Document Date:</span>
+              <span class="value">${formatDate(invoice.invoice_date)}</span>
             </div>
             <div class="date-row">
-              <span class="label">Due Date:</span>
-              <span class="value"><strong>${formatDate(bill.due_date)}</strong></span>
+              <span class="label">Expected Due:</span>
+              <span class="value">${formatDate(invoice.due_date)}</span>
             </div>
-            ${bill.payment_terms ? `
+            ${invoice.po_number ? `
             <div class="date-row">
-              <span class="label">Terms:</span>
-              <span class="value">Net ${bill.payment_terms}</span>
+              <span class="label">PO Number:</span>
+              <span class="value">${invoice.po_number}</span>
             </div>
             ` : ''}
           </div>
         </div>
 
+        <div class="info-block" style="margin-bottom: 20px;">
+          <h3>From</h3>
+          <p><strong>Sceneside L.L.C</strong></p>
+          <p>121 Bedford Street</p>
+          <p>Waltham, MA 02453</p>
+          <p>Phone: 857-384-2899</p>
+        </div>
+
         <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 50%;">Description</th>
-              <th style="width: 15%; text-align: right;">Quantity</th>
-              <th style="width: 15%; text-align: right;">Unit Cost</th>
-              <th style="width: 20%; text-align: right;">Amount</th>
+              <th style="width: 40%">Description</th>
+              <th style="width: 15%">Quantity</th>
+              <th style="width: 20%">Unit Price</th>
+              <th style="width: 25%">Amount</th>
             </tr>
           </thead>
           <tbody>
-            ${lines.map((line) => `
+            ${lineItems.map(item => `
               <tr>
-                <td>${line.description || '-'}</td>
-                <td style="text-align: right;">${parseFloat(line.quantity)}</td>
-                <td style="text-align: right;">${formatCurrency(parseFloat(line.unit_cost))}</td>
-                <td style="text-align: right;">${formatCurrency(parseFloat(line.line_total))}</td>
+                <td>${item.description}</td>
+                <td>${item.quantity}</td>
+                <td>${formatCurrency(Number(item.unit_price))}</td>
+                <td>${formatCurrency(Number(item.line_total))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -318,40 +322,49 @@ export function generateBillHTML(data: BillPDFData): string {
           <div class="totals-table">
             <div class="totals-row">
               <span>Subtotal</span>
-              <span>${formatCurrency(parseFloat(bill.subtotal))}</span>
+              <span>${formatCurrency(Number(invoice.subtotal))}</span>
             </div>
-            ${parseFloat(bill.tax_amount) > 0 ? `
+            ${Number(invoice.discount_amount) > 0 ? `
             <div class="totals-row">
-              <span>Tax</span>
-              <span>${formatCurrency(parseFloat(bill.tax_amount))}</span>
+              <span>Discount</span>
+              <span>-${formatCurrency(Number(invoice.discount_amount))}</span>
             </div>
             ` : ''}
+            <div class="totals-row">
+              <span>Tax (Estimated)</span>
+              <span>${formatCurrency(Number(invoice.tax_amount))}</span>
+            </div>
             <div class="totals-row grand-total">
-              <span>Total</span>
-              <span>${formatCurrency(parseFloat(bill.total))}</span>
-            </div>
-            ${parseFloat(bill.amount_paid) > 0 ? `
-            <div class="totals-row" style="color: #059669;">
-              <span>Paid</span>
-              <span>-${formatCurrency(parseFloat(bill.amount_paid))}</span>
-            </div>
-            ` : ''}
-            <div class="totals-row balance-due">
-              <span>Balance Due</span>
-              <span>${formatCurrency(balanceDue)}</span>
+              <span>Estimated Total</span>
+              <span>${formatCurrency(Number(invoice.total))}</span>
             </div>
           </div>
         </div>
 
-        ${bill.notes ? `
+        <div class="payment-info">
+          <h3>Payment Information</h3>
+          <div class="payment-details">
+            <span class="label">Bank:</span>
+            <span>Bank of America</span>
+            <span class="label">Account:</span>
+            <span>466021944682</span>
+            <span class="label">EIN:</span>
+            <span>99-3334108</span>
+          </div>
+          <p style="margin-top: 12px; color: #dc2626; font-size: 12px;">
+            <strong>Note:</strong> A formal tax invoice will be issued upon payment confirmation.
+          </p>
+        </div>
+
+        ${invoice.notes ? `
         <div class="notes">
           <h3>Notes</h3>
-          <p>${bill.notes}</p>
+          <p>${invoice.notes}</p>
         </div>
         ` : ''}
 
         <div class="footer">
-          <p>Thank you for your business!</p>
+          <p>This proforma invoice is for informational purposes only.</p>
           <p style="margin-top: 8px;">Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899</p>
           <p>Director: N.Maureen</p>
         </div>
@@ -359,22 +372,4 @@ export function generateBillHTML(data: BillPDFData): string {
     </body>
     </html>
   `;
-}
-
-export async function printBill(data: BillPDFData): Promise<void> {
-  const html = generateBillHTML(data);
-  const printWindow = window.open('', '_blank');
-
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-
-    // Wait for images to load before printing
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    };
-  }
 }

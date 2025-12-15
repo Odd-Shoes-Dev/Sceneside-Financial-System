@@ -31,6 +31,10 @@ interface Invoice {
   amount_paid: number;
   notes: string | null;
   po_number: string | null;
+  document_type: 'invoice' | 'quotation' | 'proforma' | 'receipt';
+  quotation_number: string | null;
+  proforma_number: string | null;
+  receipt_number: string | null;
   customer?: {
     name: string;
     email: string | null;
@@ -391,8 +395,8 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
             <div class="invoice-header">
-              <h2>INVOICE</h2>
-              <p class="number">#${invoice.invoice_number}</p>
+              <h2>${invoice.document_type === 'quotation' ? 'QUOTATION' : invoice.document_type === 'proforma' ? 'PROFORMA INVOICE' : 'INVOICE'}</h2>
+              <p class="number">#${invoice.document_type === 'quotation' ? invoice.quotation_number : invoice.document_type === 'proforma' ? invoice.proforma_number : invoice.invoice_number}</p>
               <span class="status-badge status-${invoice.status}">${invoice.status.toUpperCase()}</span>
             </div>
           </div>
@@ -570,33 +574,32 @@ export default function InvoiceDetailPage() {
   const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex items-center gap-2">
           <Link href="/dashboard/invoices">
-            <Button variant="ghost" size="sm">
-              <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Back
+            <Button variant="ghost" size="sm" className="p-2">
+              <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                 Invoice {invoice.invoice_number}
               </h1>
               {getStatusBadge(invoice.status)}
             </div>
-            <p className="text-gray-500 mt-1">
+            <p className="text-sm sm:text-base text-gray-500 mt-0.5 sm:mt-1 truncate">
               {invoice.customer?.name}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <PrinterIcon className="w-4 h-4 mr-2" />
-            Print / PDF
+          <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
+            <PrinterIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Print / PDF</span>
           </Button>
           
           {invoice.status === 'draft' && (
@@ -605,23 +608,24 @@ export default function InvoiceDetailPage() {
               size="sm" 
               onClick={handleMarkAsSent}
               disabled={actionLoading === 'send'}
+              className="text-xs sm:text-sm"
             >
-              <EnvelopeIcon className="w-4 h-4 mr-2" />
-              Mark as Sent
+              <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Mark as Sent</span>
             </Button>
           )}
           
           {balanceDue > 0 && invoice.status !== 'draft' && (
-            <Button variant="outline" size="sm" onClick={handleCopyPaymentLink}>
-              <CreditCardIcon className="w-4 h-4 mr-2" />
-              Copy Payment Link
+            <Button variant="outline" size="sm" onClick={handleCopyPaymentLink} className="text-xs sm:text-sm">
+              <CreditCardIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Copy Payment Link</span>
             </Button>
           )}
           
           <Link href={`/dashboard/invoices/${params.id}/edit`}>
-            <Button variant="outline" size="sm">
-              <PencilIcon className="w-4 h-4 mr-2" />
-              Edit
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+              <PencilIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit</span>
             </Button>
           </Link>
           
@@ -630,10 +634,9 @@ export default function InvoiceDetailPage() {
             size="sm" 
             onClick={handleDelete}
             disabled={actionLoading === 'delete'}
-            className="text-red-600 hover:bg-red-50"
+            className="text-red-600 hover:bg-red-50 text-xs sm:text-sm p-2 sm:px-3"
           >
-            <TrashIcon className="w-4 h-4 mr-2" />
-            Delete
+            <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
           </Button>
         </div>
       </div>
@@ -671,28 +674,28 @@ export default function InvoiceDetailPage() {
           {/* Line Items */}
           <Card>
             <CardHeader>
-              <CardTitle>Line Items</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
             </CardHeader>
             <CardBody>
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">#</th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-gray-500">Description</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Qty</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Unit Price</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium text-gray-500">Amount</th>
+                      <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">#</th>
+                      <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Description</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Qty</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:table-cell">Unit Price</th>
+                      <th className="text-right py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-gray-500">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lineItems.map((item) => (
                       <tr key={item.id} className="border-b">
-                        <td className="py-3 px-2 text-gray-500">{item.line_number}</td>
-                        <td className="py-3 px-2">{item.description}</td>
-                        <td className="py-3 px-2 text-right">{item.quantity}</td>
-                        <td className="py-3 px-2 text-right">{formatCurrency(Number(item.unit_price))}</td>
-                        <td className="py-3 px-2 text-right font-medium">{formatCurrency(Number(item.amount))}</td>
+                        <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm text-gray-500">{item.line_number}</td>
+                        <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">{item.description}</td>
+                        <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm">{item.quantity}</td>
+                        <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden sm:table-cell">{formatCurrency(Number(item.unit_price))}</td>
+                        <td className="py-2 sm:py-3 px-2 text-right font-medium text-xs sm:text-sm">{formatCurrency(Number(item.amount))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -700,32 +703,32 @@ export default function InvoiceDetailPage() {
               </div>
 
               {/* Totals */}
-              <div className="mt-4 pt-4 border-t space-y-2">
-                <div className="flex justify-between text-sm">
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t space-y-1.5 sm:space-y-2">
+                <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-500">Subtotal</span>
                   <span>{formatCurrency(Number(invoice.subtotal))}</span>
                 </div>
                 {Number(invoice.discount_amount) > 0 && (
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-500">Discount</span>
                     <span className="text-green-600">-{formatCurrency(Number(invoice.discount_amount))}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-500">Tax ({invoice.tax_rate}%)</span>
                   <span>{formatCurrency(Number(invoice.tax_amount))}</span>
                 </div>
-                <div className="flex justify-between text-lg font-semibold pt-2 border-t">
+                <div className="flex justify-between text-base sm:text-lg font-semibold pt-1.5 sm:pt-2 border-t">
                   <span>Total</span>
                   <span>{formatCurrency(Number(invoice.total_amount))}</span>
                 </div>
                 {Number(invoice.amount_paid) > 0 && (
                   <>
-                    <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex justify-between text-xs sm:text-sm text-green-600">
                       <span>Amount Paid</span>
                       <span>-{formatCurrency(Number(invoice.amount_paid))}</span>
                     </div>
-                    <div className="flex justify-between text-lg font-semibold text-red-600">
+                    <div className="flex justify-between text-base sm:text-lg font-semibold text-red-600">
                       <span>Balance Due</span>
                       <span>{formatCurrency(balanceDue)}</span>
                     </div>
