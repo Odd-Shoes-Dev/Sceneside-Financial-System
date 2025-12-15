@@ -214,45 +214,48 @@ export default function BankPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      transaction.transaction_type === 'deposit' 
-                        ? 'bg-green-100 text-green-600' 
-                        : 'bg-red-100 text-red-600'
-                    }`}>
-                      {transaction.transaction_type === 'deposit' ? (
-                        <ArrowUpIcon className="w-4 h-4" />
-                      ) : (
-                        <ArrowDownIcon className="w-4 h-4" />
+              {recentTransactions.map((transaction) => {
+                const isIncoming = transaction.amount > 0 || transaction.transaction_type === 'deposit' || transaction.transaction_type === 'transfer_in';
+                return (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${
+                        isIncoming
+                          ? 'bg-green-100 text-green-600' 
+                          : 'bg-red-100 text-red-600'
+                      }`}>
+                        {isIncoming ? (
+                          <ArrowUpIcon className="w-4 h-4" />
+                        ) : (
+                          <ArrowDownIcon className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {transaction.description || 'Transaction'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(transaction.transaction_date)} • {transaction.bank_accounts?.name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-medium ${
+                        isIncoming ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {isIncoming ? '+' : '-'}
+                        {formatCurrency(Math.abs(transaction.amount))}
+                      </p>
+                      {!transaction.is_reconciled && (
+                        <span className="text-xs text-amber-600">Unreconciled</span>
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">
-                        {transaction.description || 'Transaction'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(transaction.transaction_date)} • {transaction.bank_accounts?.name}
-                      </p>
-                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-medium ${
-                      transaction.transaction_type === 'deposit' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.transaction_type === 'deposit' ? '+' : '-'}
-                      {formatCurrency(Math.abs(transaction.amount))}
-                    </p>
-                    {!transaction.is_reconciled && (
-                      <span className="text-xs text-amber-600">Unreconciled</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -36,7 +36,7 @@ interface Transaction {
   reference_number: string;
   amount: number;
   transaction_type: string;
-  reconciled: boolean;
+  is_reconciled: boolean;
 }
 
 export default function BankAccountDetailPage({ params }: PageProps) {
@@ -271,9 +271,9 @@ export default function BankAccountDetailPage({ params }: PageProps) {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        transaction.reconciled ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        transaction.is_reconciled ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {transaction.reconciled ? 'Reconciled' : 'Pending'}
+                        {transaction.is_reconciled ? 'Reconciled' : 'Pending'}
                       </span>
                     </td>
                   </tr>

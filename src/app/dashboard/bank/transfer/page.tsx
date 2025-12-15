@@ -22,8 +22,7 @@ export default function BankTransferPage() {
     to_account_id: '',
     amount: 0,
     transfer_date: new Date().toISOString().split('T')[0],
-    reference: '',
-    notes: '',
+    reference_number: '',
   });
 
   useEffect(() => {
@@ -197,25 +196,11 @@ export default function BankTransferPage() {
               </label>
               <input
                 type="text"
-                name="reference"
-                value={formData.reference}
+                name="reference_number"
+                value={formData.reference_number}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="Optional reference number"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="Optional notes about this transfer..."
               />
             </div>
           </div>

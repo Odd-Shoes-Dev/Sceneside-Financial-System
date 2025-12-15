@@ -27,11 +27,9 @@ export async function POST(request: NextRequest) {
         transaction_date: body.transaction_date,
         amount: body.amount,
         description: body.description,
-        reference: body.reference || null,
-        payee_payer: body.payee_payer || null,
+        reference_number: body.reference_number || null,
         transaction_type: body.transaction_type || 'other',
         is_reconciled: false,
-        notes: body.notes || null,
       })
       .select()
       .single();

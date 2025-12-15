@@ -34,8 +34,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get account names for better descriptions
+    const { data: fromAccount } = await supabase
+      .from('bank_accounts')
+      .select('name')
+      .eq('id', body.from_account_id)
+      .single();
+
+    const { data: toAccount } = await supabase
+      .from('bank_accounts')
+      .select('name')
+      .eq('id', body.to_account_id)
+      .single();
+
     // Generate reference if not provided
-    const reference = body.reference || `TRF-${Date.now().toString(36).toUpperCase()}`;
+    const reference_number = body.reference_number || `TRF-${Date.now().toString(36).toUpperCase()}`;
 
     // Create two bank transactions: debit from source, credit to destination
     const transactions = [
@@ -43,8 +56,8 @@ export async function POST(request: NextRequest) {
         bank_account_id: body.from_account_id,
         transaction_date: body.transfer_date,
         amount: -Math.abs(body.amount), // Negative for withdrawal
-        description: `Transfer to account`,
-        reference: reference,
+        description: `Transfer to ${toAccount?.name || 'account'}`,
+        reference_number: reference_number,
         transaction_type: 'transfer_out',
         is_reconciled: false,
       },
@@ -52,8 +65,8 @@ export async function POST(request: NextRequest) {
         bank_account_id: body.to_account_id,
         transaction_date: body.transfer_date,
         amount: Math.abs(body.amount), // Positive for deposit
-        description: `Transfer from account`,
-        reference: reference,
+        description: `Transfer from ${fromAccount?.name || 'account'}`,
+        reference_number: reference_number,
         transaction_type: 'transfer_in',
         is_reconciled: false,
       },

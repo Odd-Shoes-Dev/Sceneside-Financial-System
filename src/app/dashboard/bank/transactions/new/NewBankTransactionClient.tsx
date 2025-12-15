@@ -24,10 +24,9 @@ export default function NewBankTransactionClient({ initialType = 'deposit' }: { 
     transaction_date: new Date().toISOString().split('T')[0],
     amount: 0,
     description: '',
-    reference: '',
+    reference_number: '',
     payee_payer: '',
     transaction_type: type,
-    notes: '',
   });
 
   useEffect(() => {
@@ -177,7 +176,37 @@ export default function NewBankTransactionClient({ initialType = 'deposit' }: { 
               </select>
             </div>
 
-            {/* ... the rest of the form remains same as previous implementation ... */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Transaction Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="transaction_date"
+                value={formData.transaction_date}
+                onChange={handleChange}
+                required
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Amount <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount || ''}
+                onChange={handleChange}
+                required
+                min="0.01"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
+            </div>
+
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description <span className="text-red-500">*</span>
@@ -193,17 +222,31 @@ export default function NewBankTransactionClient({ initialType = 'deposit' }: { 
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
+                Reference
               </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
+              <input
+                type="text"
+                name="reference_number"
+                value={formData.reference_number}
                 onChange={handleChange}
-                rows={3}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="Additional notes..."
+                placeholder="Check #, Transaction ID, etc."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {formData.transaction_type === 'deposit' ? 'Payer' : 'Payee'}
+              </label>
+              <input
+                type="text"
+                name="payee_payer"
+                value={formData.payee_payer}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder={formData.transaction_type === 'deposit' ? 'Who paid you?' : 'Who did you pay?'}
               />
             </div>
           </div>

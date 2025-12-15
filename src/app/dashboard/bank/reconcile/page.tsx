@@ -25,7 +25,7 @@ interface Transaction {
   reference_number: string;
   amount: number;
   transaction_type: string;
-  reconciled: boolean;
+  is_reconciled: boolean;
 }
 
 export default function ReconcilePage() {
@@ -72,7 +72,7 @@ export default function ReconcilePage() {
         .from('bank_transactions')
         .select('*')
         .eq('bank_account_id', selectedAccount)
-        .eq('reconciled', false)
+        .eq('is_reconciled', false)
         .order('transaction_date', { ascending: false });
 
       if (error) throw error;
@@ -124,8 +124,7 @@ export default function ReconcilePage() {
       const { error } = await supabase
         .from('bank_transactions')
         .update({ 
-          reconciled: true,
-          reconciled_date: statementDate 
+          is_reconciled: true
         })
         .in('id', Array.from(selectedTransactions));
 
