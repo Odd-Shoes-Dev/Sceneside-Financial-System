@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   DocumentTextIcon,
@@ -36,6 +37,7 @@ interface Bill {
   vendor_invoice_number: string | null;
   notes: string | null;
   status: string;
+  currency?: SupportedCurrency;
 }
 
 export default function EditBillPage() {
@@ -200,10 +202,7 @@ export default function EditBillPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, bill?.currency || 'USD');
   };
 
   const expenseAccounts = [

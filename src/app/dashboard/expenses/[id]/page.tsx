@@ -16,6 +16,7 @@ import {
   TagIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface Expense {
   id: string;
@@ -106,10 +107,8 @@ export default function ExpenseDetailPage() {
 
   const formatCurrency = (amount: number | string) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num);
+    const currency = expense?.currency || 'USD';
+    return currencyFormatter(num, currency as any);
   };
 
   const formatDate = (dateString: string) => {

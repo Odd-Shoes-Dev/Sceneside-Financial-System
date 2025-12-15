@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
 import { Button, Card, CardHeader, CardTitle, CardBody, Input, Select, Textarea, LoadingSpinner } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -13,6 +14,7 @@ interface Invoice {
   total: number;
   amount_paid: number;
   customer_id: string;
+  currency?: SupportedCurrency;
   customer: {
     name: string | null;
   } | null;
@@ -214,10 +216,7 @@ export default function RecordPaymentPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, invoice?.currency || 'USD');
   };
 
   if (loading) {

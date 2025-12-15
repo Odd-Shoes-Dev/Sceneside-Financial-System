@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
       payment_terms: body.payment_terms || 30,
       po_number: body.po_number || null,
       notes: body.notes || null,
+      currency: body.currency || 'USD',
       subtotal,
       tax_amount: taxAmount,
       discount_amount: discountAmount,

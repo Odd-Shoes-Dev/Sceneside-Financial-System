@@ -9,6 +9,8 @@ import {
   PaperClipIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { CurrencySelect } from '@/components/ui';
 
 interface Vendor {
   id: string;
@@ -40,6 +42,7 @@ export default function NewExpensePage() {
     reference_number: '',
     is_billable: false,
     notes: '',
+    currency: 'USD',
   });
 
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -145,6 +148,7 @@ export default function NewExpensePage() {
         vendor_id: formData.vendor_id || null,
         description: formData.description,
         payment_method: formData.payment_method,
+        currency: formData.currency,
         reference: formData.reference_number || null,
         notes: formData.notes || null,
         receipt_url: receiptUrl,
@@ -315,6 +319,16 @@ export default function NewExpensePage() {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Currency <span className="text-red-500">*</span>
+              </label>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              />
+            </div>
+
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description <span className="text-red-500">*</span>
@@ -341,39 +355,33 @@ export default function NewExpensePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Amount <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  name="amount"
-                  value={formData.amount}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                  placeholder="0.00"
-                />
-              </div>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tax Amount
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  name="tax_amount"
-                  value={formData.tax_amount}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                  placeholder="0.00"
-                />
-              </div>
+              <input
+                type="number"
+                name="tax_amount"
+                value={formData.tax_amount}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
             </div>
 
             <div>
@@ -381,7 +389,7 @@ export default function NewExpensePage() {
                 Total
               </label>
               <div className="h-10 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-900">
-                ${(formData.amount + formData.tax_amount).toFixed(2)}
+                {currencyFormatter(formData.amount + formData.tax_amount, formData.currency as any)}
               </div>
             </div>
           </div>

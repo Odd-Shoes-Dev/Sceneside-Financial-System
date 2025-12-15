@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
@@ -75,10 +76,8 @@ export default function ReceiptDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    const currency = receipt?.currency || 'USD';
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (date: string) => {

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { CurrencySelect } from '@/components/ui';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -25,6 +27,7 @@ interface InvoiceLineInput {
 interface InvoiceFormData {
   customer_id: string;
   document_type: DocumentType;
+  currency: 'USD' | 'EUR' | 'GBP' | 'UGX';
   invoice_date: string;
   due_date: string;
   payment_terms: number;
@@ -50,6 +53,7 @@ export default function NewInvoicePage() {
   } = useForm<InvoiceFormData>({
     defaultValues: {
       document_type: 'invoice',
+      currency: 'USD',
       invoice_date: new Date().toISOString().split('T')[0],
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       payment_terms: 30,
@@ -73,6 +77,8 @@ export default function NewInvoicePage() {
 
   const watchLines = watch('lines');
   const watchPaymentTerms = watch('payment_terms');
+  const watchCustomerId = watch('customer_id');
+  const watchCurrency = watch('currency');
 
   useEffect(() => {
     loadData();
@@ -87,6 +93,16 @@ export default function NewInvoicePage() {
       setValue('due_date', due.toISOString().split('T')[0]);
     }
   }, [watchPaymentTerms, watch('invoice_date')]);
+
+  useEffect(() => {
+    // Auto-select customer's preferred currency
+    if (watchCustomerId) {
+      const customer = customers.find(c => c.id === watchCustomerId);
+      if (customer && customer.currency) {
+        setValue('currency', customer.currency as 'USD' | 'EUR' | 'GBP' | 'UGX');
+      }
+    }
+  }, [watchCustomerId, customers]);
 
   const loadData = async () => {
     try {
@@ -134,10 +150,8 @@ export default function NewInvoicePage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    const currency = watchCurrency || 'USD';
+    return currencyFormatter(amount, currency as any);
   };
 
   const onSubmit = async (data: InvoiceFormData) => {
@@ -221,6 +235,18 @@ export default function NewInvoicePage() {
                 </select>
                 <p className="text-sm text-gray-500 mt-1">
                   Select the type of document to generate
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label className="label">Currency *</label>
+                <CurrencySelect
+                  value={watch('currency') || 'USD'}
+                  onChange={(e) => setValue('currency', e.target.value as any)}
+                  name="currency"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Auto-selected from customer preference
                 </p>
               </div>
 

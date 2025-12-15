@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -142,10 +143,7 @@ export default function ReconcilePage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, 'USD');
   };
 
   const currentAccount = bankAccounts.find(a => a.id === selectedAccount);

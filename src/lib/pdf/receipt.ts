@@ -1,6 +1,7 @@
 // Receipt PDF Generation Utility
 
 import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface ReceiptPDFData {
   invoice: Invoice;
@@ -12,10 +13,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
   const { invoice, lineItems, customer } = data;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: invoice.currency || 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, invoice.currency as any || 'USD');
   };
 
   const formatDate = (date: string) => {

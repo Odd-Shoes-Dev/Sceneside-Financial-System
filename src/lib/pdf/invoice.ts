@@ -2,6 +2,7 @@
 // Uses html-to-canvas approach for browser-side generation
 
 import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { formatCurrency as currencyFormatter, getCurrencyInfo } from '@/lib/currency';
 
 interface InvoicePDFData {
   invoice: Invoice;
@@ -13,10 +14,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
   const { invoice, lineItems, customer } = data;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, invoice.currency as any || 'USD');
   };
 
   const formatDate = (date: string) => {

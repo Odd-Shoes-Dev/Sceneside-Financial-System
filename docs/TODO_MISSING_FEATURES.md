@@ -230,20 +230,21 @@ switch (invoice.document_type) {
 
 ### 2. Multiple Email Addresses per Customer
 
-**Status:** ❌ NOT IMPLEMENTED  
+**Status:** ✅ COMPLETED (December 15, 2025)  
 **Priority:** HIGH  
 **Requested By:** "some clients insists that we send to 2 or more emails"
 
 #### Current State
-- Customers table has only ONE `email` field
-- Invoice email sending only sends to single email
-- No way to CC or BCC additional recipients
+- ✅ Customers table has email, email_2, email_3, email_4 fields
+- ✅ Invoice/receipt email sending sends to all customer emails
+- ✅ UI to manage all email addresses in customer forms
+- ✅ Email validation with null handling for empty fields
 
-#### What's Missing
-- [ ] Additional email fields in customers table
-- [ ] UI to manage multiple emails per customer
-- [ ] Email sending logic to handle multiple recipients
-- [ ] Validation for multiple email addresses
+#### Completed Features
+- ✅ Additional email fields in customers table (migration 016)
+- ✅ UI to manage multiple emails per customer (create/edit forms)
+- ✅ Email sending logic to handle multiple recipients (bulk send)
+- ✅ Validation for multiple email addresses (check constraints)
 
 #### Implementation Steps
 
@@ -469,23 +470,29 @@ return NextResponse.json({
 
 ### 3. Currency Selection (Including UGX)
 
-**Status:** ⚠️ PARTIALLY IMPLEMENTED  
+**Status:** ✅ COMPLETED (December 15, 2025)  
 **Priority:** MEDIUM  
-**Current:** Only USD, EUR, GBP available in some places
+**Current:** Multi-currency support implemented across all modules
 
 #### Current State
-- Bank accounts support USD, EUR, GBP
-- Bills support multi-currency
-- **Invoices are hardcoded to USD only**
-- No UGX (Ugandan Shilling) support
-- Customers don't have a default currency field
+- ✅ Customers have default currency field (USD, EUR, GBP, UGX)
+- ✅ All document types support currency selection (invoices, receipts, quotations, proforma)
+- ✅ Currency auto-selected from customer preference
+- ✅ Proper currency formatting for each type (UGX uses 0 decimals)
+- ✅ Exchange rate integration with API (exchangerate-api.com)
+- ✅ Historical exchange rates stored for reporting
+- ✅ Database functions for currency conversion
+- ✅ All PDF templates use dynamic currency formatting
 
-#### What's Missing
-- [ ] UGX currency option across all modules
-- [ ] Currency selection on invoices
-- [ ] Customer default currency field
-- [ ] Proper currency formatting for each type
-- [ ] Exchange rate integration for reporting
+#### Completed Features
+- ✅ UGX currency option across all modules
+- ✅ Currency selection on all document types
+- ✅ Customer default currency field in forms
+- ✅ Proper currency formatting (UGX = 0 decimals, others = 2 decimals)
+- ✅ Exchange rate API integration with historical tracking
+- ✅ Currency conversion functions in database
+- ✅ Auto-currency selection from customer on invoice creation
+- ✅ Migration to set existing data currency to USD
 
 #### Implementation Steps
 

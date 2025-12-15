@@ -9,7 +9,8 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { CurrencySelect } from '@/components/ui';
 
 interface Vendor {
   id: string;
@@ -39,6 +40,7 @@ export default function NewBillPage() {
     due_date: '',
     reference: '',
     notes: '',
+    currency: 'USD',
   });
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -267,6 +269,16 @@ export default function NewBillPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Currency <span className="text-red-500">*</span>
+              </label>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              />
+            </div>
           </div>
         </div>
 
@@ -342,7 +354,7 @@ export default function NewBillPage() {
                       />
                     </td>
                     <td className="py-2 px-2 text-right text-sm font-medium tabular-nums">
-                      {formatCurrency(item.amount)}
+                      {currencyFormatter(item.amount, formData.currency as any)}
                     </td>
                     <td className="py-2 pl-2">
                       <button
@@ -366,11 +378,11 @@ export default function NewBillPage() {
               <div className="w-64 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+                  <span className="font-medium tabular-nums">{currencyFormatter(subtotal, formData.currency as any)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
                   <span>Total</span>
-                  <span className="tabular-nums">{formatCurrency(total)}</span>
+                  <span className="tabular-nums">{currencyFormatter(total, formData.currency as any)}</span>
                 </div>
               </div>
             </div>

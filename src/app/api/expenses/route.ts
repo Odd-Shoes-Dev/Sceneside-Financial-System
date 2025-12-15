@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
         amount: body.amount,
         tax_amount: body.tax_amount || 0,
         total: (body.amount || 0) + (body.tax_amount || 0),
+        currency: body.currency || 'USD',
         description: body.description || null,
         payment_method: body.payment_method || 'cash',
         bank_account_id: body.bank_account_id || null,

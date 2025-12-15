@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
+import { CurrencySelect } from '@/components/ui';
 import {
   ArrowLeftIcon,
   UserGroupIcon,
@@ -26,6 +28,7 @@ export default function NewCustomerPage() {
     state: 'MA',
     zip_code: '',
     country: 'USA',
+    currency: 'USD',
     tax_id: '',
     payment_terms: 30,
     credit_limit: 0,
@@ -343,6 +346,20 @@ export default function NewCustomerPage() {
           <h2 className="font-semibold text-gray-900 mb-4">Payment Settings</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Preferred Currency *
+              </label>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={handleChange}
+                name="currency"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Default currency for invoices to this customer
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Payment Terms (Days)

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -64,11 +65,8 @@ export default function ExpensesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (dateString: string) => {
@@ -217,7 +215,7 @@ export default function ExpensesPage() {
                     </td>
                     <td className="whitespace-nowrap">{expense.vendors?.name || expense.payee || '-'}</td>
                     <td className="text-right font-medium whitespace-nowrap">
-                      {formatCurrency(expense.total)}
+                      {formatCurrency(expense.total, expense.currency || 'USD')}
                     </td>
                     <td className="whitespace-nowrap">
                       <span className="badge badge-gray">
@@ -264,7 +262,7 @@ export default function ExpensesPage() {
                   </div>
                   <div className="mt-3 pt-3 border-t flex justify-between items-center">
                     <span className="text-lg font-bold text-gray-900">
-                      {formatCurrency(expense.total)}
+                      {formatCurrency(expense.total, expense.currency || 'USD')}
                     </span>
                     <Link
                       href={`/dashboard/expenses/${expense.id}`}

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 // GET /api/reports/ar-aging - Accounts Receivable Aging
 export async function GET(request: NextRequest) {
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
         due_date,
         total,
         amount_paid,
+        currency,
         status,
         customers (id, name, email)
       `)
@@ -57,9 +59,18 @@ export async function GET(request: NextRequest) {
       total: number;
     }> = {};
 
-    invoices?.forEach((invoice: any) => {
+    // Process invoices with currency conversion
+    for (const invoice of invoices || []) {
       const balance = invoice.total - invoice.amount_paid;
-      if (balance <= 0) return;
+      if (balance <= 0) continue;
+
+      // Convert balance to USD for reporting
+      const balanceUSD = await convertCurrency(
+        supabase,
+        balance,
+        (invoice.currency || 'USD') as SupportedCurrency,
+        'USD' as SupportedCurrency
+      ) || balance;
 
       const dueDate = new Date(invoice.due_date);
       const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -70,7 +81,9 @@ export async function GET(request: NextRequest) {
         invoice_date: invoice.invoice_date,
         due_date: invoice.due_date,
         total: invoice.total,
-        balance,
+        balance: balanceUSD,
+        originalBalance: balance,
+        currency: invoice.currency || 'USD',
         days_overdue: Math.max(0, daysOverdue),
         customer: invoice.customers,
       };
@@ -90,15 +103,16 @@ export async function GET(request: NextRequest) {
       }
 
       aging[bucket].count++;
-      aging[bucket].total += balance;
+      aging[bucket].total += balanceUSD;
       aging[bucket].invoices.push(invoiceData);
 
       // Update customer summary
-      const custId = invoice.customers?.id;
+      const customer: any = invoice.customers;
+      const custId = customer?.id;
       if (custId) {
         if (!customerAging[custId]) {
           customerAging[custId] = {
-            customer: invoice.customers,
+            customer: customer,
             current: 0,
             days1to30: 0,
             days31to60: 0,
@@ -107,10 +121,10 @@ export async function GET(request: NextRequest) {
             total: 0,
           };
         }
-        customerAging[custId][bucket] += balance;
-        customerAging[custId].total += balance;
+        customerAging[custId][bucket] += balanceUSD;
+        customerAging[custId].total += balanceUSD;
       }
-    });
+    }
 
     const totalOutstanding = 
       aging.current.total + 

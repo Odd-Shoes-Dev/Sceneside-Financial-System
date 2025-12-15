@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
 import { printBill } from '@/lib/pdf/bill';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface BillLine {
   id: string;
@@ -34,6 +35,7 @@ interface Bill {
   due_date: string;
   vendor_invoice_number: string | null;
   notes: string | null;
+  currency: string;
   subtotal: number;
   tax_amount: number;
   total: number;
@@ -113,10 +115,8 @@ export default function BillDetailPage() {
 
   const formatCurrency = (amount: number | string) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num);
+    const currency = bill?.currency || 'USD';
+    return currencyFormatter(num, currency as any);
   };
 
   const formatDate = (dateString: string) => {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -66,11 +67,8 @@ export default function BillsPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (dateString: string) => {
@@ -232,10 +230,10 @@ export default function BillsPage() {
                         {formatDate(bill.due_date)}
                       </td>
                       <td className="text-right font-medium">
-                        {formatCurrency(bill.total)}
+                        {formatCurrency(bill.total, bill.currency || 'USD')}
                       </td>
                       <td className="text-right font-medium">
-                        {formatCurrency(bill.total - bill.amount_paid)}
+                        {formatCurrency(bill.total - bill.amount_paid, bill.currency || 'USD')}
                       </td>
                       <td>
                         <span className={`badge ${isOverdue(bill) ? 'badge-error' : getStatusBadge(bill.status)}`}>
@@ -292,7 +290,7 @@ export default function BillsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Balance Due</p>
                       <p className="text-lg font-bold text-gray-900">
-                        {formatCurrency(bill.total - bill.amount_paid)}
+                        {formatCurrency(bill.total - bill.amount_paid, bill.currency || 'USD')}
                       </p>
                     </div>
                     <Link

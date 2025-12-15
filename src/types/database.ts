@@ -175,11 +175,31 @@ export interface Customer {
   payment_terms: number;
   credit_limit: number | null;
   balance: number | null;
-  currency: string;
+  currency: 'USD' | 'EUR' | 'GBP' | 'UGX';
   notes: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ExchangeRate {
+  id: string;
+  from_currency: string;
+  to_currency: string;
+  rate: number;
+  effective_date: string;
+  source: string;
+  created_at: string;
+}
+
+export interface ExchangeRate {
+  id: string;
+  from_currency: string;
+  to_currency: string;
+  rate: number;
+  effective_date: string;
+  source: string;
+  created_at: string;
 }
 
 export interface Vendor {
@@ -288,7 +308,7 @@ export interface Invoice {
   total: number;
   amount_paid: number;
   balance_due: number;
-  currency: string;
+  currency: 'USD' | 'EUR' | 'GBP' | 'UGX';
   exchange_rate: number;
   status: InvoiceStatus;
   payment_terms: number;

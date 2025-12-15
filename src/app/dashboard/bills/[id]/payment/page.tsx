@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatCurrency as currencyFormatter, SupportedCurrency } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   CreditCardIcon,
@@ -15,6 +16,7 @@ interface Bill {
   total: number;
   amount_paid: number;
   status: string;
+  currency?: SupportedCurrency;
   vendor: {
     name: string;
   } | null;
@@ -184,10 +186,7 @@ export default function RecordBillPaymentPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, bill?.currency || 'USD');
   };
 
   if (loading) {

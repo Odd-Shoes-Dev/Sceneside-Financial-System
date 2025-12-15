@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { CurrencySelect } from '@/components/ui';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -28,6 +30,7 @@ interface ReceiptFormData {
   payment_method: string;
   reference_invoice_number: string;
   notes: string;
+  currency: string;
   lines: ReceiptLineInput[];
 }
 
@@ -49,6 +52,7 @@ export default function NewReceiptPage() {
     defaultValues: {
       receipt_date: new Date().toISOString().split('T')[0],
       payment_method: 'cash',
+      currency: 'USD',
       lines: [
         {
           product_id: '',
@@ -68,6 +72,8 @@ export default function NewReceiptPage() {
   });
 
   const watchLines = watch('lines');
+  const watchCurrency = watch('currency');
+  const watchCustomerId = watch('customer_id');
 
   useEffect(() => {
     loadData();
@@ -83,7 +89,17 @@ export default function NewReceiptPage() {
       setCustomers(customersRes.data || []);
       setProducts(productsRes.data || []);
     } catch (error) {
-      console.error('Failed to load data:', error);
+    
+
+  // Auto-select currency from customer
+  useEffect(() => {
+    if (watchCustomerId) {
+      const customer = customers.find(c => c.id === watchCustomerId);
+      if (customer?.currency) {
+        setValue('currency', customer.currency);
+      }
+    }
+  }, [watchCustomerId, customers, setValue]);  console.error('Failed to load data:', error);
     }
   };
 
@@ -119,10 +135,7 @@ export default function NewReceiptPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, watchCurrency as any || 'USD');
   };
 
   const onSubmit = async (data: ReceiptFormData) => {
@@ -164,6 +177,7 @@ export default function NewReceiptPage() {
           due_date: data.receipt_date, // Same as receipt date for receipts
           payment_terms: data.payment_method === 'cash' ? 0 : 30,
           notes: data.notes || null,
+          currency: data.currency || 'USD',
           subtotal,
           tax_amount,
           discount_amount: 0,
@@ -264,6 +278,14 @@ export default function NewReceiptPage() {
                   <option value="stripe">Stripe</option>
                   <option value="other">Other</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label className="label">Currency *</label>
+                <CurrencySelect
+                  value={watchCurrency || 'USD'}
+                  onChange={(e) => setValue('currency', e.target.value)}
+                />
               </div>
 
               <div className="form-group md:col-span-2">

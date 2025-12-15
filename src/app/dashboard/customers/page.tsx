@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -61,12 +62,9 @@ export default function CustomersPage() {
     }
   };
 
-  const formatCurrency = (amount: number | null) => {
-    if (!amount) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number | null, currency: string = 'USD') => {
+    if (!amount) return currencyFormatter(0, currency as any);
+    return currencyFormatter(amount, currency as any);
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -188,7 +186,7 @@ export default function CustomersPage() {
                         )}
                       </div>
                     </td>
-                    <td>{formatCurrency(customer.credit_limit)}</td>
+                    <td>{formatCurrency(customer.credit_limit, customer.currency || 'USD')}</td>
                     <td>
                       <span className={`badge ${customer.is_active ? 'badge-success' : 'badge-error'}`}>
                         {customer.is_active ? 'Active' : 'Inactive'}

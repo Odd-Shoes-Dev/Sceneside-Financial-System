@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowUpIcon,
   ArrowDownIcon,
@@ -56,7 +57,80 @@ export default function DashboardPage() {
 
       setRecentBills(bills || []);
 
-      // Get stats (simplified - in production, use the reports functions)
+      // Calculate actual stats from database
+      
+      // 1. Accounts Receivable (unpaid invoices)
+      const { data: unpaidInvoices } = await supabase
+        .from('invoices')
+        .select('total, amount_paid')
+        .neq('status', 'paid')
+        .neq('status', 'void')
+        .neq('status', 'cancelled');
+
+      const accountsReceivable = (unpaidInvoices || []).reduce((sum, inv) => {
+        const balance = (parseFloat(inv.total) || 0) - (parseFloat(inv.amount_paid) || 0);
+        return sum + balance;
+      }, 0);
+
+      // 2. Accounts Payable (unpaid bills)
+      const { data: unpaidBills } = await supabase
+        .from('bills')
+        .select('total, amount_paid')
+        .neq('status', 'paid')
+        .neq('status', 'void');
+
+      const accountsPayable = (unpaidBills || []).reduce((sum, bill) => {
+        const balance = (parseFloat(bill.total) || 0) - (parseFloat(bill.amount_paid) || 0);
+        return sum + balance;
+      }, 0);
+
+      // 3. Cash Balance (sum of bank transactions)
+      const { data: bankTransactions } = await supabase
+        .from('bank_transactions')
+        .select('amount, transaction_type');
+
+      const cashBalance = (bankTransactions || []).reduce((sum, tx) => {
+        const amount = parseFloat(tx.amount) || 0;
+        if (tx.transaction_type === 'deposit' || tx.transaction_type === 'interest') {
+          return sum + amount;
+        } else if (tx.transaction_type === 'withdrawal' || tx.transaction_type === 'fee') {
+          return sum - amount;
+        }
+        return sum;
+      }, 0);
+
+      // 4. Total Revenue (paid invoices)
+      const { data: paidInvoices } = await supabase
+        .from('invoices')
+        .select('total')
+        .eq('status', 'paid');
+
+      const totalRevenue = (paidInvoices || []).reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
+
+      // 5. Total Expenses (paid bills + expenses)
+      const { data: paidBillsData } = await supabase
+        .from('bills')
+        .select('total')
+        .eq('status', 'paid');
+
+      const { data: expensesData } = await supabase
+        .from('expenses')
+        .select('amount');
+
+      const totalExpenses = 
+        ((paidBillsData || []).reduce((sum, bill) => sum + (parseFloat(bill.total) || 0), 0)) +
+        ((expensesData || []).reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0));
+
+      // 6. Inventory Value (from products table)
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('quantity_on_hand, unit_price');
+
+      const inventoryValue = (productsData || []).reduce((sum, item) => {
+        return sum + ((parseFloat(item.quantity_on_hand) || 0) * (parseFloat(item.unit_price) || 0));
+      }, 0);
+
+      // 7. Overdue counts
       const { data: overdueInvoices } = await supabase
         .from('invoices')
         .select('id', { count: 'exact' })
@@ -67,17 +141,16 @@ export default function DashboardPage() {
         .select('id', { count: 'exact' })
         .eq('status', 'overdue');
 
-      // Mock stats for demo (in production, calculate from GL)
       setStats({
-        totalRevenue: 125000,
-        totalExpenses: 87500,
-        netIncome: 37500,
-        cashBalance: 45230,
-        accountsReceivable: 28750,
-        accountsPayable: 15420,
+        totalRevenue,
+        totalExpenses,
+        netIncome: totalRevenue - totalExpenses,
+        cashBalance,
+        accountsReceivable,
+        accountsPayable,
         overdueInvoices: overdueInvoices?.length || 0,
         overdueBills: overdueBills?.length || 0,
-        inventoryValue: 32100,
+        inventoryValue,
       });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -86,11 +159,8 @@ export default function DashboardPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const getStatusBadge = (status: string) => {
@@ -219,7 +289,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-gray-900">
-                        {formatCurrency(invoice.total)}
+                        {formatCurrency(invoice.total, invoice.currency || 'USD')}
                       </p>
                       <span className={getStatusBadge(invoice.status)}>
                         {invoice.status}
@@ -269,7 +339,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-gray-900">
-                        {formatCurrency(bill.total)}
+                        {formatCurrency(bill.total, bill.currency || 'USD')}
                       </p>
                       <span className={getStatusBadge(bill.status)}>
                         {bill.status}

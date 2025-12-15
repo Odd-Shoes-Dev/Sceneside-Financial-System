@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner } from '@/components/ui';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   PrinterIcon,
@@ -23,6 +24,7 @@ interface Invoice {
   invoice_date: string;
   due_date: string;
   status: string;
+  currency: 'USD' | 'EUR' | 'GBP' | 'UGX';
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
@@ -152,10 +154,8 @@ export default function InvoiceDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    const currency = invoice?.currency || 'USD';
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (date: string) => {

@@ -40,3 +40,4 @@ export {
 } from './loading';
 export { Avatar, AvatarGroup, AvatarWithStatus, StatusIndicator } from './avatar';
 export { Combobox, MultiCombobox } from './combobox';
+export { CurrencySelect } from './currency-select';

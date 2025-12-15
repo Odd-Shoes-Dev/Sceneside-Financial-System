@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import type { Invoice, Customer } from '@/types/database';
 
@@ -32,11 +33,8 @@ export default function ReceiptsPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (date: string) => {
@@ -156,7 +154,7 @@ export default function ReceiptsPage() {
                       </div>
                     </td>
                     <td className="font-medium text-green-600">
-                      {formatCurrency(receipt.amount_paid || receipt.total)}
+                      {formatCurrency(receipt.amount_paid || receipt.total, receipt.currency || 'USD')}
                     </td>
                     <td>
                       <span className="badge badge-success">

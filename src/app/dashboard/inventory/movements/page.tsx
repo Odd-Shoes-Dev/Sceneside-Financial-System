@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
   ArrowUpIcon,
@@ -97,10 +98,7 @@ export default function StockMovementsPage() {
 
   const formatCurrency = (amount: number | null) => {
     if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, 'USD');
   };
 
   const formatDate = (dateString: string) => {

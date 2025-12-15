@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { CurrencySelect } from '@/components/ui';
 import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -30,6 +32,7 @@ interface InvoiceFormData {
   payment_terms: number;
   po_number: string;
   notes: string;
+  currency: string;
   lines: InvoiceLineInput[];
 }
 
@@ -76,6 +79,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
   const watchLines = watch('lines');
   const watchPaymentTerms = watch('payment_terms');
+  const watchCurrency = watch('currency');
 
   useEffect(() => {
     loadData();
@@ -132,6 +136,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
         payment_terms: invoiceData.payment_terms,
         po_number: invoiceData.po_number || '',
         notes: invoiceData.notes || '',
+        currency: invoiceData.currency || 'USD',
         lines: linesData.map((line: InvoiceLine) => ({
           id: line.id,
           product_id: line.product_id || '',
@@ -188,10 +193,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, watchCurrency as any || 'USD');
   };
 
   const onSubmit = async (data: InvoiceFormData) => {
@@ -228,6 +230,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
           payment_terms: data.payment_terms,
           po_number: data.po_number || null,
           notes: data.notes || null,
+          currency: data.currency || 'USD',
           subtotal,
           tax_amount,
           total,
@@ -414,6 +417,14 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   {...register('po_number')}
                   className="input"
                   placeholder="Optional"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Currency *</label>
+                <CurrencySelect
+                  value={watchCurrency || 'USD'}
+                  onChange={(e) => setValue('currency', e.target.value)}
                 />
               </div>
             </div>

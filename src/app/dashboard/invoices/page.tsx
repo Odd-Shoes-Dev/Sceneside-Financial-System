@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import type { Invoice, Customer } from '@/types/database';
 
@@ -44,11 +45,8 @@ export default function InvoicesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (date: string) => {
@@ -204,9 +202,9 @@ export default function InvoicesPage() {
                     <td>{invoice.customers?.name || 'Unknown'}</td>
                     <td>{formatDate(invoice.invoice_date)}</td>
                     <td>{formatDate(invoice.due_date)}</td>
-                    <td className="font-medium">{formatCurrency(invoice.total)}</td>
+                    <td className="font-medium">{formatCurrency(invoice.total, invoice.currency || 'USD')}</td>
                     <td className={invoice.balance_due > 0 ? 'text-red-600 font-medium' : ''}>
-                      {formatCurrency(invoice.balance_due)}
+                      {formatCurrency(invoice.balance_due, invoice.currency || 'USD')}
                     </td>
                     <td>
                       <span className={getStatusBadge(invoice.status)}>

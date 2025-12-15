@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 interface VendorAging {
   vendorId: string;
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
         due_date,
         total,
         amount_paid,
+        currency,
         status,
         payment_terms,
         vendor:vendors(
@@ -58,13 +60,23 @@ export async function GET(request: NextRequest) {
     const vendorMap = new Map<string, VendorAging>();
     const reportDateObj = new Date(reportDate);
 
-    bills?.forEach((bill: any) => {
-      if (!bill.vendor) return;
+    // Process bills with currency conversion
+    for (const bill of bills || []) {
+      if (!bill.vendor) continue;
 
-      const vendorId = bill.vendor.id;
+      const vendor: any = bill.vendor;
+      const vendorId = vendor.id;
       const balance = parseFloat(bill.total) - parseFloat(bill.amount_paid || 0);
       
-      if (balance <= 0) return; // Skip fully paid bills
+      if (balance <= 0) continue; // Skip fully paid bills
+
+      // Convert balance to USD for reporting
+      const balanceUSD = await convertCurrency(
+        supabase,
+        balance,
+        (bill.currency || 'USD') as SupportedCurrency,
+        'USD' as SupportedCurrency
+      ) || balance;
 
       const dueDate = new Date(bill.due_date);
       const daysOverdue = Math.floor((reportDateObj.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -72,7 +84,7 @@ export async function GET(request: NextRequest) {
       if (!vendorMap.has(vendorId)) {
         vendorMap.set(vendorId, {
           vendorId: vendorId,
-          vendorName: bill.vendor.company_name || bill.vendor.name,
+          vendorName: vendor.company_name || vendor.name,
           vendorType: 'Supplier',
           totalAmount: 0,
           current: 0,
@@ -89,31 +101,31 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const vendor = vendorMap.get(vendorId)!;
-      vendor.totalAmount += balance;
-      vendor.invoiceCount++;
+      const vendorAging = vendorMap.get(vendorId)!;
+      vendorAging.totalAmount += balanceUSD;
+      vendorAging.invoiceCount++;
 
       // Categorize by aging bucket
       if (daysOverdue <= 0) {
-        vendor.current += balance;
+        vendorAging.current += balanceUSD;
       } else if (daysOverdue <= 30) {
-        vendor.days1to30 += balance;
+        vendorAging.days1to30 += balanceUSD;
       } else if (daysOverdue <= 60) {
-        vendor.days31to60 += balance;
+        vendorAging.days31to60 += balanceUSD;
       } else if (daysOverdue <= 90) {
-        vendor.days61to90 += balance;
+        vendorAging.days61to90 += balanceUSD;
       } else {
-        vendor.over90 += balance;
+        vendorAging.over90 += balanceUSD;
       }
 
       // Track oldest invoice
-      if (new Date(bill.bill_date) < new Date(vendor.oldestInvoiceDate)) {
-        vendor.oldestInvoiceDate = bill.bill_date;
+      if (new Date(bill.bill_date) < new Date(vendorAging.oldestInvoiceDate)) {
+        vendorAging.oldestInvoiceDate = bill.bill_date;
       }
 
       // Calculate average payment days (simplified)
-      vendor.averagePaymentDays = Math.max(vendor.averagePaymentDays, daysOverdue);
-    });
+      vendorAging.averagePaymentDays = Math.max(vendorAging.averagePaymentDays, daysOverdue);
+    }
 
     let vendors = Array.from(vendorMap.values());
 

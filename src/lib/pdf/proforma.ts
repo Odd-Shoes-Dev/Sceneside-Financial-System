@@ -1,6 +1,7 @@
 // Proforma Invoice PDF Generation Utility
 
 import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface ProformaPDFData {
   invoice: Invoice;
@@ -12,10 +13,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
   const { invoice, lineItems, customer } = data;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: invoice.currency || 'USD',
-    }).format(amount);
+    return currencyFormatter(amount, invoice.currency as any || 'USD');
   };
 
   const formatDate = (date: string) => {

@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 // GET /api/journal-entries/[id] - Get single journal entry
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     // Get user session
@@ -26,7 +27,7 @@ export async function GET(
           account:accounts(code, name)
         )
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (entryError) {
@@ -73,9 +74,10 @@ export async function GET(
 // PATCH /api/journal-entries/[id] - Update or void journal entry
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     // Get user session
@@ -92,7 +94,7 @@ export async function PATCH(
     const { data: existingEntry, error: fetchError } = await supabase
       .from('journal_entries')
       .select('id, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (fetchError || !existingEntry) {
@@ -111,7 +113,7 @@ export async function PATCH(
       const { error: voidError } = await supabase
         .from('journal_entries')
         .update({ status: 'void' })
-        .eq('id', params.id);
+        .eq('id', id);
 
       if (voidError) {
         return NextResponse.json({ error: voidError.message }, { status: 500 });
@@ -164,7 +166,7 @@ export async function PATCH(
       const { error: updateError } = await supabase
         .from('journal_entries')
         .update(entryUpdate)
-        .eq('id', params.id);
+        .eq('id', id);
 
       if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 });
@@ -177,7 +179,7 @@ export async function PATCH(
       const { error: deleteError } = await supabase
         .from('journal_lines')
         .delete()
-        .eq('journal_entry_id', params.id);
+        .eq('journal_entry_id', id);
 
       if (deleteError) {
         return NextResponse.json({ error: deleteError.message }, { status: 500 });
@@ -185,7 +187,7 @@ export async function PATCH(
 
       // Insert new lines
       const linesToInsert = updateData.lines.map((line: any, index: number) => ({
-        journal_entry_id: params.id,
+        journal_entry_id: id,
         account_id: line.account_id,
         debit: line.debit_amount || 0,
         credit: line.credit_amount || 0,
@@ -215,9 +217,10 @@ export async function PATCH(
 // DELETE /api/journal-entries/[id] - Delete draft journal entry
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     // Get user session
@@ -231,7 +234,7 @@ export async function DELETE(
     const { data: existingEntry, error: fetchError } = await supabase
       .from('journal_entries')
       .select('id, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (fetchError || !existingEntry) {
@@ -249,7 +252,7 @@ export async function DELETE(
     const { error: deleteLinesError } = await supabase
       .from('journal_lines')
       .delete()
-      .eq('journal_entry_id', params.id);
+      .eq('journal_entry_id', id);
 
     if (deleteLinesError) {
       return NextResponse.json({ error: deleteLinesError.message }, { status: 500 });
@@ -259,7 +262,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('journal_entries')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (deleteError) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
