@@ -92,205 +92,24 @@ export default function DepreciationSchedulePage() {
     fetchDepreciationData();
   }, [startDate, endDate, category, sortBy]);
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     if (!data) return;
 
-    const printHTML = `
-      <html>
-        <head>
-          <title>Asset Depreciation Schedule - ${formatDate(data.reportPeriod.startDate)} to ${formatDate(data.reportPeriod.endDate)} - Sceneside L.L.C</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              color: #111827;
-              background: white;
-              padding: 40px;
-            }
-            .header { 
-              display: flex; 
-              align-items: center; 
-              margin-bottom: 30px;
-              border-bottom: 2px solid #e5e7eb;
-              padding-bottom: 20px;
-            }
-            .logo { 
-              width: 60px; 
-              height: 60px; 
-              margin-right: 20px;
-              border-radius: 8px;
-              object-fit: contain;
-            }
-            .company-info h1 { 
-              font-size: 28px; 
-              font-weight: bold; 
-              color: #1e3a5f;
-              margin-bottom: 4px;
-            }
-            .company-info .address { 
-              font-size: 14px; 
-              color: #6b7280;
-              margin-bottom: 2px;
-            }
-            .report-header { 
-              text-align: center;
-              margin: 30px 0;
-            }
-            .report-header h2 { 
-              font-size: 24px; 
-              font-weight: bold; 
-              color: #111827;
-              margin-bottom: 8px;
-            }
-            .report-header .period { 
-              font-size: 16px; 
-              color: #6b7280;
-            }
-            .summary {
-              background: #f9fafb;
-              padding: 20px;
-              border-radius: 8px;
-              margin: 25px 0;
-            }
-            .summary h3 {
-              font-size: 18px;
-              font-weight: bold;
-              color: #1e3a5f;
-              margin-bottom: 15px;
-            }
-            .summary-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 20px;
-            }
-            .summary-item {
-              text-align: center;
-              padding: 15px;
-              border: 1px solid #e5e7eb;
-              border-radius: 8px;
-              background: white;
-            }
-            .summary-item h4 {
-              font-size: 12px;
-              color: #6b7280;
-              margin-bottom: 5px;
-              text-transform: uppercase;
-            }
-            .summary-item .value {
-              font-size: 18px;
-              font-weight: bold;
-              color: #1f2937;
-            }
-            table { 
-              width: 100%; 
-              border-collapse: collapse;
-              margin: 25px 0;
-            }
-            th { 
-              background: #f9fafb; 
-              padding: 12px; 
-              border: 1px solid #e5e7eb;
-              font-size: 12px;
-              font-weight: bold;
-              text-align: left;
-            }
-            th.number { text-align: right; }
-            td { 
-              padding: 10px 12px; 
-              border: 1px solid #e5e7eb;
-              font-size: 13px;
-            }
-            .asset-row:hover { background: #f9fafb; }
-            .number { 
-              text-align: right;
-              font-family: 'SF Mono', Consolas, monospace;
-            }
-            .type-equipment { color: #2563eb; }
-            .type-furniture { color: #16a34a; }
-            .type-vehicle { color: #dc2626; }
-            .type-building { color: #7c3aed; }
-            .type-technology { color: #ea580c; }
-            @media print {
-              body { padding: 20px; }
-              .header { margin-bottom: 20px; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" />
-            <div class="company-info">
-              <h1>Sceneside L.L.C</h1>
-              <div class="address">121 Bedford Street, Waltham, MA 02453</div>
-              <div class="address">Phone: (857) 384-2899</div>
-              <div class="address">Director: N.Maureen</div>
-            </div>
-          </div>
-          
-          <div class="report-header">
-            <h2>Asset Depreciation Schedule</h2>
-            <div class="period">
-              As of ${formatDate(data.reportPeriod.endDate)}
-            </div>
-          </div>
-
-          <div class="summary">
-            <h3>Summary</h3>
-            <div class="summary-grid">
-              <div class="summary-item">
-                <h4>Total Assets</h4>
-                <div class="value">${data.summary.totalAssets}</div>
-              </div>
-              <div class="summary-item">
-                <h4>Original Cost</h4>
-                <div class="value">${formatCurrency(data.summary.totalOriginalCost)}</div>
-              </div>
-              <div class="summary-item">
-                <h4>Current Book Value</h4>
-                <div class="value">${formatCurrency(data.summary.totalCurrentValue)}</div>
-              </div>
-            </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 25%">Asset</th>
-                <th style="width: 12%">Type</th>
-                <th style="width: 10%">Purchase Date</th>
-                <th class="number" style="width: 13%">Original Cost</th>
-                <th class="number" style="width: 13%">Accumulated Dep.</th>
-                <th class="number" style="width: 13%">Book Value</th>
-                <th class="number" style="width: 14%">Annual Dep.</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.assets.map(asset => `
-                <tr class="asset-row">
-                  <td><strong>${asset.assetName}</strong></td>
-                  <td class="type-${(asset.category || 'other').toLowerCase().replace(/\s+/g, '-')}">${asset.category || 'N/A'}</td>
-                  <td>${formatDate(asset.purchaseDate)}</td>
-                  <td class="number">${formatCurrency(asset.purchasePrice)}</td>
-                  <td class="number">${formatCurrency(asset.accumulatedDepreciation)}</td>
-                  <td class="number">${formatCurrency(asset.currentBookValue)}</td>
-                  <td class="number">${formatCurrency(asset.annualDepreciation)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printHTML);
-      printWindow.document.close();
-      printWindow.focus();
+    try {
+      // Open the export API route in a new window
+      const url = `/api/reports/depreciation/export?data=${encodeURIComponent(JSON.stringify(data))}`;
+      const printWindow = window.open(url, '_blank');
       
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
+      if (printWindow) {
+        // Wait for the page to load before triggering print
+        printWindow.addEventListener('load', () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
     }
   };
 

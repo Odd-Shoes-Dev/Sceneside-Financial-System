@@ -19,14 +19,14 @@ import type { CompanySettings } from '@/types/database';
 type SettingsTab = 'company' | 'financial' | 'invoicing' | 'notifications' | 'users' | 'security' | 'branding';
 
 interface CompanyFormData {
-  company_name: string;
+  name: string;
   legal_name: string;
-  tax_id: string;
+  ein: string;
   address_line1: string;
   address_line2: string;
   city: string;
   state: string;
-  postal_code: string;
+  zip_code: string;
   country: string;
   phone: string;
   email: string;
@@ -34,9 +34,9 @@ interface CompanyFormData {
 }
 
 interface FinancialFormData {
-  fiscal_year_start: number;
+  fiscal_year_start_month: number;
   default_payment_terms: number;
-  default_tax_rate: number;
+  sales_tax_rate: number;
 }
 
 export default function SettingsPage() {
@@ -65,23 +65,23 @@ export default function SettingsPage() {
       if (data) {
         setSettings(data);
         companyForm.reset({
-          company_name: data.company_name,
+          name: data.name,
           legal_name: data.legal_name || '',
-          tax_id: data.tax_id || '',
+          ein: data.ein || '',
           address_line1: data.address_line1 || '',
           address_line2: data.address_line2 || '',
           city: data.city || '',
           state: data.state || '',
-          postal_code: data.postal_code || '',
+          zip_code: data.zip_code || '',
           country: data.country || 'US',
           phone: data.phone || '',
           email: data.email || '',
           website: data.website || '',
         });
         financialForm.reset({
-          fiscal_year_start: data.fiscal_year_start || 1,
+          fiscal_year_start_month: data.fiscal_year_start_month || 1,
           default_payment_terms: data.default_payment_terms || 30,
-          default_tax_rate: Number(data.default_tax_rate) || 6.25,
+          sales_tax_rate: Number(data.sales_tax_rate) || 6.25,
         });
       }
     } catch (error) {
@@ -118,9 +118,9 @@ export default function SettingsPage() {
         .from('company_settings')
         .upsert({
           id: settings?.id,
-          fiscal_year_start: data.fiscal_year_start,
+          fiscal_year_start_month: data.fiscal_year_start_month,
           default_payment_terms: data.default_payment_terms,
-          default_tax_rate: data.default_tax_rate,
+          sales_tax_rate: data.sales_tax_rate,
         });
 
       if (error) throw error;
@@ -197,7 +197,7 @@ export default function SettingsPage() {
                     <label className="label">Company Name *</label>
                     <input
                       type="text"
-                      {...companyForm.register('company_name', { required: true })}
+                      {...companyForm.register('name', { required: true })}
                       className="input"
                     />
                   </div>
@@ -216,7 +216,7 @@ export default function SettingsPage() {
                     <label className="label">Tax ID / EIN</label>
                     <input
                       type="text"
-                      {...companyForm.register('tax_id')}
+                      {...companyForm.register('ein')}
                       className="input"
                       placeholder="XX-XXXXXXX"
                     />
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                       <label className="label">Postal Code</label>
                       <input
                         type="text"
-                        {...companyForm.register('postal_code')}
+                        {...companyForm.register('zip_code')}
                         className="input"
                       />
                     </div>
@@ -324,7 +324,7 @@ export default function SettingsPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="form-group">
                     <label className="label">Fiscal Year Start Month</label>
-                    <select {...financialForm.register('fiscal_year_start', { valueAsNumber: true })} className="input">
+                    <select {...financialForm.register('fiscal_year_start_month', { valueAsNumber: true })} className="input">
                       <option value={1}>January</option>
                       <option value={2}>February</option>
                       <option value={3}>March</option>
@@ -354,7 +354,7 @@ export default function SettingsPage() {
                   <input
                     type="number"
                     step="0.01"
-                    {...financialForm.register('default_tax_rate', { valueAsNumber: true })}
+                    {...financialForm.register('sales_tax_rate', { valueAsNumber: true })}
                     className="input max-w-xs"
                   />
                   <p className="text-sm text-gray-500 mt-1">

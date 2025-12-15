@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanySettings } from '@/lib/company-settings';
 
 interface CustomReportConfig {
   name: string;
@@ -82,6 +83,9 @@ export async function GET(request: NextRequest) {
 
     const config: CustomReportConfig = JSON.parse(configParam);
 
+    // Fetch company settings
+    const companySettings = await getCompanySettings();
+
     // Re-generate the report data (in a real app, this would use the same logic as the main API)
     const response = await fetch(`${request.nextUrl.origin}/api/reports/custom`, {
       method: 'POST',
@@ -96,7 +100,7 @@ export async function GET(request: NextRequest) {
     } else if (format === 'excel') {
       return exportExcel(config, reportData);
     } else if (format === 'pdf') {
-      return exportPDF(config, reportData, request.nextUrl.origin);
+      return exportPDF(config, reportData, request.nextUrl.origin, companySettings);
     }
 
     return NextResponse.json(
@@ -173,7 +177,7 @@ function exportExcel(config: CustomReportConfig, reportData: any) {
   });
 }
 
-function exportPDF(config: CustomReportConfig, reportData: any, origin: string) {
+function exportPDF(config: CustomReportConfig, reportData: any, origin: string, companySettings: any) {
   const reportName = config.name || 'Custom Report';
   const reportDescription = config.description || 'Generated custom report';
   const generatedDate = new Date().toLocaleDateString('en-US', {
@@ -186,7 +190,7 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string) 
     <!DOCTYPE html>
     <html>
       <head>
-        <title>${reportName} - Sceneside L.L.C</title>
+        <title>${reportName} - ${companySettings.name}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
@@ -309,12 +313,11 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string) 
       </head>
       <body>
         <div class="header">
-          <img src="${origin}/Sceneside%20assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" onerror="this.style.display='none'" />
+          <img src="${origin}/Sceneside%20assets/Sceneside_logo.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
           <div class="company-info">
-            <h1>Sceneside L.L.C</h1>
-            <div class="address">121 Bedford Street, Waltham, MA 02453</div>
-            <div class="address">Phone: (857) 384-2899</div>
-            <div class="address">Director: N.Maureen</div>
+            <h1>${companySettings.name}</h1>
+            <div class="address">${companySettings.address_line1}${companySettings.address_line2 ? ', ' + companySettings.address_line2 : ''}, ${companySettings.city}, ${companySettings.state} ${companySettings.zip_code}</div>
+            <div class="address">Phone: ${companySettings.phone}</div>
           </div>
         </div>
         
