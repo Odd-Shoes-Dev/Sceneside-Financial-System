@@ -43,9 +43,7 @@ export async function GET(request: NextRequest) {
         vendor:vendors(
           id,
           name,
-          company_name,
-          vendor_type,
-          credit_limit
+          company_name
         )
       `)
       .in('status', ['pending_approval', 'approved', 'partial'])
@@ -75,7 +73,7 @@ export async function GET(request: NextRequest) {
         vendorMap.set(vendorId, {
           vendorId: vendorId,
           vendorName: bill.vendor.company_name || bill.vendor.name,
-          vendorType: bill.vendor.vendor_type || 'Supplier',
+          vendorType: 'Supplier',
           totalAmount: 0,
           current: 0,
           days1to30: 0,
@@ -85,7 +83,7 @@ export async function GET(request: NextRequest) {
           oldestInvoiceDate: bill.bill_date,
           invoiceCount: 0,
           averagePaymentDays: 0,
-          creditLimit: parseFloat(bill.vendor.credit_limit || 0),
+          creditLimit: 0,
           lastPaymentDate: '',
           paymentTerms: bill.payment_terms || 'Net 30'
         });

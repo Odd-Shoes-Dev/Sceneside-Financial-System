@@ -54,12 +54,32 @@ interface VendorStatementData {
 
 export default function VendorStatementPage() {
   const [data, setData] = useState<VendorStatementData | null>(null);
+  const [vendors, setVendors] = useState<Array<{id: string; name: string}>>([]);
   const [vendorId, setVendorId] = useState('');
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadVendors = async () => {
+      try {
+        const response = await fetch('/api/vendors?active=true');
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data)) {
+          const vendorList = result.data.map((v: any) => ({
+            id: v.id,
+            name: v.company_name || v.name
+          }));
+          setVendors(vendorList);
+        }
+      } catch (error) {
+        console.error('Failed to load vendors:', error);
+      }
+    };
+    loadVendors();
+  }, []);
 
   const fetchStatement = async () => {
     if (!vendorId) return;
@@ -70,9 +90,16 @@ export default function VendorStatementPage() {
         `/api/reports/vendor-statement?vendorId=${vendorId}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
-      setData(result);
+      
+      if (result.error) {
+        console.error('API Error:', result.error);
+        setData(null);
+      } else {
+        setData(result);
+      }
     } catch (error) {
       console.error('Failed to fetch vendor statement:', error);
+      setData(null);
     } finally {
       setIsLoading(false);
     }
@@ -405,9 +432,11 @@ export default function VendorStatementPage() {
               className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
             >
               <option value="">Select Vendor</option>
-              <option value="vendor1">ABC Supply Co.</option>
-              <option value="vendor2">Office Depot</option>
-              <option value="vendor3">Tech Solutions Inc.</option>
+              {vendors.map(vendor => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>

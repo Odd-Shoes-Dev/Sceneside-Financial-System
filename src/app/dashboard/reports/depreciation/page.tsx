@@ -16,19 +16,22 @@ import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
 interface AssetDepreciation {
   assetId: string;
+  assetNumber: string;
   assetName: string;
-  assetType: 'Equipment' | 'Furniture' | 'Vehicle' | 'Building' | 'Technology';
+  category: string;
   purchaseDate: string;
   purchasePrice: number;
-  depreciationMethod: 'Straight-line' | 'Declining Balance' | 'Units of Production';
-  usefulLife: number; // in years
-  salvageValue: number;
+  depreciationMethod: string;
+  usefulLifeMonths: number;
+  residualValue: number;
   currentBookValue: number;
   accumulatedDepreciation: number;
   annualDepreciation: number;
   monthlyDepreciation: number;
-  remainingLife: number; // in months
-  depreciationSchedule: Array<{
+  remainingLifeMonths: number;
+  status: string;
+  location: string;
+  depreciationSchedule?: Array<{
     year: number;
     beginningValue: number;
     depreciation: number;
@@ -266,7 +269,7 @@ export default function DepreciationSchedulePage() {
               ${data.assets.map(asset => `
                 <tr class="asset-row">
                   <td><strong>${asset.assetName}</strong></td>
-                  <td class="type-${asset.assetType.toLowerCase()}">${asset.assetType}</td>
+                  <td class="type-${(asset.category || 'other').toLowerCase().replace(/\s+/g, '-')}">${asset.category || 'N/A'}</td>
                   <td>${formatDate(asset.purchaseDate)}</td>
                   <td class="number">${formatCurrency(asset.purchasePrice)}</td>
                   <td class="number">${formatCurrency(asset.accumulatedDepreciation)}</td>
@@ -574,9 +577,9 @@ export default function DepreciationSchedulePage() {
                         <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <span className={cn(
                             'inline-flex px-2 py-1 text-xs font-medium rounded-full',
-                            getAssetTypeColor(asset.assetType)
+                            getAssetTypeColor(asset.category)
                           )}>
-                            {asset.assetType}
+                            {asset.category}
                           </span>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4">
@@ -651,11 +654,11 @@ export default function DepreciationSchedulePage() {
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Useful Life</p>
-                            <p className="text-sm font-semibold text-gray-900">{asset.usefulLife} years</p>
+                            <p className="text-sm font-semibold text-gray-900">{(asset.usefulLifeMonths / 12).toFixed(1)} years</p>
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Salvage Value</p>
-                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(asset.salvageValue)}</p>
+                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(asset.residualValue)}</p>
                           </div>
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-xs text-gray-500">Method</p>
@@ -675,7 +678,7 @@ export default function DepreciationSchedulePage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                              {asset.depreciationSchedule.map((schedule, index) => (
+                              {asset.depreciationSchedule?.map((schedule: any, index: number) => (
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="px-4 py-2 text-sm text-gray-900">{schedule.year}</td>
                                   <td className="px-4 py-2 text-sm text-right tabular-nums text-gray-900">{formatCurrency(schedule.beginningValue)}</td>

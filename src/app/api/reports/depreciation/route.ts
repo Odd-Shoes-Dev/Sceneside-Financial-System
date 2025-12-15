@@ -1,353 +1,245 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface AssetDepreciation {
   assetId: string;
+  assetNumber: string;
   assetName: string;
-  assetType: 'Equipment' | 'Furniture' | 'Vehicle' | 'Building' | 'Technology';
+  category: string;
   purchaseDate: string;
   purchasePrice: number;
-  depreciationMethod: 'Straight-line' | 'Declining Balance' | 'Units of Production';
-  usefulLife: number; // in years
-  salvageValue: number;
+  depreciationMethod: string;
+  usefulLifeMonths: number;
+  residualValue: number;
   currentBookValue: number;
   accumulatedDepreciation: number;
   annualDepreciation: number;
   monthlyDepreciation: number;
-  remainingLife: number; // in months
-  depreciationSchedule: Array<{
-    year: number;
-    beginningValue: number;
-    depreciation: number;
-    accumulatedDepreciation: number;
-    endingValue: number;
+  remainingLifeMonths: number;
+  status: string;
+  location: string;
+}
+
+interface DepreciationScheduleData {
+  reportPeriod: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalAssets: number;
+    totalOriginalCost: number;
+    totalCurrentValue: number;
+    totalAccumulatedDepreciation: number;
+    annualDepreciationExpense: number;
+    monthlyDepreciationExpense: number;
+    activeAssets: number;
+    fullyDepreciated: number;
+  };
+  assets: AssetDepreciation[];
+  byCategory: Record<string, {
+    count: number;
+    cost: number;
+    accumulated: number;
+    bookValue: number;
+  }>;
+  byMethod: Record<string, {
+    count: number;
+    cost: number;
   }>;
 }
 
-// Helper function to calculate straight-line depreciation schedule
-const calculateStraightLineSchedule = (
-  purchasePrice: number,
-  salvageValue: number,
-  usefulLife: number,
-  purchaseYear: number
-) => {
-  const annualDepreciation = (purchasePrice - salvageValue) / usefulLife;
-  const schedule = [];
-  let accumulatedDep = 0;
-  
-  for (let year = 0; year < usefulLife; year++) {
-    const beginningValue = purchasePrice - accumulatedDep;
-    const yearlyDep = Math.min(annualDepreciation, beginningValue - salvageValue);
-    accumulatedDep += yearlyDep;
-    const endingValue = purchasePrice - accumulatedDep;
-    
-    schedule.push({
-      year: purchaseYear + year,
-      beginningValue: beginningValue,
-      depreciation: yearlyDep,
-      accumulatedDepreciation: accumulatedDep,
-      endingValue: Math.max(endingValue, salvageValue),
-    });
-    
-    if (endingValue <= salvageValue) break;
-  }
-  
-  return schedule;
-};
-
-// Helper function to calculate current accumulated depreciation
-const calculateCurrentDepreciation = (
+// Helper to calculate depreciation
+const calculateDepreciation = (
   purchaseDate: string,
   purchasePrice: number,
-  salvageValue: number,
-  usefulLife: number,
-  method: string
+  residualValue: number,
+  usefulLifeMonths: number,
+  method: string,
+  accumulatedDep: number
 ) => {
   const purchase = new Date(purchaseDate);
   const now = new Date();
   const monthsElapsed = (now.getFullYear() - purchase.getFullYear()) * 12 + 
                        (now.getMonth() - purchase.getMonth());
   
-  const totalMonths = usefulLife * 12;
-  const monthlyRate = monthsElapsed / totalMonths;
+  const depreciableAmount = purchasePrice - residualValue;
+  const monthlyDepreciation = usefulLifeMonths > 0 ? depreciableAmount / usefulLifeMonths : 0;
+  const annualDepreciation = monthlyDepreciation * 12;
   
-  if (method === 'Straight-line') {
-    const totalDepreciable = purchasePrice - salvageValue;
-    const accumulated = Math.min(totalDepreciable * monthlyRate, totalDepreciable);
-    return {
-      accumulated: accumulated,
-      current: purchasePrice - accumulated,
-      annual: totalDepreciable / usefulLife,
-      monthly: totalDepreciable / totalMonths,
-      remainingMonths: Math.max(0, totalMonths - monthsElapsed)
-    };
-  }
+  const calculatedAccumulated = Math.min(
+    monthlyDepreciation * monthsElapsed,
+    depreciableAmount
+  );
   
-  // Default to straight-line for other methods in this example
-  const totalDepreciable = purchasePrice - salvageValue;
-  const accumulated = Math.min(totalDepreciable * monthlyRate, totalDepreciable);
+  const accumulated = accumulatedDep || calculatedAccumulated;
+  const bookValue = purchasePrice - accumulated;
+  const remainingMonths = Math.max(0, usefulLifeMonths - monthsElapsed);
+  
   return {
-    accumulated: accumulated,
-    current: purchasePrice - accumulated,
-    annual: totalDepreciable / usefulLife,
-    monthly: totalDepreciable / totalMonths,
-    remainingMonths: Math.max(0, totalMonths - monthsElapsed)
+    annualDepreciation,
+    monthlyDepreciation,
+    accumulatedDepreciation: accumulated,
+    bookValue,
+    remainingMonths
   };
-};
-
-// Sample asset depreciation data
-const generateAssetData = (): AssetDepreciation[] => {
-  const baseAssets = [
-    {
-      assetId: '1',
-      assetName: 'Ultrasound Machine - GE LOGIQ P9',
-      assetType: 'Equipment' as const,
-      purchaseDate: '2020-03-15',
-      purchasePrice: 125000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 10,
-      salvageValue: 12500,
-    },
-    {
-      assetId: '2',
-      assetName: 'MRI Scanner - Siemens MAGNETOM',
-      assetType: 'Equipment' as const,
-      purchaseDate: '2019-08-20',
-      purchasePrice: 850000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 15,
-      salvageValue: 85000,
-    },
-    {
-      assetId: '3',
-      assetName: 'Surgical Robot - da Vinci Xi',
-      assetType: 'Equipment' as const,
-      purchaseDate: '2021-01-10',
-      purchasePrice: 2500000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 12,
-      salvageValue: 250000,
-    },
-    {
-      assetId: '4',
-      assetName: 'Executive Conference Table Set',
-      assetType: 'Furniture' as const,
-      purchaseDate: '2022-06-01',
-      purchasePrice: 15000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 7,
-      salvageValue: 1500,
-    },
-    {
-      assetId: '5',
-      assetName: 'Medical Office Furniture Suite',
-      assetType: 'Furniture' as const,
-      purchaseDate: '2021-09-15',
-      purchasePrice: 45000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 8,
-      salvageValue: 4500,
-    },
-    {
-      assetId: '6',
-      assetName: 'Mercedes Sprinter Medical Van',
-      assetType: 'Vehicle' as const,
-      purchaseDate: '2022-02-28',
-      purchasePrice: 85000,
-      depreciationMethod: 'Declining Balance' as const,
-      usefulLife: 8,
-      salvageValue: 8500,
-    },
-    {
-      assetId: '7',
-      assetName: 'Toyota Prius Hybrid Fleet (3 units)',
-      assetType: 'Vehicle' as const,
-      purchaseDate: '2023-04-12',
-      purchasePrice: 75000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 6,
-      salvageValue: 15000,
-    },
-    {
-      assetId: '8',
-      assetName: 'Medical Facility Building',
-      assetType: 'Building' as const,
-      purchaseDate: '2018-11-30',
-      purchasePrice: 2800000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 39,
-      salvageValue: 280000,
-    },
-    {
-      assetId: '9',
-      assetName: 'Dell Precision Workstation Lab (12 units)',
-      assetType: 'Technology' as const,
-      purchaseDate: '2023-01-15',
-      purchasePrice: 48000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 4,
-      salvageValue: 4800,
-    },
-    {
-      assetId: '10',
-      assetName: 'HP Medical Imaging Server Cluster',
-      assetType: 'Technology' as const,
-      purchaseDate: '2022-08-05',
-      purchasePrice: 125000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 5,
-      salvageValue: 12500,
-    },
-    {
-      assetId: '11',
-      assetName: 'Sterilization Equipment - STERIS',
-      assetType: 'Equipment' as const,
-      purchaseDate: '2020-12-10',
-      purchasePrice: 95000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 10,
-      salvageValue: 9500,
-    },
-    {
-      assetId: '12',
-      assetName: 'Patient Monitor System - Philips',
-      assetType: 'Equipment' as const,
-      purchaseDate: '2023-03-20',
-      purchasePrice: 65000,
-      depreciationMethod: 'Straight-line' as const,
-      usefulLife: 8,
-      salvageValue: 6500,
-    }
-  ];
-
-  return baseAssets.map(asset => {
-    const depCalc = calculateCurrentDepreciation(
-      asset.purchaseDate,
-      asset.purchasePrice,
-      asset.salvageValue,
-      asset.usefulLife,
-      asset.depreciationMethod
-    );
-
-    const purchaseYear = new Date(asset.purchaseDate).getFullYear();
-    const depreciationSchedule = calculateStraightLineSchedule(
-      asset.purchasePrice,
-      asset.salvageValue,
-      asset.usefulLife,
-      purchaseYear
-    );
-
-    return {
-      ...asset,
-      currentBookValue: depCalc.current,
-      accumulatedDepreciation: depCalc.accumulated,
-      annualDepreciation: depCalc.annual,
-      monthlyDepreciation: depCalc.monthly,
-      remainingLife: depCalc.remainingMonths,
-      depreciationSchedule: depreciationSchedule,
-    };
-  });
 };
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate') || '2024-12-01';
-    const endDate = searchParams.get('endDate') || '2024-12-31';
-    const assetType = searchParams.get('assetType') || 'all';
-    const sortBy = searchParams.get('sortBy') || 'purchaseDate';
+    const supabase = await createClient();
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
+    const category = searchParams.get('category') || 'all';
+    const status = searchParams.get('status') || 'all';
+    const sortBy = searchParams.get('sortBy') || 'assetNumber';
 
-    const allAssets = generateAssetData();
+    // Fetch fixed assets with categories
+    let query = supabase
+      .from('fixed_assets')
+      .select(`
+        id,
+        asset_number,
+        name,
+        purchase_date,
+        purchase_price,
+        depreciation_method,
+        useful_life_months,
+        residual_value,
+        accumulated_depreciation,
+        book_value,
+        status,
+        location,
+        asset_categories (
+          name
+        )
+      `)
+      .order('asset_number');
 
-    // Filter assets based on parameters
-    let filteredAssets = allAssets.filter(asset => {
-      const assetDate = new Date(asset.purchaseDate);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      
-      const dateInRange = assetDate <= end; // Show all assets purchased before end date
-      const typeMatch = assetType === 'all' || asset.assetType === assetType;
+    // Apply filters
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
 
-      return dateInRange && typeMatch;
+    const { data: assets, error: assetsError } = await query;
+
+    if (assetsError) {
+      console.error('Error fetching assets:', assetsError);
+      return NextResponse.json({ error: assetsError.message }, { status: 500 });
+    }
+
+    // Transform and calculate depreciation for each asset
+    let assetDepreciations: AssetDepreciation[] = (assets || []).map((asset: any) => {
+      const depCalc = calculateDepreciation(
+        asset.purchase_date,
+        parseFloat(asset.purchase_price) || 0,
+        parseFloat(asset.residual_value) || 0,
+        parseInt(asset.useful_life_months) || 0,
+        asset.depreciation_method || 'straight_line',
+        parseFloat(asset.accumulated_depreciation) || 0
+      );
+
+      return {
+        assetId: asset.id,
+        assetNumber: asset.asset_number || '',
+        assetName: asset.name || '',
+        category: asset.asset_categories?.name || 'Uncategorized',
+        purchaseDate: asset.purchase_date,
+        purchasePrice: parseFloat(asset.purchase_price) || 0,
+        depreciationMethod: asset.depreciation_method || 'straight_line',
+        usefulLifeMonths: parseInt(asset.useful_life_months) || 0,
+        residualValue: parseFloat(asset.residual_value) || 0,
+        currentBookValue: depCalc.bookValue,
+        accumulatedDepreciation: depCalc.accumulatedDepreciation,
+        annualDepreciation: depCalc.annualDepreciation,
+        monthlyDepreciation: depCalc.monthlyDepreciation,
+        remainingLifeMonths: depCalc.remainingMonths,
+        status: asset.status || 'active',
+        location: asset.location || ''
+      };
     });
 
+    // Filter by category
+    if (category !== 'all') {
+      assetDepreciations = assetDepreciations.filter(
+        a => a.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+
     // Sort assets
-    filteredAssets.sort((a, b) => {
+    assetDepreciations.sort((a, b) => {
       switch (sortBy) {
         case 'assetName':
           return a.assetName.localeCompare(b.assetName);
-        case 'assetType':
-          return a.assetType.localeCompare(b.assetType);
-        case 'purchasePrice':
-          return b.purchasePrice - a.purchasePrice;
-        case 'currentBookValue':
-          return b.currentBookValue - a.currentBookValue;
-        case 'annualDepreciation':
-          return b.annualDepreciation - a.annualDepreciation;
         case 'purchaseDate':
+          return new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime();
+        case 'bookValue':
+          return b.currentBookValue - a.currentBookValue;
+        case 'category':
+          return a.category.localeCompare(b.category);
         default:
-          return new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime();
+          return a.assetNumber.localeCompare(b.assetNumber);
       }
     });
 
     // Calculate summary statistics
-    const totalAssets = filteredAssets.length;
-    const totalOriginalCost = filteredAssets.reduce((sum, asset) => sum + asset.purchasePrice, 0);
-    const totalCurrentValue = filteredAssets.reduce((sum, asset) => sum + asset.currentBookValue, 0);
-    const totalAccumulatedDepreciation = filteredAssets.reduce((sum, asset) => sum + asset.accumulatedDepreciation, 0);
-    const annualDepreciationExpense = filteredAssets.reduce((sum, asset) => sum + asset.annualDepreciation, 0);
-    const monthlyDepreciationExpense = filteredAssets.reduce((sum, asset) => sum + asset.monthlyDepreciation, 0);
+    const totalCost = assetDepreciations.reduce((sum, a) => sum + a.purchasePrice, 0);
+    const totalAccumulatedDepreciation = assetDepreciations.reduce((sum, a) => sum + a.accumulatedDepreciation, 0);
+    const totalBookValue = assetDepreciations.reduce((sum, a) => sum + a.currentBookValue, 0);
+    const annualDepreciation = assetDepreciations.reduce((sum, a) => sum + a.annualDepreciation, 0);
+    const monthlyDepreciation = assetDepreciations.reduce((sum, a) => sum + a.monthlyDepreciation, 0);
+    const activeAssets = assetDepreciations.filter(a => a.status === 'active').length;
+    const fullyDepreciated = assetDepreciations.filter(a => a.status === 'fully_depreciated').length;
 
-    // Calculate asset type breakdown
-    const assetTypes = {
-      equipment: {
-        count: filteredAssets.filter(a => a.assetType === 'Equipment').length,
-        originalCost: filteredAssets.filter(a => a.assetType === 'Equipment').reduce((sum, a) => sum + a.purchasePrice, 0),
-        currentValue: filteredAssets.filter(a => a.assetType === 'Equipment').reduce((sum, a) => sum + a.currentBookValue, 0)
-      },
-      furniture: {
-        count: filteredAssets.filter(a => a.assetType === 'Furniture').length,
-        originalCost: filteredAssets.filter(a => a.assetType === 'Furniture').reduce((sum, a) => sum + a.purchasePrice, 0),
-        currentValue: filteredAssets.filter(a => a.assetType === 'Furniture').reduce((sum, a) => sum + a.currentBookValue, 0)
-      },
-      vehicle: {
-        count: filteredAssets.filter(a => a.assetType === 'Vehicle').length,
-        originalCost: filteredAssets.filter(a => a.assetType === 'Vehicle').reduce((sum, a) => sum + a.purchasePrice, 0),
-        currentValue: filteredAssets.filter(a => a.assetType === 'Vehicle').reduce((sum, a) => sum + a.currentBookValue, 0)
-      },
-      building: {
-        count: filteredAssets.filter(a => a.assetType === 'Building').length,
-        originalCost: filteredAssets.filter(a => a.assetType === 'Building').reduce((sum, a) => sum + a.purchasePrice, 0),
-        currentValue: filteredAssets.filter(a => a.assetType === 'Building').reduce((sum, a) => sum + a.currentBookValue, 0)
-      },
-      technology: {
-        count: filteredAssets.filter(a => a.assetType === 'Technology').length,
-        originalCost: filteredAssets.filter(a => a.assetType === 'Technology').reduce((sum, a) => sum + a.purchasePrice, 0),
-        currentValue: filteredAssets.filter(a => a.assetType === 'Technology').reduce((sum, a) => sum + a.currentBookValue, 0)
+    // Category breakdown
+    const byCategory: Record<string, any> = {};
+    assetDepreciations.forEach(asset => {
+      const cat = asset.category || 'Uncategorized';
+      if (!byCategory[cat]) {
+        byCategory[cat] = { count: 0, cost: 0, accumulated: 0, bookValue: 0 };
       }
-    };
+      byCategory[cat].count += 1;
+      byCategory[cat].cost += asset.purchasePrice;
+      byCategory[cat].accumulated += asset.accumulatedDepreciation;
+      byCategory[cat].bookValue += asset.currentBookValue;
+    });
 
-    const responseData = {
+    // Method breakdown
+    const byMethod: Record<string, any> = {};
+    assetDepreciations.forEach(asset => {
+      const method = asset.depreciationMethod || 'straight_line';
+      if (!byMethod[method]) {
+        byMethod[method] = { count: 0, cost: 0 };
+      }
+      byMethod[method].count += 1;
+      byMethod[method].cost += asset.purchasePrice;
+    });
+
+    const response: DepreciationScheduleData = {
       reportPeriod: {
         startDate,
-        endDate,
+        endDate
       },
       summary: {
-        totalAssets,
-        totalOriginalCost,
-        totalCurrentValue,
+        totalAssets: assetDepreciations.length,
+        totalOriginalCost: totalCost,
+        totalCurrentValue: totalBookValue,
         totalAccumulatedDepreciation,
-        monthlyDepreciationExpense,
-        annualDepreciationExpense,
+        annualDepreciationExpense: annualDepreciation,
+        monthlyDepreciationExpense: monthlyDepreciation,
+        activeAssets,
+        fullyDepreciated
       },
-      assets: filteredAssets,
-      assetTypes,
+      assets: assetDepreciations,
+      byCategory,
+      byMethod
     };
 
-    return NextResponse.json(responseData);
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Error in depreciation API:', error);
+    console.error('Depreciation schedule report error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch depreciation data' },
+      { error: 'Failed to generate depreciation schedule report' },
       { status: 500 }
     );
   }

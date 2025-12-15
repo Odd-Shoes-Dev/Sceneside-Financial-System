@@ -16,16 +16,20 @@ export async function GET(request: NextRequest) {
       .order('code');
 
     // Get all posted journal entry lines up to the date
-    const { data: entries } = await supabase
+    const { data: entries, error: entriesError } = await supabase
       .from('journal_lines')
       .select(`
         account_id,
         debit,
         credit,
-        journal_entry:journal_entries!inner (entry_date, status)
+        journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entry.status', 'posted')
-      .lte('journal_entry.entry_date', asOfDate);
+      .eq('journal_entries.status', 'posted')
+      .lte('journal_entries.entry_date', asOfDate);
+
+    if (entriesError) {
+      console.error('Error fetching journal entries:', entriesError);
+    }
 
     // Calculate balances by account
     const accountBalances: Record<string, number> = {};
@@ -109,10 +113,10 @@ export async function GET(request: NextRequest) {
         debit,
         credit,
         accounts!inner (code),
-        journal_entry:journal_entries!inner (entry_date, status)
+        journal_entries!inner (entry_date, status)
       `)
-      .eq('journal_entry.status', 'posted')
-      .lte('journal_entry.entry_date', asOfDate)
+      .eq('journal_entries.status', 'posted')
+      .lte('journal_entries.entry_date', asOfDate)
       .gte('accounts.code', '4000');
 
     let retainedEarnings = 0;
