@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface TaxDeduction {
   category: string;
@@ -64,198 +65,9 @@ interface TaxSummaryData {
   };
 }
 
-// Generate realistic tax data for Sceneside L.L.C (medical company)
-const generateTaxData = (taxYear: number): TaxSummaryData => {
-  // Base financial data for medical services company
-  const grossRevenue = 8540000;
-  const operatingExpenses = 6420000;
-  const operatingIncome = grossRevenue - operatingExpenses;
-  const otherIncome = 45000; // Interest income
-  const netIncome = operatingIncome + otherIncome;
-
-  // Deductions breakdown
-  const businessExpenses = 4850000;
-  const depreciation = 320000;
-  const interestExpenses = 185000;
-  const otherDeductions = 125000;
-  const totalDeductions = businessExpenses + depreciation + interestExpenses + otherDeductions;
-
-  // Tax calculations
-  const taxableIncome = netIncome - totalDeductions;
-  const federalTaxRate = 0.21; // Corporate tax rate
-  const stateTaxRate = 0.063; // Massachusetts corporate tax rate
-  const federalTaxLiability = taxableIncome * federalTaxRate;
-  const stateTaxLiability = taxableIncome * stateTaxRate;
-  const selfEmploymentTax = netIncome * 0.153; // 15.3% SE tax rate
-  const totalTaxLiability = federalTaxLiability + stateTaxLiability + selfEmploymentTax;
-  const effectiveTaxRate = totalTaxLiability / netIncome;
-
-  // Quarterly payments
-  const quarterlyEstimate = totalTaxLiability / 4;
-  const quarterlyPayments: QuarterlyTax[] = [
-    {
-      quarter: 'Q1',
-      period: `Jan - Mar ${taxYear}`,
-      estimatedPayment: quarterlyEstimate,
-      actualPayment: quarterlyEstimate * 1.02,
-      dueDate: `${taxYear}-04-15`,
-      status: 'Paid'
-    },
-    {
-      quarter: 'Q2',
-      period: `Apr - Jun ${taxYear}`,
-      estimatedPayment: quarterlyEstimate,
-      actualPayment: quarterlyEstimate * 0.98,
-      dueDate: `${taxYear}-06-15`,
-      status: 'Paid'
-    },
-    {
-      quarter: 'Q3',
-      period: `Jul - Sep ${taxYear}`,
-      estimatedPayment: quarterlyEstimate,
-      actualPayment: quarterlyEstimate * 1.01,
-      dueDate: `${taxYear}-09-15`,
-      status: taxYear === new Date().getFullYear() ? 'Pending' : 'Paid'
-    },
-    {
-      quarter: 'Q4',
-      period: `Oct - Dec ${taxYear}`,
-      estimatedPayment: quarterlyEstimate,
-      actualPayment: taxYear === new Date().getFullYear() ? 0 : quarterlyEstimate * 0.97,
-      dueDate: `${taxYear + 1}-01-15`,
-      status: taxYear === new Date().getFullYear() ? 'Pending' : 'Paid'
-    }
-  ];
-
-  const totalPaid = quarterlyPayments.reduce((sum, q) => sum + q.actualPayment, 0);
-  const balanceDue = totalTaxLiability - totalPaid;
-
-  // Itemized deductions for medical services company
-  const itemizedDeductions: TaxDeduction[] = [
-    {
-      category: 'Medical Equipment',
-      description: 'MRI Machine depreciation and maintenance',
-      amount: 185000,
-      deductible: true
-    },
-    {
-      category: 'Professional Services',
-      description: 'Legal and accounting fees',
-      amount: 125000,
-      deductible: true
-    },
-    {
-      category: 'Medical Supplies',
-      description: 'Surgical instruments, disposables, pharmaceuticals',
-      amount: 890000,
-      deductible: true
-    },
-    {
-      category: 'Staff Salaries',
-      description: 'Medical staff and administrative salaries',
-      amount: 2850000,
-      deductible: true
-    },
-    {
-      category: 'Facility Costs',
-      description: 'Rent, utilities, and facility maintenance',
-      amount: 420000,
-      deductible: true
-    },
-    {
-      category: 'Insurance',
-      description: 'Malpractice, property, and general liability insurance',
-      amount: 285000,
-      deductible: true
-    },
-    {
-      category: 'Technology',
-      description: 'EMR systems, computers, and software licenses',
-      amount: 95000,
-      deductible: true
-    },
-    {
-      category: 'Training & Education',
-      description: 'Medical education and staff training programs',
-      amount: 45000,
-      deductible: true
-    },
-    {
-      category: 'Vehicle Expenses',
-      description: 'Ambulance and company vehicle expenses',
-      amount: 65000,
-      deductible: true
-    },
-    {
-      category: 'Research & Development',
-      description: 'Medical research and equipment testing',
-      amount: 85000,
-      deductible: true
-    },
-    {
-      category: 'Marketing',
-      description: 'Healthcare marketing and patient outreach',
-      amount: 35000,
-      deductible: true
-    },
-    {
-      category: 'Meals & Entertainment',
-      description: 'Business meals with medical partners',
-      amount: 18000,
-      deductible: false // Only 50% deductible, showing as non-deductible for simplicity
-    }
-  ];
-
-  return {
-    reportPeriod: {
-      taxYear,
-      startDate: `${taxYear}-01-01`,
-      endDate: `${taxYear}-12-31`
-    },
-    income: {
-      grossRevenue,
-      netIncome,
-      operatingIncome,
-      otherIncome,
-      totalTaxableIncome: netIncome
-    },
-    deductions: {
-      totalDeductions,
-      businessExpenses,
-      depreciation,
-      interestExpenses,
-      otherDeductions,
-      itemizedDeductions
-    },
-    taxCalculations: {
-      taxableIncome,
-      federalTaxRate,
-      federalTaxLiability,
-      stateTaxRate,
-      stateTaxLiability,
-      selfEmploymentTax,
-      totalTaxLiability,
-      effectiveTaxRate
-    },
-    payments: {
-      quarterlyPayments,
-      totalPaid,
-      withheld: 0,
-      refundDue: balanceDue < 0 ? Math.abs(balanceDue) : 0,
-      balanceDue: balanceDue > 0 ? balanceDue : 0
-    },
-    compliance: {
-      filingStatus: 'LLC',
-      ein: '12-3456789',
-      filingDeadline: `${taxYear + 1}-03-15`,
-      extensionFiled: false,
-      estimatedPenalty: balanceDue > 1000 ? balanceDue * 0.02 : 0
-    }
-  };
-};
-
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const taxYear = parseInt(searchParams.get('taxYear') || new Date().getFullYear().toString());
 
@@ -265,7 +77,201 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid tax year' }, { status: 400 });
     }
 
-    const taxData = generateTaxData(taxYear);
+    const startDate = `${taxYear}-01-01`;
+    const endDate = `${taxYear}-12-31`;
+
+    // Fetch invoices for revenue (paid and partial)
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('total_amount, amount_paid, status, issue_date')
+      .gte('issue_date', startDate)
+      .lte('issue_date', endDate)
+      .in('status', ['paid', 'partial']);
+
+    // Calculate gross revenue from invoices
+    const grossRevenue = (invoices || []).reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+
+    // Fetch expenses for deductions
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('amount, category, description, expense_date')
+      .gte('expense_date', startDate)
+      .lte('expense_date', endDate);
+
+    // Fetch bills for additional deductions
+    const { data: bills } = await supabase
+      .from('bills')
+      .select('total_amount, amount_paid, category, description, bill_date')
+      .gte('bill_date', startDate)
+      .lte('bill_date', endDate)
+      .in('status', ['paid', 'partial']);
+
+    // Fetch assets for depreciation calculation
+    const { data: assets } = await supabase
+      .from('assets')
+      .select('purchase_price, depreciation_method, useful_life_months, accumulated_depreciation, purchase_date')
+      .lte('purchase_date', endDate)
+      .eq('status', 'active');
+
+    // Calculate depreciation for the year
+    const currentDate = new Date(endDate);
+    const depreciation = (assets || []).reduce((sum, asset) => {
+      const purchaseDate = new Date(asset.purchase_date);
+      if (purchaseDate > currentDate) return sum;
+      
+      const monthsElapsed = Math.min(
+        asset.useful_life_months || 60,
+        ((currentDate.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+      );
+      
+      const annualDepreciation = (asset.purchase_price || 0) / ((asset.useful_life_months || 60) / 12);
+      const monthsInYear = Math.min(12, monthsElapsed);
+      
+      return sum + (annualDepreciation * (monthsInYear / 12));
+    }, 0);
+
+    // Categorize expenses and bills
+    const expenseCategories: Record<string, number> = {};
+    const itemizedDeductions: TaxDeduction[] = [];
+
+    (expenses || []).forEach(exp => {
+      const category = exp.category || 'Other Expenses';
+      expenseCategories[category] = (expenseCategories[category] || 0) + (exp.amount || 0);
+    });
+
+    (bills || []).forEach(bill => {
+      const category = bill.category || 'Vendor Payments';
+      expenseCategories[category] = (expenseCategories[category] || 0) + (bill.amount_paid || 0);
+    });
+
+    // Create itemized deductions from categories
+    Object.entries(expenseCategories).forEach(([category, amount]) => {
+      if (amount > 0) {
+        itemizedDeductions.push({
+          category,
+          description: `${category} expenses for ${taxYear}`,
+          amount,
+          deductible: true
+        });
+      }
+    });
+
+    // Add depreciation as a deduction
+    if (depreciation > 0) {
+      itemizedDeductions.push({
+        category: 'Depreciation',
+        description: 'Asset depreciation for the year',
+        amount: depreciation,
+        deductible: true
+      });
+    }
+
+    // Calculate totals
+    const businessExpenses = Object.values(expenseCategories).reduce((sum, val) => sum + val, 0);
+    const interestExpenses = expenseCategories['Interest'] || 0;
+    const otherDeductions = expenseCategories['Other Expenses'] || 0;
+    const totalDeductions = businessExpenses + depreciation;
+
+    const operatingIncome = grossRevenue - businessExpenses;
+    const otherIncome = 0; // Can be expanded to include interest income from bank accounts
+    const netIncome = operatingIncome + otherIncome;
+
+    // Tax calculations
+    const taxableIncome = Math.max(0, netIncome - depreciation);
+    const federalTaxRate = 0.21; // Corporate tax rate
+    const stateTaxRate = 0.063; // Massachusetts corporate tax rate
+    const federalTaxLiability = taxableIncome * federalTaxRate;
+    const stateTaxLiability = taxableIncome * stateTaxRate;
+    const selfEmploymentTax = netIncome * 0.153; // 15.3% SE tax rate
+    const totalTaxLiability = federalTaxLiability + stateTaxLiability + selfEmploymentTax;
+    const effectiveTaxRate = netIncome > 0 ? totalTaxLiability / netIncome : 0;
+
+    // Quarterly payments (simplified - could be enhanced with actual payment records)
+    const quarterlyEstimate = totalTaxLiability / 4;
+    const quarterlyPayments: QuarterlyTax[] = [
+      {
+        quarter: 'Q1',
+        period: `Jan - Mar ${taxYear}`,
+        estimatedPayment: quarterlyEstimate,
+        actualPayment: taxYear < currentYear ? quarterlyEstimate : 0,
+        dueDate: `${taxYear}-04-15`,
+        status: taxYear < currentYear ? 'Paid' : 'Pending'
+      },
+      {
+        quarter: 'Q2',
+        period: `Apr - Jun ${taxYear}`,
+        estimatedPayment: quarterlyEstimate,
+        actualPayment: taxYear < currentYear ? quarterlyEstimate : 0,
+        dueDate: `${taxYear}-06-15`,
+        status: taxYear < currentYear ? 'Paid' : 'Pending'
+      },
+      {
+        quarter: 'Q3',
+        period: `Jul - Sep ${taxYear}`,
+        estimatedPayment: quarterlyEstimate,
+        actualPayment: taxYear < currentYear ? quarterlyEstimate : 0,
+        dueDate: `${taxYear}-09-15`,
+        status: taxYear < currentYear ? 'Paid' : 'Pending'
+      },
+      {
+        quarter: 'Q4',
+        period: `Oct - Dec ${taxYear}`,
+        estimatedPayment: quarterlyEstimate,
+        actualPayment: taxYear < currentYear ? quarterlyEstimate : 0,
+        dueDate: `${taxYear + 1}-01-15`,
+        status: taxYear < currentYear ? 'Paid' : 'Pending'
+      }
+    ];
+
+    const totalPaid = quarterlyPayments.reduce((sum, q) => sum + q.actualPayment, 0);
+    const balanceDue = totalTaxLiability - totalPaid;
+
+    const taxData: TaxSummaryData = {
+      reportPeriod: {
+        taxYear,
+        startDate,
+        endDate
+      },
+      income: {
+        grossRevenue,
+        netIncome,
+        operatingIncome,
+        otherIncome,
+        totalTaxableIncome: netIncome
+      },
+      deductions: {
+        totalDeductions,
+        businessExpenses,
+        depreciation,
+        interestExpenses,
+        otherDeductions,
+        itemizedDeductions
+      },
+      taxCalculations: {
+        taxableIncome,
+        federalTaxRate,
+        federalTaxLiability,
+        stateTaxRate,
+        stateTaxLiability,
+        selfEmploymentTax,
+        totalTaxLiability,
+        effectiveTaxRate
+      },
+      payments: {
+        quarterlyPayments,
+        totalPaid,
+        withheld: 0,
+        refundDue: balanceDue < 0 ? Math.abs(balanceDue) : 0,
+        balanceDue: balanceDue > 0 ? balanceDue : 0
+      },
+      compliance: {
+        filingStatus: 'LLC',
+        ein: '99-3334108',
+        filingDeadline: `${taxYear + 1}-03-15`,
+        extensionFiled: false,
+        estimatedPenalty: balanceDue > 1000 ? balanceDue * 0.02 : 0
+      }
+    };
 
     return NextResponse.json(taxData);
   } catch (error) {

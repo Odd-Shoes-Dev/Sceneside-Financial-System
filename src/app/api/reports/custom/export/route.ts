@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     } else if (format === 'excel') {
       return exportExcel(config, reportData);
     } else if (format === 'pdf') {
-      return exportPDF(config, reportData);
+      return exportPDF(config, reportData, request.nextUrl.origin);
     }
 
     return NextResponse.json(
@@ -173,7 +173,7 @@ function exportExcel(config: CustomReportConfig, reportData: any) {
   });
 }
 
-function exportPDF(config: CustomReportConfig, reportData: any) {
+function exportPDF(config: CustomReportConfig, reportData: any, origin: string) {
   const reportName = config.name || 'Custom Report';
   const reportDescription = config.description || 'Generated custom report';
   const generatedDate = new Date().toLocaleDateString('en-US', {
@@ -309,11 +309,12 @@ function exportPDF(config: CustomReportConfig, reportData: any) {
       </head>
       <body>
         <div class="header">
-          <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" />
+          <img src="${origin}/Sceneside%20assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" onerror="this.style.display='none'" />
           <div class="company-info">
             <h1>Sceneside L.L.C</h1>
             <div class="address">121 Bedford Street, Waltham, MA 02453</div>
             <div class="address">Phone: (857) 384-2899</div>
+            <div class="address">Director: N.Maureen</div>
           </div>
         </div>
         

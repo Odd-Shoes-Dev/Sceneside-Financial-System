@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface Field {
   id: string;
@@ -34,298 +35,182 @@ interface CustomReportConfig {
   };
 }
 
-// Mock data generators for different data sources
-const generateTransactionData = (config: CustomReportConfig) => {
-  const transactions = [
-    {
-      date: '2024-12-01',
-      amount: 15420.50,
-      account_name: 'Medical Equipment Sales',
-      account_type: 'revenue',
-      description: 'Hospital Equipment - MRI Service Contract',
-      reference: 'INV-2024-001',
-      debit_amount: 0,
-      credit_amount: 15420.50,
-    },
-    {
-      date: '2024-12-02',
-      amount: 8750.00,
-      account_name: 'Pharmaceutical Sales',
-      account_type: 'revenue',
-      description: 'Bulk Medications - Boston General',
-      reference: 'INV-2024-002',
-      debit_amount: 0,
-      credit_amount: 8750.00,
-    },
-    {
-      date: '2024-12-03',
-      amount: 2340.75,
-      account_name: 'Office Expenses',
-      account_type: 'expense',
-      description: 'Office Supplies Purchase',
-      reference: 'BILL-2024-045',
-      debit_amount: 2340.75,
-      credit_amount: 0,
-    },
-    {
-      date: '2024-12-04',
-      amount: 125000.00,
-      account_name: 'Equipment Purchase',
-      account_type: 'asset',
-      description: 'New Diagnostic Equipment',
-      reference: 'BILL-2024-046',
-      debit_amount: 125000.00,
-      credit_amount: 0,
-    },
-    {
-      date: '2024-12-05',
-      amount: 4500.00,
-      account_name: 'Consulting Revenue',
-      account_type: 'revenue',
-      description: 'Medical Consulting Services',
-      reference: 'INV-2024-003',
-      debit_amount: 0,
-      credit_amount: 4500.00,
-    },
-    {
-      date: '2024-12-06',
-      amount: 1250.00,
-      account_name: 'Marketing Expenses',
-      account_type: 'expense',
-      description: 'Digital Marketing Campaign',
-      reference: 'BILL-2024-047',
-      debit_amount: 1250.00,
-      credit_amount: 0,
-    },
-    {
-      date: '2024-12-07',
-      amount: 18900.00,
-      account_name: 'Medical Equipment Sales',
-      account_type: 'revenue',
-      description: 'Surgical Instruments Package',
-      reference: 'INV-2024-004',
-      debit_amount: 0,
-      credit_amount: 18900.00,
-    },
-    {
-      date: '2024-12-08',
-      amount: 3200.50,
-      account_name: 'Professional Services',
-      account_type: 'expense',
-      description: 'Legal and Accounting Fees',
-      reference: 'BILL-2024-048',
-      debit_amount: 3200.50,
-      credit_amount: 0,
-    },
-  ];
 
-  // Apply filters
-  let filteredData = transactions.filter(transaction => {
-    if (config.dateRange) {
-      const transactionDate = new Date(transaction.date);
-      const startDate = new Date(config.dateRange.startDate);
-      const endDate = new Date(config.dateRange.endDate);
-      if (transactionDate < startDate || transactionDate > endDate) {
-        return false;
-      }
-    }
+// Fetch real data from database based on data source
+const fetchTransactionData = async (config: CustomReportConfig) => {
+  const supabase = await createClient();
+  
+  let query = supabase
+    .from('journal_entries')
+    .select('id, entry_number, entry_date, description, memo, status')
+    .order('entry_date', { ascending: false });
 
-    return config.filters.every(filter => {
-      const fieldValue = (transaction as any)[filter.fieldId];
-      const filterValue = filter.value;
-
-      switch (filter.operator) {
-        case 'equals':
-          return fieldValue == filterValue;
-        case 'not_equals':
-          return fieldValue != filterValue;
-        case 'greater_than':
-          return Number(fieldValue) > Number(filterValue);
-        case 'less_than':
-          return Number(fieldValue) < Number(filterValue);
-        case 'contains':
-          return String(fieldValue).toLowerCase().includes(String(filterValue).toLowerCase());
-        default:
-          return true;
-      }
-    });
-  });
-
-  // Apply sorting
-  if (config.sorts.length > 0) {
-    filteredData.sort((a, b) => {
-      for (const sort of config.sorts) {
-        const aValue = (a as any)[sort.fieldId];
-        const bValue = (b as any)[sort.fieldId];
-        
-        let comparison = 0;
-        if (aValue < bValue) comparison = -1;
-        if (aValue > bValue) comparison = 1;
-        
-        if (comparison !== 0) {
-          return sort.direction === 'desc' ? -comparison : comparison;
-        }
-      }
-      return 0;
-    });
+  // Apply date range filter
+  if (config.dateRange) {
+    query = query
+      .gte('entry_date', config.dateRange.startDate)
+      .lte('entry_date', config.dateRange.endDate);
   }
 
-  return filteredData;
+  const { data: entries, error } = await query;
+
+  if (error) {
+    console.error('Transaction data fetch error:', error);
+    throw error;
+  }
+
+  // Fetch journal lines to calculate totals
+  const { data: lines, error: linesError } = await supabase
+    .from('journal_lines')
+    .select('journal_entry_id, debit, credit, account_id');
+
+  if (linesError) {
+    console.error('Journal lines fetch error:', linesError);
+    throw linesError;
+  }
+
+  // Transform data to match expected format
+  return (entries || []).map(entry => {
+    const entryLines = (lines || []).filter(line => line.journal_entry_id === entry.id);
+    const totalDebit = entryLines.reduce((sum, line) => sum + (line.debit || 0), 0);
+    const totalCredit = entryLines.reduce((sum, line) => sum + (line.credit || 0), 0);
+    
+    return {
+      date: entry.entry_date,
+      amount: totalDebit || totalCredit || 0,
+      account_name: 'Journal Entry',
+      account_type: entry.status || 'N/A',
+      description: entry.description || entry.memo || '',
+      reference: entry.entry_number || '',
+      debit_amount: totalDebit,
+      credit_amount: totalCredit,
+    };
+  });
 };
 
-const generateCustomerData = (config: CustomReportConfig) => {
-  const customers = [
-    {
-      customer_name: 'Boston General Hospital',
-      customer_type: 'Government',
-      total_sales: 245780.50,
-      invoice_count: 28,
-      first_sale_date: '2024-01-15',
-      last_sale_date: '2024-12-01',
-      average_sale: 8777.88,
-    },
-    {
-      customer_name: 'MedTech Solutions Inc.',
-      customer_type: 'Business',
-      total_sales: 189240.75,
-      invoice_count: 22,
-      first_sale_date: '2024-02-10',
-      last_sale_date: '2024-11-28',
-      average_sale: 8601.85,
-    },
-    {
-      customer_name: 'Springfield Medical Center',
-      customer_type: 'Business',
-      total_sales: 156890.25,
-      invoice_count: 19,
-      first_sale_date: '2024-01-22',
-      last_sale_date: '2024-12-03',
-      average_sale: 8257.38,
-    },
-    {
-      customer_name: 'Dr. Sarah Johnson',
-      customer_type: 'Individual',
-      total_sales: 45670.00,
-      invoice_count: 12,
-      first_sale_date: '2024-03-05',
-      last_sale_date: '2024-11-15',
-      average_sale: 3805.83,
-    },
-    {
-      customer_name: 'City Health Department',
-      customer_type: 'Government',
-      total_sales: 78920.40,
-      invoice_count: 15,
-      first_sale_date: '2024-02-28',
-      last_sale_date: '2024-11-20',
-      average_sale: 5261.36,
-    },
-  ];
+const fetchCustomerData = async (config: CustomReportConfig) => {
+  const supabase = await createClient();
+  
+  // Fetch customers
+  const { data: customers, error: customersError } = await supabase
+    .from('customers')
+    .select('*');
 
-  return applyFiltersAndSorts(customers, config);
+  if (customersError) {
+    console.error('Customers fetch error:', customersError);
+    throw customersError;
+  }
+
+  // Fetch all invoices
+  const { data: invoices, error: invoicesError } = await supabase
+    .from('invoices')
+    .select('customer_id, total, amount_paid, invoice_date');
+
+  if (invoicesError) {
+    console.error('Invoices fetch error:', invoicesError);
+    throw invoicesError;
+  }
+
+  // Group invoices by customer and calculate metrics
+  return (customers || []).map(customer => {
+    const customerInvoices = (invoices || []).filter(inv => inv.customer_id === customer.id);
+    const totalSales = customerInvoices.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+    const invoiceCount = customerInvoices.length;
+    
+    const sortedInvoices = customerInvoices.sort((a, b) => 
+      new Date(a.invoice_date).getTime() - new Date(b.invoice_date).getTime()
+    );
+    
+    const firstSale = sortedInvoices.length > 0 ? sortedInvoices[0]?.invoice_date : null;
+    const lastSale = sortedInvoices.length > 0 ? sortedInvoices[sortedInvoices.length - 1]?.invoice_date : null;
+
+    return {
+      customer_name: customer.name,
+      customer_type: customer.company_name ? 'Business' : 'Individual',
+      total_sales: totalSales,
+      invoice_count: invoiceCount,
+      first_sale_date: firstSale,
+      last_sale_date: lastSale,
+      average_sale: invoiceCount > 0 ? totalSales / invoiceCount : 0,
+    };
+  });
 };
 
-const generateVendorData = (config: CustomReportConfig) => {
-  const vendors = [
-    {
-      vendor_name: 'MedSupply Corp',
-      vendor_type: 'Medical Equipment',
-      total_purchases: 187650.25,
-      bill_count: 24,
-      first_purchase_date: '2024-01-10',
-      last_purchase_date: '2024-12-04',
-      average_purchase: 7818.76,
-    },
-    {
-      vendor_name: 'BioTech Industries',
-      vendor_type: 'Pharmaceuticals',
-      total_purchases: 156890.50,
-      bill_count: 18,
-      first_purchase_date: '2024-02-15',
-      last_purchase_date: '2024-11-25',
-      average_purchase: 8716.14,
-    },
-    {
-      vendor_name: 'Office Solutions LLC',
-      vendor_type: 'Office Supplies',
-      total_purchases: 23480.75,
-      bill_count: 31,
-      first_purchase_date: '2024-01-05',
-      last_purchase_date: '2024-12-06',
-      average_purchase: 757.44,
-    },
-    {
-      vendor_name: 'Professional Services Inc.',
-      vendor_type: 'Consulting',
-      total_purchases: 45670.00,
-      bill_count: 8,
-      first_purchase_date: '2024-03-01',
-      last_purchase_date: '2024-12-08',
-      average_purchase: 5708.75,
-    },
-  ];
+const fetchVendorData = async (config: CustomReportConfig) => {
+  const supabase = await createClient();
+  
+  // Fetch vendors
+  const { data: vendors, error: vendorsError } = await supabase
+    .from('vendors')
+    .select('*');
 
-  return applyFiltersAndSorts(vendors, config);
+  if (vendorsError) {
+    console.error('Vendors fetch error:', vendorsError);
+    throw vendorsError;
+  }
+
+  // Fetch all bills
+  const { data: bills, error: billsError } = await supabase
+    .from('bills')
+    .select('vendor_id, total, amount_paid, bill_date');
+
+  if (billsError) {
+    console.error('Bills fetch error:', billsError);
+    throw billsError;
+  }
+
+  // Group bills by vendor and calculate metrics
+  return (vendors || []).map(vendor => {
+    const vendorBills = (bills || []).filter(bill => bill.vendor_id === vendor.id);
+    const totalPurchases = vendorBills.reduce((sum, bill) => sum + (bill.amount_paid || 0), 0);
+    const billCount = vendorBills.length;
+    
+    const sortedBills = vendorBills.sort((a, b) => 
+      new Date(a.bill_date).getTime() - new Date(b.bill_date).getTime()
+    );
+    
+    const firstPurchase = sortedBills.length > 0 ? sortedBills[0]?.bill_date : null;
+    const lastPurchase = sortedBills.length > 0 ? sortedBills[sortedBills.length - 1]?.bill_date : null;
+
+    return {
+      vendor_name: vendor.name,
+      vendor_type: vendor.is_1099_vendor ? '1099 Contractor' : 'Supplier',
+      total_purchases: totalPurchases,
+      bill_count: billCount,
+      first_purchase_date: firstPurchase,
+      last_purchase_date: lastPurchase,
+      average_purchase: billCount > 0 ? totalPurchases / billCount : 0,
+    };
+  });
 };
 
-const generateInventoryData = (config: CustomReportConfig) => {
-  const inventory = [
-    {
-      item_name: 'Surgical Masks (Box of 50)',
-      sku: 'MED-001',
-      quantity_on_hand: 1250,
-      unit_cost: 12.50,
-      total_value: 15625.00,
-      reorder_point: 200,
-      last_movement_date: '2024-12-05',
-    },
-    {
-      item_name: 'Digital Thermometers',
-      sku: 'MED-002',
-      quantity_on_hand: 85,
-      unit_cost: 45.75,
-      total_value: 3888.75,
-      reorder_point: 25,
-      last_movement_date: '2024-12-03',
-    },
-    {
-      item_name: 'Latex Gloves (Box of 100)',
-      sku: 'MED-003',
-      quantity_on_hand: 450,
-      unit_cost: 8.90,
-      total_value: 4005.00,
-      reorder_point: 100,
-      last_movement_date: '2024-12-07',
-    },
-    {
-      item_name: 'Stethoscope - Professional',
-      sku: 'MED-004',
-      quantity_on_hand: 15,
-      unit_cost: 125.00,
-      total_value: 1875.00,
-      reorder_point: 5,
-      last_movement_date: '2024-11-28',
-    },
-    {
-      item_name: 'Bandages Assorted Pack',
-      sku: 'MED-005',
-      quantity_on_hand: 320,
-      unit_cost: 15.25,
-      total_value: 4880.00,
-      reorder_point: 75,
-      last_movement_date: '2024-12-02',
-    },
-  ];
+const fetchInventoryData = async (config: CustomReportConfig) => {
+  const supabase = await createClient();
+  
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, sku, name, quantity_on_hand, cost_price, reorder_point, updated_at')
+    .eq('track_inventory', true);
 
-  return applyFiltersAndSorts(inventory, config);
+  if (error) {
+    console.error('Inventory fetch error:', error);
+    throw error;
+  }
+
+  return (products || []).map(product => ({
+    item_name: product.name,
+    sku: product.sku || 'N/A',
+    quantity_on_hand: product.quantity_on_hand || 0,
+    unit_cost: product.cost_price || 0,
+    total_value: (product.quantity_on_hand || 0) * (product.cost_price || 0),
+    reorder_point: product.reorder_point || 0,
+    last_movement_date: product.updated_at,
+  }));
 };
 
 function applyFiltersAndSorts(data: any[], config: CustomReportConfig) {
-  // Apply date range filter if applicable
-  let filteredData = data;
-
   // Apply custom filters
-  filteredData = data.filter(item => {
+  let filteredData = data.filter(item => {
     return config.filters.every(filter => {
       const fieldValue = item[filter.fieldId];
       const filterValue = filter.value;
@@ -371,30 +256,47 @@ function applyFiltersAndSorts(data: any[], config: CustomReportConfig) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Custom report POST request received');
     const config: CustomReportConfig = await request.json();
+    console.log('Config:', JSON.stringify(config, null, 2));
     
     let data: any[] = [];
     
-    // Generate data based on selected data source
-    switch (config.dataSource) {
-      case 'transactions':
-        data = generateTransactionData(config);
-        break;
-      case 'customers':
-        data = generateCustomerData(config);
-        break;
-      case 'vendors':
-        data = generateVendorData(config);
-        break;
-      case 'inventory':
-        data = generateInventoryData(config);
-        break;
-      default:
-        return NextResponse.json(
-          { error: 'Invalid data source' },
-          { status: 400 }
-        );
+    // Fetch real data from database based on selected data source
+    console.log('Fetching data for source:', config.dataSource);
+    try {
+      switch (config.dataSource) {
+        case 'transactions':
+          data = await fetchTransactionData(config);
+          break;
+        case 'customers':
+          data = await fetchCustomerData(config);
+          break;
+        case 'vendors':
+          data = await fetchVendorData(config);
+          break;
+        case 'inventory':
+          data = await fetchInventoryData(config);
+          break;
+        default:
+          console.error('Invalid data source:', config.dataSource);
+          return NextResponse.json(
+            { error: 'Invalid data source: ' + config.dataSource },
+            { status: 400 }
+          );
+      }
+      console.log('Data fetched successfully, rows:', data.length);
+    } catch (fetchError: any) {
+      console.error('Data fetch error:', fetchError);
+      return NextResponse.json(
+        { error: 'Database error: ' + (fetchError?.message || 'Unknown error') },
+        { status: 500 }
+      );
     }
+
+    // Apply additional filters and sorting
+    data = applyFiltersAndSorts(data, config);
+    console.log('After filters and sorts, rows:', data.length);
 
     // Filter data to only include selected fields
     const filteredRows = data.map(row => {
@@ -413,15 +315,17 @@ export async function POST(request: NextRequest) {
       sorts: config.sorts.length,
     };
 
+    console.log('Returning response with', filteredRows.length, 'rows');
     return NextResponse.json({
       config,
       summary,
       rows: filteredRows,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to generate custom report:', error);
+    console.error('Error stack:', error?.stack);
     return NextResponse.json(
-      { error: 'Failed to generate custom report' },
+      { error: 'Failed to generate custom report: ' + (error?.message || 'Unknown error') },
       { status: 500 }
     );
   }

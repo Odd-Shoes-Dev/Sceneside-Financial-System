@@ -214,6 +214,7 @@ export default function CustomReportsPage() {
 
     setIsLoading(true);
     try {
+      console.log('Sending config:', config);
       const response = await fetch('/api/reports/custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -221,6 +222,14 @@ export default function CustomReportsPage() {
       });
       
       const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Server error response:', data);
+        alert(`Failed to run report: ${data.error || 'Unknown error'}`);
+        return;
+      }
+      
+      console.log('Report data received:', data);
       setReportData(data);
       setActiveTab('preview');
     } catch (error) {
