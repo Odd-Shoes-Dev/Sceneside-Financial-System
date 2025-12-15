@@ -160,6 +160,9 @@ export interface Customer {
   name: string;
   company_name: string | null;
   email: string | null;
+  email_2: string | null;
+  email_3: string | null;
+  email_4: string | null;
   phone: string | null;
   address_line1: string | null;
   address_line2: string | null;
@@ -171,6 +174,7 @@ export interface Customer {
   tax_id: string | null;
   payment_terms: number;
   credit_limit: number | null;
+  balance: number | null;
   currency: string;
   notes: string | null;
   is_active: boolean;

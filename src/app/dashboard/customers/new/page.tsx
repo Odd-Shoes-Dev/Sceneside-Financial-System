@@ -16,6 +16,9 @@ export default function NewCustomerPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    email_2: '',
+    email_3: '',
+    email_4: '',
     phone: '',
     address_line1: '',
     address_line2: '',
@@ -108,9 +111,9 @@ export default function NewCustomerPage() {
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Primary Email
               </label>
               <input
                 type="email"
@@ -118,7 +121,50 @@ export default function NewCustomerPage() {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="customer@email.com"
+                placeholder="primary@customer.com"
+              />
+              <p className="text-xs text-gray-500 mt-1">Main email address for invoices and communications</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Secondary Email (Optional)
+              </label>
+              <input
+                type="email"
+                name="email_2"
+                value={formData.email_2}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="secondary@customer.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Email (Optional)
+              </label>
+              <input
+                type="email"
+                name="email_3"
+                value={formData.email_3}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="additional@customer.com"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fourth Email (Optional)
+              </label>
+              <input
+                type="email"
+                name="email_4"
+                value={formData.email_4}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="another@customer.com"
               />
             </div>
 

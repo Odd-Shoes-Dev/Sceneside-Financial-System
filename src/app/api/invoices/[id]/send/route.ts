@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, context: any) {
       .from('invoices')
       .select(`
         *,
-        customer:customers(name, email)
+        customer:customers(name, email, email_2, email_3, email_4)
       `)
       .eq('id', invoiceId)
       .single();
@@ -36,13 +36,21 @@ export async function POST(request: NextRequest, context: any) {
       );
     }
 
+    // Collect all customer email addresses
+    const emailAddresses = [
+      invoice.customer.email,
+      invoice.customer.email_2,
+      invoice.customer.email_3,
+      invoice.customer.email_4,
+    ].filter((email): email is string => Boolean(email));
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const paymentLink = `${baseUrl}/pay?invoice=${invoiceId}`;
     const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
 
-    // Send email
+    // Send email to all addresses
     await sendInvoiceEmail({
-      to: invoice.customer.email,
+      to: emailAddresses.join(', '),
       customerName: invoice.customer.name,
       invoiceNumber: invoice.invoice_number,
       invoiceDate: invoice.invoice_date,
@@ -62,7 +70,7 @@ export async function POST(request: NextRequest, context: any) {
 
     return NextResponse.json({ 
       success: true,
-      message: `Invoice sent to ${invoice.customer.email}` 
+      message: `Invoice sent to ${emailAddresses.length} email address${emailAddresses.length > 1 ? 'es' : ''}` 
     });
   } catch (error: any) {
     console.error('Error sending invoice:', error);

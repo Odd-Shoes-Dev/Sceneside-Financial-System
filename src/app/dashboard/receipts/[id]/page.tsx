@@ -459,6 +459,30 @@ export default function ReceiptDetailPage() {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/invoices/${params.id}/send`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      toast.success(data.message || 'Receipt sent successfully!');
+    } catch (error: any) {
+      console.error('Error sending receipt:', error);
+      toast.error(error.message || 'Failed to send receipt email');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -501,6 +525,13 @@ export default function ReceiptDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {customer?.email && (
+            <button onClick={handleSendEmail} className="px-3 py-2 text-sm rounded-lg font-medium bg-[#52b53b] hover:bg-[#469f32] text-white flex items-center gap-2">
+              <EnvelopeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Send Email</span>
+              <span className="sm:hidden">Send</span>
+            </button>
+          )}
           <button onClick={handlePrint} className="btn-secondary text-sm">
             <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
             <span className="hidden sm:inline">Print / PDF</span>

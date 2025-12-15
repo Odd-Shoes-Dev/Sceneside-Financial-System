@@ -527,6 +527,34 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!invoice?.customer?.email) {
+      alert('Customer does not have an email address');
+      return;
+    }
+
+    setActionLoading('email');
+    try {
+      const response = await fetch(`/api/invoices/${params.id}/send`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      alert(data.message || 'Invoice sent successfully!');
+      fetchInvoice();
+    } catch (error: any) {
+      console.error('Error sending invoice:', error);
+      alert(error.message || 'Failed to send invoice email');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this invoice?')) return;
     
@@ -597,6 +625,20 @@ export default function InvoiceDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {invoice.customer?.email && (
+            <Button 
+              variant="success" 
+              size="sm" 
+              onClick={handleSendEmail}
+              disabled={actionLoading === 'email'}
+              className="text-xs sm:text-sm"
+            >
+              <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <span className="hidden sm:inline">{actionLoading === 'email' ? 'Sending...' : 'Send Email'}</span>
+              <span className="sm:hidden">Send</span>
+            </Button>
+          )}
+
           <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
             <PrinterIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
             <span className="hidden sm:inline">Print / PDF</span>
@@ -610,7 +652,7 @@ export default function InvoiceDetailPage() {
               disabled={actionLoading === 'send'}
               className="text-xs sm:text-sm"
             >
-              <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
               <span className="hidden sm:inline">Mark as Sent</span>
             </Button>
           )}

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import type { Customer as CustomerType } from '@/types/database';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -20,25 +21,6 @@ interface PageProps {
   }>;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company_name: string;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  country: string;
-  payment_terms: number;
-  credit_limit: number;
-  balance: number;
-  is_active: boolean;
-  created_at: string;
-}
-
 interface Invoice {
   id: string;
   invoice_number: string;
@@ -51,7 +33,7 @@ interface Invoice {
 export default function CustomerDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customer, setCustomer] = useState<CustomerType | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -205,9 +187,36 @@ export default function CustomerDetailPage({ params }: PageProps) {
             {customer.email && (
               <div className="flex items-start gap-3">
                 <EnvelopeIcon className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">Primary Email</p>
                   <p className="text-base text-gray-900">{customer.email}</p>
+                </div>
+              </div>
+            )}
+            {customer.email_2 && (
+              <div className="flex items-start gap-3">
+                <EnvelopeIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">Secondary Email</p>
+                  <p className="text-base text-gray-900">{customer.email_2}</p>
+                </div>
+              </div>
+            )}
+            {customer.email_3 && (
+              <div className="flex items-start gap-3">
+                <EnvelopeIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">Additional Email</p>
+                  <p className="text-base text-gray-900">{customer.email_3}</p>
+                </div>
+              </div>
+            )}
+            {customer.email_4 && (
+              <div className="flex items-start gap-3">
+                <EnvelopeIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">Fourth Email</p>
+                  <p className="text-base text-gray-900">{customer.email_4}</p>
                 </div>
               </div>
             )}

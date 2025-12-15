@@ -173,6 +173,11 @@ export default function CustomersPage() {
                             <a href={`mailto:${customer.email}`} className="text-gray-600 hover:text-navy-600">
                               {customer.email}
                             </a>
+                            {(customer.email_2 || customer.email_3 || customer.email_4) && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                +{[customer.email_2, customer.email_3, customer.email_4].filter(Boolean).length}
+                              </span>
+                            )}
                           </div>
                         )}
                         {customer.phone && (
