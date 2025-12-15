@@ -54,13 +54,12 @@ interface DepreciationData {
     annualDepreciationExpense: number;
   };
   assets: AssetDepreciation[];
-  assetTypes: {
-    equipment: { count: number; originalCost: number; currentValue: number };
-    furniture: { count: number; originalCost: number; currentValue: number };
-    vehicle: { count: number; originalCost: number; currentValue: number };
-    building: { count: number; originalCost: number; currentValue: number };
-    technology: { count: number; originalCost: number; currentValue: number };
-  };
+  byCategory: Record<string, {
+    count: number;
+    cost: number;
+    accumulated: number;
+    bookValue: number;
+  }>;
 }
 
 export default function DepreciationSchedulePage() {
@@ -69,7 +68,7 @@ export default function DepreciationSchedulePage() {
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-  const [assetType, setAssetType] = useState('all');
+  const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('purchaseDate');
   const [isLoading, setIsLoading] = useState(false);
   const [showSchedule, setShowSchedule] = useState<string | null>(null);
@@ -78,7 +77,7 @@ export default function DepreciationSchedulePage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/reports/depreciation?startDate=${startDate}&endDate=${endDate}&assetType=${assetType}&sortBy=${sortBy}`
+        `/api/reports/depreciation?startDate=${startDate}&endDate=${endDate}&category=${category}&sortBy=${sortBy}`
       );
       const result = await response.json();
       setData(result);
@@ -91,7 +90,7 @@ export default function DepreciationSchedulePage() {
 
   useEffect(() => {
     fetchDepreciationData();
-  }, [startDate, endDate, assetType, sortBy]);
+  }, [startDate, endDate, category, sortBy]);
 
   const exportToPDF = () => {
     if (!data) return;
@@ -371,13 +370,13 @@ export default function DepreciationSchedulePage() {
             />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Asset Category</label>
             <select
-              value={assetType}
-              onChange={(e) => setAssetType(e.target.value)}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
             >
-              <option value="all">All Types</option>
+              <option value="all">All Categories</option>
               <option value="Equipment">Equipment</option>
               <option value="Furniture">Furniture</option>
               <option value="Vehicle">Vehicle</option>
@@ -394,9 +393,9 @@ export default function DepreciationSchedulePage() {
             >
               <option value="purchaseDate">Purchase Date</option>
               <option value="assetName">Asset Name</option>
-              <option value="assetType">Asset Type</option>
+              <option value="category">Asset Category</option>
               <option value="purchasePrice">Original Cost</option>
-              <option value="currentBookValue">Book Value</option>
+              <option value="bookValue">Book Value</option>
               <option value="annualDepreciation">Annual Depreciation</option>
             </select>
           </div>
@@ -484,38 +483,27 @@ export default function DepreciationSchedulePage() {
 
           {/* Asset Type Breakdown */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Asset Type Breakdown</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Asset Category Breakdown</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
-                <BuildingOfficeIcon className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-blue-600">Equipment</p>
-                <p className="text-lg font-bold text-blue-700">{data?.assetTypes?.equipment?.count || 0}</p>
-                <p className="text-sm text-blue-600">{formatCurrency(data?.assetTypes?.equipment?.currentValue || 0)}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
-                <BuildingOfficeIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-green-600">Furniture</p>
-                <p className="text-lg font-bold text-green-700">{data?.assetTypes?.furniture?.count || 0}</p>
-                <p className="text-sm text-green-600">{formatCurrency(data?.assetTypes?.furniture?.currentValue || 0)}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
-                <BuildingOfficeIcon className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-red-600">Vehicle</p>
-                <p className="text-lg font-bold text-red-700">{data?.assetTypes?.vehicle?.count || 0}</p>
-                <p className="text-sm text-red-600">{formatCurrency(data?.assetTypes?.vehicle?.currentValue || 0)}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-purple-50 border border-purple-200">
-                <BuildingOfficeIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-purple-600">Building</p>
-                <p className="text-lg font-bold text-purple-700">{data?.assetTypes?.building?.count || 0}</p>
-                <p className="text-sm text-purple-600">{formatCurrency(data?.assetTypes?.building?.currentValue || 0)}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-orange-50 border border-orange-200">
-                <BuildingOfficeIcon className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                <p className="text-sm font-medium text-orange-600">Technology</p>
-                <p className="text-lg font-bold text-orange-700">{data?.assetTypes?.technology?.count || 0}</p>
-                <p className="text-sm text-orange-600">{formatCurrency(data?.assetTypes?.technology?.currentValue || 0)}</p>
-              </div>
+              {Object.entries(data?.byCategory || {}).map(([category, stats]) => {
+                const colorMap: Record<string, string> = {
+                  'Equipment': 'blue',
+                  'Furniture': 'green',
+                  'Vehicle': 'red',
+                  'Building': 'purple',
+                  'Technology': 'orange'
+                };
+                const color = colorMap[category] || 'gray';
+                
+                return (
+                  <div key={category} className={`text-center p-4 rounded-lg bg-${color}-50 border border-${color}-200`}>
+                    <BuildingOfficeIcon className={`w-8 h-8 text-${color}-500 mx-auto mb-2`} />
+                    <p className={`text-sm font-medium text-${color}-600`}>{category}</p>
+                    <p className={`text-lg font-bold text-${color}-700`}>{stats.count}</p>
+                    <p className={`text-sm text-${color}-600`}>{formatCurrency(stats.bookValue)}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

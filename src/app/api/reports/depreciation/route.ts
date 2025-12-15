@@ -18,6 +18,13 @@ interface AssetDepreciation {
   remainingLifeMonths: number;
   status: string;
   location: string;
+  depreciationSchedule?: Array<{
+    year: number;
+    beginningValue: number;
+    depreciation: number;
+    accumulatedDepreciation: number;
+    endingValue: number;
+  }>;
 }
 
 interface DepreciationScheduleData {
@@ -84,6 +91,40 @@ const calculateDepreciation = (
   };
 };
 
+// Helper to generate depreciation schedule
+const generateDepreciationSchedule = (
+  purchasePrice: number,
+  residualValue: number,
+  usefulLifeMonths: number,
+  annualDepreciation: number
+) => {
+  const usefulLifeYears = Math.ceil(usefulLifeMonths / 12);
+  const schedule = [];
+  let beginningValue = purchasePrice;
+  let totalAccumulated = 0;
+
+  for (let year = 1; year <= usefulLifeYears; year++) {
+    const depreciation = Math.min(annualDepreciation, beginningValue - residualValue);
+    totalAccumulated += depreciation;
+    const endingValue = Math.max(purchasePrice - totalAccumulated, residualValue);
+
+    schedule.push({
+      year,
+      beginningValue,
+      depreciation,
+      accumulatedDepreciation: totalAccumulated,
+      endingValue
+    });
+
+    beginningValue = endingValue;
+    
+    // Stop if fully depreciated
+    if (endingValue <= residualValue) break;
+  }
+
+  return schedule;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -139,6 +180,13 @@ export async function GET(request: NextRequest) {
         parseFloat(asset.accumulated_depreciation) || 0
       );
 
+      const schedule = generateDepreciationSchedule(
+        parseFloat(asset.purchase_price) || 0,
+        parseFloat(asset.residual_value) || 0,
+        parseInt(asset.useful_life_months) || 0,
+        depCalc.annualDepreciation
+      );
+
       return {
         assetId: asset.id,
         assetNumber: asset.asset_number || '',
@@ -155,7 +203,8 @@ export async function GET(request: NextRequest) {
         monthlyDepreciation: depCalc.monthlyDepreciation,
         remainingLifeMonths: depCalc.remainingMonths,
         status: asset.status || 'active',
-        location: asset.location || ''
+        location: asset.location || '',
+        depreciationSchedule: schedule
       };
     });
 
