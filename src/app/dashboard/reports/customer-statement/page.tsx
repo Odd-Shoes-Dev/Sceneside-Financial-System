@@ -54,12 +54,32 @@ interface CustomerStatementData {
 
 export default function CustomerStatementPage() {
   const [data, setData] = useState<CustomerStatementData | null>(null);
+  const [customers, setCustomers] = useState<Array<{id: string; name: string}>>([]);
   const [customerId, setCustomerId] = useState('');
   const [startDate, setStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers?active=true');
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data)) {
+          const customerList = result.data.map((c: any) => ({
+            id: c.id,
+            name: c.company_name || c.name
+          }));
+          setCustomers(customerList);
+        }
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+      }
+    };
+    loadCustomers();
+  }, []);
 
   const fetchStatement = async () => {
     if (!customerId) return;
@@ -70,9 +90,16 @@ export default function CustomerStatementPage() {
         `/api/reports/customer-statement?customerId=${customerId}&startDate=${startDate}&endDate=${endDate}`
       );
       const result = await response.json();
-      setData(result);
+      
+      if (result.error) {
+        console.error('API Error:', result.error);
+        setData(null);
+      } else {
+        setData(result);
+      }
     } catch (error) {
       console.error('Failed to fetch customer statement:', error);
+      setData(null);
     } finally {
       setIsLoading(false);
     }
@@ -259,6 +286,7 @@ export default function CustomerStatementPage() {
               <h1>Sceneside L.L.C</h1>
               <div class="address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="address">Phone: (857) 384-2899</div>
+              <div class="address">Director: N.Maureen</div>
             </div>
           </div>
           
@@ -429,9 +457,11 @@ export default function CustomerStatementPage() {
               className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
             >
               <option value="">Select Customer</option>
-              <option value="customer1">Acme Corporation</option>
-              <option value="customer2">Global Industries Ltd.</option>
-              <option value="customer3">Metro Business Solutions</option>
+              {customers.map(customer => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>

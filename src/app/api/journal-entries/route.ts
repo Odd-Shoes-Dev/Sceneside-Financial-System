@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (postedOnly) {
-      query = query.eq('is_posted', true);
+      query = query.eq('status', 'posted');
     }
 
     const { data, error } = await query;
@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
       ...entry,
       lines: entry.lines?.map((line: any) => ({
         id: line.id,
-        account_code: line.account?.code || line.account_id,
-        account_name: line.account?.account_name || '',
-        debit_amount: line.debit_amount,
-        credit_amount: line.credit_amount,
+        account_code: line.account?.code || '',
+        account_name: line.account?.name || '',
+        debit_amount: line.debit || 0,
+        credit_amount: line.credit || 0,
         description: line.description,
       })),
     }));
@@ -68,6 +68,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+    
+    // Get user session
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const {
@@ -118,10 +126,10 @@ export async function POST(request: NextRequest) {
           entry_number: entryNumber,
           entry_date,
           description,
-          reference,
-          source,
-          source_id,
-          is_posted,
+          memo: reference,
+          source_module: source || 'manual',
+          source_document_id: source_id,
+          status: is_posted ? 'posted' : 'draft',
         },
       ])
       .select()
@@ -133,8 +141,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create journal entry lines
-    const lineInserts = lines.map((line: any) => ({
+    const lineInserts = lines.map((line: any, index: number) => ({
       journal_entry_id: entry.id,
+      line_number: index + 1,
       account_id: line.account_id,
       debit: line.debit_amount || 0,
       credit: line.credit_amount || 0,

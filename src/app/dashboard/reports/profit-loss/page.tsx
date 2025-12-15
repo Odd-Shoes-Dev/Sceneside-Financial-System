@@ -104,6 +104,258 @@ export default function ProfitLossReportPage() {
     setEndDate(end.toISOString().split('T')[0]);
   };
 
+  const handlePrint = () => {
+    if (!data) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(generatePrintHTML());
+    printWindow.document.close();
+    printWindow.focus();
+    
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
+  const handleExport = () => {
+    if (!data) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(generatePrintHTML());
+    printWindow.document.close();
+  };
+
+  const generatePrintHTML = () => {
+    if (!data) return '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Profit & Loss - ${formatDate(startDate)} to ${formatDate(endDate)}</title>
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 40px;
+            color: #000;
+            background: white;
+            line-height: 1.4;
+          }
+          .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+            margin-bottom: 40px; 
+            padding-bottom: 20px;
+            border-bottom: 2px solid #1e3a5f;
+          }
+          .logo-section { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+          }
+          .logo { 
+            width: 60px; 
+            height: 60px; 
+          }
+          .company-info { 
+            display: flex; 
+            flex-direction: column; 
+          }
+          .company-name { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #1e3a5f; 
+            margin-bottom: 4px; 
+          }
+          .company-address { 
+            font-size: 12px; 
+            color: #666; 
+            margin-bottom: 2px; 
+          }
+          .company-contact { 
+            font-size: 12px; 
+            color: #666; 
+          }
+          .report-info { 
+            text-align: right; 
+          }
+          .report-title { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #1e3a5f; 
+            margin-bottom: 8px; 
+          }
+          .report-date { 
+            font-size: 14px; 
+            color: #666; 
+          }
+          .section { margin-bottom: 25px; }
+          .section-title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+          }
+          .line-item { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 2px 0; 
+            margin-left: 20px;
+          }
+          .section-total { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 8px 15px; 
+            background: #f5f5f5;
+            font-weight: bold;
+            margin: 10px 0;
+          }
+          .gross-profit { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 12px 15px; 
+            background: #e8f5e9;
+            font-weight: bold;
+            font-size: 16px;
+            border: 2px solid #4caf50;
+            margin: 15px 0;
+          }
+          .net-income { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 12px 15px; 
+            background: #e3f2fd;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid #1976d2;
+            margin: 15px 0;
+          }
+          .negative { color: #d32f2f; }
+          .no-items { 
+            margin-left: 20px; 
+            font-style: italic; 
+            color: #666; 
+          }
+          @media print {
+            body { margin: 20px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .header { border-bottom-color: #1e3a5f !important; }
+            .company-name { color: #1e3a5f !important; }
+            .report-title { color: #1e3a5f !important; }
+            .logo { width: 50px; height: 50px; }
+            .section { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-section">
+            <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside L.L.C" class="logo">
+            <div class="company-info">
+              <div class="company-name">Sceneside L.L.C</div>
+              <div class="company-address">121 Bedford Street, Waltham, MA 02453</div>
+              <div class="company-contact">Phone: 857-384-2899</div>
+              <div class="company-contact">Director: N.Maureen</div>
+            </div>
+          </div>
+          <div class="report-info">
+            <div class="report-title">Profit & Loss Statement</div>
+            <div class="report-date">${formatDate(startDate)} - ${formatDate(endDate)}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">REVENUE</div>
+          ${data.revenue?.items?.length ? 
+            data.revenue.items.map(item => 
+              `<div class="line-item">
+                <span>${item.name}</span>
+                <span>${formatCurrency(item.amount)}</span>
+              </div>`
+            ).join('') : 
+            '<div class="no-items">No revenue recorded</div>'
+          }
+          <div class="section-total">
+            <span>Total Revenue</span>
+            <span>${formatCurrency(data.revenue?.total || 0)}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">COST OF SALES</div>
+          ${data.costOfSales?.items?.length ? 
+            data.costOfSales.items.map(item => 
+              `<div class="line-item">
+                <span>${item.name}</span>
+                <span>${formatCurrency(item.amount)}</span>
+              </div>`
+            ).join('') : 
+            '<div class="no-items">No cost of sales recorded</div>'
+          }
+          <div class="section-total">
+            <span>Total Cost of Sales</span>
+            <span>${formatCurrency(data.costOfSales?.total || 0)}</span>
+          </div>
+        </div>
+
+        <div class="gross-profit">
+          <span>GROSS PROFIT</span>
+          <span class="${data.grossProfit < 0 ? 'negative' : ''}">${formatCurrency(data.grossProfit || 0)}</span>
+        </div>
+
+        <div class="section">
+          <div class="section-title">OPERATING EXPENSES</div>
+          ${data.operatingExpenses?.items?.length ? 
+            data.operatingExpenses.items.map(item => 
+              `<div class="line-item">
+                <span>${item.name}</span>
+                <span>${formatCurrency(item.amount)}</span>
+              </div>`
+            ).join('') : 
+            '<div class="no-items">No operating expenses</div>'
+          }
+          <div class="section-total">
+            <span>Total Operating Expenses</span>
+            <span>${formatCurrency(data.operatingExpenses?.total || 0)}</span>
+          </div>
+        </div>
+
+        <div class="section-total">
+          <span>OPERATING INCOME</span>
+          <span class="${data.operatingIncome < 0 ? 'negative' : ''}">${formatCurrency(data.operatingIncome || 0)}</span>
+        </div>
+
+        <div class="section">
+          <div class="section-title">OTHER EXPENSES</div>
+          ${data.otherExpenses?.items?.length ? 
+            data.otherExpenses.items.map(item => 
+              `<div class="line-item">
+                <span>${item.name}</span>
+                <span>${formatCurrency(item.amount)}</span>
+              </div>`
+            ).join('') : 
+            '<div class="no-items">No other expenses</div>'
+          }
+          <div class="section-total">
+            <span>Total Other Expenses</span>
+            <span>${formatCurrency(data.otherExpenses?.total || 0)}</span>
+          </div>
+        </div>
+
+        <div class="net-income">
+          <span>NET INCOME</span>
+          <span class="${data.netIncome < 0 ? 'negative' : ''}">${formatCurrency(data.netIncome || 0)}</span>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,11 +370,11 @@ export default function ProfitLossReportPage() {
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3">
-          <button className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+          <button onClick={handlePrint} className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <PrinterIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Print</span>
           </button>
-          <button className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+          <button onClick={handleExport} className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
             <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Export</span>
           </button>

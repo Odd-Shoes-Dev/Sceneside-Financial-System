@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   BookOpenIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
@@ -17,6 +22,7 @@ interface JournalEntry {
   description: string;
   reference: string;
   source: string;
+  status: 'draft' | 'posted' | 'void';
   is_posted: boolean;
   lines: Array<{
     id: string;
@@ -48,12 +54,58 @@ export default function GeneralLedgerPage() {
     try {
       const response = await fetch('/api/journal-entries');
       const result = await response.json();
-      setEntries(result.data || []);
+      setEntries(result || []); // API returns data directly, not wrapped in { data: ... }
     } catch (error) {
       console.error('Failed to fetch entries:', error);
       setEntries([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVoid = async (id: string, entryNumber: string) => {
+    if (!confirm(`Are you sure you want to void journal entry ${entryNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/journal-entries/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'void' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to void entry');
+      }
+
+      await fetchEntries(); // Refresh the list
+    } catch (error) {
+      console.error('Error voiding entry:', error);
+      alert(error instanceof Error ? error.message : 'Failed to void entry');
+    }
+  };
+
+  const handleDelete = async (id: string, entryNumber: string) => {
+    if (!confirm(`Are you sure you want to delete journal entry ${entryNumber}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/journal-entries/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete entry');
+      }
+
+      await fetchEntries(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete entry');
     }
   };
 
@@ -70,7 +122,7 @@ export default function GeneralLedgerPage() {
   };
 
   const filteredEntries = entries.filter((entry) => {
-    if (filters.showPostedOnly && !entry.is_posted) return false;
+    if (filters.showPostedOnly && entry.status !== 'posted') return false;
     if (filters.startDate && entry.entry_date < filters.startDate) return false;
     if (filters.endDate && entry.entry_date > filters.endDate) return false;
     if (
@@ -91,6 +143,13 @@ export default function GeneralLedgerPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">General Ledger</h1>
           <p className="text-sm sm:text-base text-gray-600">Journal entries and transactions</p>
         </div>
+        <Link
+          href="/dashboard/journal-entries/new"
+          className="btn-primary inline-flex items-center gap-2"
+        >
+          <PlusIcon className="w-5 h-5" />
+          New Journal Entry
+        </Link>
       </div>
 
       {/* Filters */}
@@ -205,6 +264,47 @@ export default function GeneralLedgerPage() {
                       <p className="text-xs text-gray-500">{formatDate(entry.entry_date)}</p>
                     </div>
                   </button>
+
+                  {/* Action Buttons */}
+                  <div className="px-4 sm:px-6 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                    {entry.status === 'draft' && (
+                      <>
+                        <Link
+                          href={`/dashboard/journal-entries/${entry.id}`}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <PencilIcon className="w-3 h-3" />
+                          Edit
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(entry.id, entry.entry_number);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <TrashIcon className="w-3 h-3" />
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {entry.status === 'posted' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleVoid(entry.id, entry.entry_number);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-600 hover:bg-orange-50 rounded"
+                      >
+                        <XCircleIcon className="w-3 h-3" />
+                        Void
+                      </button>
+                    )}
+                    {entry.status === 'void' && (
+                      <span className="text-xs text-gray-400">Voided - No actions available</span>
+                    )}
+                  </div>
 
                   {/* Expanded Lines */}
                   {isExpanded && entry.lines && entry.lines.length > 0 && (

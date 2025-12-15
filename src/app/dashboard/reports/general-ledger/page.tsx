@@ -250,6 +250,7 @@ export default function GeneralLedgerPage() {
               <h1>Sceneside L.L.C</h1>
               <div class="address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="address">Phone: (857) 384-2899</div>
+              <div class="address">Director: N.Maureen</div>
             </div>
           </div>
           

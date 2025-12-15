@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface GeneralLedgerEntry {
   entryId: string;
@@ -27,6 +28,7 @@ interface AccountSummary {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
@@ -34,367 +36,123 @@ export async function GET(request: NextRequest) {
     const journalType = searchParams.get('journalType') || 'all';
     const searchTerm = searchParams.get('searchTerm') || '';
 
-    // Generate comprehensive general ledger entries with realistic business scenarios
-    const entries: GeneralLedgerEntry[] = [
-      // Cash and Bank Accounts - Assets
-      {
-        entryId: 'gl001',
-        date: '2024-12-01',
-        accountCode: '1010',
-        accountName: 'Cash - Operating Account',
-        accountType: 'Assets',
-        description: 'Initial cash balance',
-        reference: 'BAL001',
-        debit: 50000.00,
-        credit: 0.00,
-        runningBalance: 50000.00,
-        journalType: 'General Journal'
-      },
-      {
-        entryId: 'gl002',
-        date: '2024-12-01',
-        accountCode: '1020',
-        accountName: 'Business Checking Account',
-        accountType: 'Assets',
-        description: 'Bank account opening balance',
-        reference: 'BAL002',
-        debit: 125000.00,
-        credit: 0.00,
-        runningBalance: 125000.00,
-        journalType: 'General Journal'
-      },
-      
-      // Sales Revenue Entries
-      {
-        entryId: 'gl003',
-        date: '2024-12-02',
-        accountCode: '4010',
-        accountName: 'Service Revenue',
-        accountType: 'Revenue',
-        description: 'Professional services rendered - Client ABC',
-        reference: 'INV-2024-001',
-        debit: 0.00,
-        credit: 8500.00,
-        runningBalance: 8500.00,
-        journalType: 'Sales Journal'
-      },
-      {
-        entryId: 'gl004',
-        date: '2024-12-02',
-        accountCode: '1200',
-        accountName: 'Accounts Receivable',
-        accountType: 'Assets',
-        description: 'Professional services rendered - Client ABC',
-        reference: 'INV-2024-001',
-        debit: 8500.00,
-        credit: 0.00,
-        runningBalance: 8500.00,
-        journalType: 'Sales Journal'
-      },
-      
-      // Purchase Transactions
-      {
-        entryId: 'gl005',
-        date: '2024-12-03',
-        accountCode: '5010',
-        accountName: 'Office Supplies Expense',
-        accountType: 'Expenses',
-        description: 'Office supplies purchase - Staples',
-        reference: 'PO-2024-001',
-        debit: 450.00,
-        credit: 0.00,
-        runningBalance: 450.00,
-        journalType: 'Purchase Journal'
-      },
-      {
-        entryId: 'gl006',
-        date: '2024-12-03',
-        accountCode: '2010',
-        accountName: 'Accounts Payable',
-        accountType: 'Liabilities',
-        description: 'Office supplies purchase - Staples',
-        reference: 'PO-2024-001',
-        debit: 0.00,
-        credit: 450.00,
-        runningBalance: 450.00,
-        journalType: 'Purchase Journal'
-      },
-      
-      // Cash Receipts
-      {
-        entryId: 'gl007',
-        date: '2024-12-04',
-        accountCode: '1010',
-        accountName: 'Cash - Operating Account',
-        accountType: 'Assets',
-        description: 'Payment received from Client ABC',
-        reference: 'CR-001',
-        debit: 8500.00,
-        credit: 0.00,
-        runningBalance: 58500.00,
-        journalType: 'Cash Receipts'
-      },
-      {
-        entryId: 'gl008',
-        date: '2024-12-04',
-        accountCode: '1200',
-        accountName: 'Accounts Receivable',
-        accountType: 'Assets',
-        description: 'Payment received from Client ABC',
-        reference: 'CR-001',
-        debit: 0.00,
-        credit: 8500.00,
-        runningBalance: 0.00,
-        journalType: 'Cash Receipts'
-      },
-      
-      // Operating Expenses
-      {
-        entryId: 'gl009',
-        date: '2024-12-05',
-        accountCode: '5020',
-        accountName: 'Rent Expense',
-        accountType: 'Expenses',
-        description: 'Monthly office rent - December 2024',
-        reference: 'RENT-DEC2024',
-        debit: 3200.00,
-        credit: 0.00,
-        runningBalance: 3200.00,
-        journalType: 'Cash Disbursements'
-      },
-      {
-        entryId: 'gl010',
-        date: '2024-12-05',
-        accountCode: '1010',
-        accountName: 'Cash - Operating Account',
-        accountType: 'Assets',
-        description: 'Monthly office rent - December 2024',
-        reference: 'RENT-DEC2024',
-        debit: 0.00,
-        credit: 3200.00,
-        runningBalance: 55300.00,
-        journalType: 'Cash Disbursements'
-      },
-      
-      // Payroll Entries
-      {
-        entryId: 'gl011',
-        date: '2024-12-06',
-        accountCode: '5030',
-        accountName: 'Salaries and Wages Expense',
-        accountType: 'Expenses',
-        description: 'Payroll - First half December 2024',
-        reference: 'PR-2024-23',
-        debit: 12500.00,
-        credit: 0.00,
-        runningBalance: 12500.00,
-        journalType: 'Payroll Journal'
-      },
-      {
-        entryId: 'gl012',
-        date: '2024-12-06',
-        accountCode: '2020',
-        accountName: 'Salaries Payable',
-        accountType: 'Liabilities',
-        description: 'Payroll - First half December 2024',
-        reference: 'PR-2024-23',
-        debit: 0.00,
-        credit: 10000.00,
-        runningBalance: 10000.00,
-        journalType: 'Payroll Journal'
-      },
-      {
-        entryId: 'gl013',
-        date: '2024-12-06',
-        accountCode: '2030',
-        accountName: 'Payroll Tax Payable',
-        accountType: 'Liabilities',
-        description: 'Payroll taxes - First half December 2024',
-        reference: 'PR-2024-23',
-        debit: 0.00,
-        credit: 2500.00,
-        runningBalance: 2500.00,
-        journalType: 'Payroll Journal'
-      },
-      
-      // Equipment Purchase
-      {
-        entryId: 'gl014',
-        date: '2024-12-07',
-        accountCode: '1500',
-        accountName: 'Equipment',
-        accountType: 'Assets',
-        description: 'Computer equipment purchase',
-        reference: 'EQ-2024-001',
-        debit: 5800.00,
-        credit: 0.00,
-        runningBalance: 5800.00,
-        journalType: 'Purchase Journal'
-      },
-      {
-        entryId: 'gl015',
-        date: '2024-12-07',
-        accountCode: '2010',
-        accountName: 'Accounts Payable',
-        accountType: 'Liabilities',
-        description: 'Computer equipment purchase',
-        reference: 'EQ-2024-001',
-        debit: 0.00,
-        credit: 5800.00,
-        runningBalance: 6250.00,
-        journalType: 'Purchase Journal'
-      },
-      
-      // More Revenue Transactions
-      {
-        entryId: 'gl016',
-        date: '2024-12-08',
-        accountCode: '4010',
-        accountName: 'Service Revenue',
-        accountType: 'Revenue',
-        description: 'Consulting services - Client DEF',
-        reference: 'INV-2024-002',
-        debit: 0.00,
-        credit: 12000.00,
-        runningBalance: 20500.00,
-        journalType: 'Sales Journal'
-      },
-      {
-        entryId: 'gl017',
-        date: '2024-12-08',
-        accountCode: '1200',
-        accountName: 'Accounts Receivable',
-        accountType: 'Assets',
-        description: 'Consulting services - Client DEF',
-        reference: 'INV-2024-002',
-        debit: 12000.00,
-        credit: 0.00,
-        runningBalance: 12000.00,
-        journalType: 'Sales Journal'
-      },
-      
-      // Utility Expenses
-      {
-        entryId: 'gl018',
-        date: '2024-12-09',
-        accountCode: '5040',
-        accountName: 'Utilities Expense',
-        accountType: 'Expenses',
-        description: 'Electric bill - November 2024',
-        reference: 'UTIL-NOV2024',
-        debit: 285.00,
-        credit: 0.00,
-        runningBalance: 285.00,
-        journalType: 'Cash Disbursements'
-      },
-      {
-        entryId: 'gl019',
-        date: '2024-12-09',
-        accountCode: '1010',
-        accountName: 'Cash - Operating Account',
-        accountType: 'Assets',
-        description: 'Electric bill - November 2024',
-        reference: 'UTIL-NOV2024',
-        debit: 0.00,
-        credit: 285.00,
-        runningBalance: 55015.00,
-        journalType: 'Cash Disbursements'
-      },
-      
-      // Depreciation Adjustment
-      {
-        entryId: 'gl020',
-        date: '2024-12-10',
-        accountCode: '5050',
-        accountName: 'Depreciation Expense',
-        accountType: 'Expenses',
-        description: 'Monthly depreciation - Equipment',
-        reference: 'DEP-DEC2024',
-        debit: 195.00,
-        credit: 0.00,
-        runningBalance: 195.00,
-        journalType: 'General Journal'
-      },
-      {
-        entryId: 'gl021',
-        date: '2024-12-10',
-        accountCode: '1510',
-        accountName: 'Accumulated Depreciation - Equipment',
-        accountType: 'Assets',
-        description: 'Monthly depreciation - Equipment',
-        reference: 'DEP-DEC2024',
-        debit: 0.00,
-        credit: 195.00,
-        runningBalance: -195.00,
-        journalType: 'General Journal'
-      },
-      
-      // Additional Sales
-      {
-        entryId: 'gl022',
-        date: '2024-12-11',
-        accountCode: '4020',
-        accountName: 'Product Sales',
-        accountType: 'Revenue',
-        description: 'Product sales - Various customers',
-        reference: 'INV-2024-003',
-        debit: 0.00,
-        credit: 6750.00,
-        runningBalance: 6750.00,
-        journalType: 'Sales Journal'
-      },
-      {
-        entryId: 'gl023',
-        date: '2024-12-11',
-        accountCode: '1200',
-        accountName: 'Accounts Receivable',
-        accountType: 'Assets',
-        description: 'Product sales - Various customers',
-        reference: 'INV-2024-003',
-        debit: 6750.00,
-        credit: 0.00,
-        runningBalance: 18750.00,
-        journalType: 'Sales Journal'
-      },
-      
-      // Insurance Payment
-      {
-        entryId: 'gl024',
-        date: '2024-12-12',
-        accountCode: '5060',
-        accountName: 'Insurance Expense',
-        accountType: 'Expenses',
-        description: 'Business insurance premium - Q4 2024',
-        reference: 'INS-Q4-2024',
-        debit: 1200.00,
-        credit: 0.00,
-        runningBalance: 1200.00,
-        journalType: 'Cash Disbursements'
-      },
-      {
-        entryId: 'gl025',
-        date: '2024-12-12',
-        accountCode: '1010',
-        accountName: 'Cash - Operating Account',
-        accountType: 'Assets',
-        description: 'Business insurance premium - Q4 2024',
-        reference: 'INS-Q4-2024',
-        debit: 0.00,
-        credit: 1200.00,
-        runningBalance: 53815.00,
-        journalType: 'Cash Disbursements'
+    // Fetch journal entries from database
+    let query = supabase
+      .from('journal_entries')
+      .select(`
+        id,
+        entry_number,
+        entry_date,
+        description,
+        memo,
+        source_module,
+        status,
+        lines:journal_lines(
+          id,
+          line_number,
+          account_id,
+          debit,
+          credit,
+          description,
+          account:accounts(
+            id,
+            code,
+            name,
+            account_type
+          )
+        )
+      `)
+      .gte('entry_date', startDate)
+      .lte('entry_date', endDate)
+      .eq('status', 'posted')
+      .order('entry_date', { ascending: true })
+      .order('entry_number', { ascending: true });
+
+    const { data: journalEntries, error } = await query;
+
+    if (error) {
+      console.error('Error fetching journal entries:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Transform journal entries into general ledger entries
+    const entries: GeneralLedgerEntry[] = [];
+    
+    // Map source_module to journal type
+    const getJournalType = (sourceModule: string | null): GeneralLedgerEntry['journalType'] => {
+      if (!sourceModule) return 'General Journal';
+      switch (sourceModule.toLowerCase()) {
+        case 'sales':
+        case 'invoices':
+          return 'Sales Journal';
+        case 'purchases':
+        case 'bills':
+          return 'Purchase Journal';
+        case 'receipts':
+          return 'Cash Receipts';
+        case 'payments':
+        case 'disbursements':
+          return 'Cash Disbursements';
+        case 'payroll':
+          return 'Payroll Journal';
+        default:
+          return 'General Journal';
       }
-    ];
+    };
+
+    // Map account_type to our type format
+    const mapAccountType = (accountType: string): GeneralLedgerEntry['accountType'] => {
+      const type = accountType.toLowerCase();
+      if (type.includes('asset')) return 'Assets';
+      if (type.includes('liab')) return 'Liabilities';
+      if (type.includes('equity')) return 'Equity';
+      if (type.includes('revenue') || type.includes('income')) return 'Revenue';
+      if (type.includes('expense') || type.includes('cost')) return 'Expenses';
+      return 'Assets'; // default
+    };
+
+    journalEntries?.forEach((entry: any) => {
+      entry.lines?.forEach((line: any) => {
+        if (line.account) {
+          entries.push({
+            entryId: `${entry.entry_number}-${line.line_number}`,
+            date: entry.entry_date,
+            accountCode: line.account.code,
+            accountName: line.account.name,
+            accountType: mapAccountType(line.account.account_type),
+            description: line.description || entry.description || '',
+            reference: entry.memo || entry.entry_number,
+            debit: parseFloat(line.debit) || 0,
+            credit: parseFloat(line.credit) || 0,
+            runningBalance: 0, // Will be calculated below
+            journalType: getJournalType(entry.source_module)
+          });
+        }
+      });
+    });
+
+    // Calculate running balances for each account
+    const accountBalances = new Map<string, number>();
+    entries.forEach(entry => {
+      const currentBalance = accountBalances.get(entry.accountCode) || 0;
+      let newBalance = currentBalance;
+      
+      // For Assets and Expenses, debits increase balance, credits decrease
+      if (entry.accountType === 'Assets' || entry.accountType === 'Expenses') {
+        newBalance = currentBalance + entry.debit - entry.credit;
+      } else {
+        // For Liabilities, Equity, and Revenue, credits increase balance, debits decrease
+        newBalance = currentBalance + entry.credit - entry.debit;
+      }
+      
+      entry.runningBalance = newBalance;
+      accountBalances.set(entry.accountCode, newBalance);
+    });
 
     // Apply filters
     let filteredEntries = entries;
 
-    // Date filter
-    filteredEntries = filteredEntries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
-    });
-
+    // Date filter already applied in query
     // Account type filter
     if (accountFilter !== 'all') {
       filteredEntries = filteredEntries.filter(entry => entry.accountType === accountFilter);

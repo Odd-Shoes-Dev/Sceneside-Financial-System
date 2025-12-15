@@ -189,6 +189,7 @@ export default function BalanceSheetPage() {
               <div class="company-name">Sceneside L.L.C</div>
               <div class="company-address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="company-contact">Phone: 857-384-2899</div>
+              <div class="company-contact">Director: N.Maureen</div>
             </div>
           </div>
           <div class="report-info">

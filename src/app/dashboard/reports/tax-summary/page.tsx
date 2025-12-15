@@ -234,6 +234,7 @@ export default function TaxSummaryPage() {
               <h1>Sceneside L.L.C</h1>
               <div class="address">121 Bedford Street, Waltham, MA 02453</div>
               <div class="address">Phone: (857) 384-2899 | EIN: ${data.compliance.ein}</div>
+              <div class="address">Director: N.Maureen</div>
             </div>
           </div>
           

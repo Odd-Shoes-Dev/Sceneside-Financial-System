@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeftIcon,
@@ -36,61 +36,83 @@ interface JournalEntryForm {
   date: string;
   reference: string;
   description: string;
-  type: 'Manual' | 'System' | 'Adjustment' | 'Closing';
+  type: string;
   lineItems: LineItem[];
 }
 
-export default function NewJournalEntryPage() {
+export default function EditJournalEntryPage() {
   const router = useRouter();
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [formData, setFormData] = useState<JournalEntryForm>({
-    entryNumber: `JE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-    date: new Date().toISOString().split('T')[0],
-    reference: '',
-    description: '',
-    type: 'Manual',
-    lineItems: [
-      {
-        id: '1',
-        accountCode: '',
-        accountName: '',
-        accountId: '',
-        description: '',
-        debit: 0,
-        credit: 0,
-      },
-      {
-        id: '2',
-        accountCode: '',
-        accountName: '',
-        accountId: '',
-        description: '',
-        debit: 0,
-        credit: 0,
-      }
-    ]
-  });
+  const params = useParams();
+  const entryId = params.id as string;
 
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [formData, setFormData] = useState<JournalEntryForm | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Load accounts from database
+  // Load journal entry and accounts
   useEffect(() => {
-    const fetchAccounts = async () => {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('id, code, name, account_type')
-        .eq('is_active', true)
-        .order('code');
-      
-      if (data && !error) {
-        setAccounts(data);
+    const loadData = async () => {
+      try {
+        // Load accounts
+        const { data: accountsData, error: accountsError } = await supabase
+          .from('accounts')
+          .select('id, code, name, account_type')
+          .eq('is_active', true)
+          .order('code');
+        
+        if (accountsData && !accountsError) {
+          setAccounts(accountsData);
+        }
+
+        // Load journal entry
+        const response = await fetch(`/api/journal-entries/${entryId}`);
+        if (!response.ok) {
+          throw new Error('Failed to load journal entry');
+        }
+
+        const entry = await response.json();
+
+        // Check if entry is a draft
+        if (entry.status !== 'draft') {
+          alert('Only draft entries can be edited');
+          router.push('/dashboard/general-ledger');
+          return;
+        }
+
+        // Transform entry data to form format
+        setFormData({
+          entryNumber: entry.entry_number,
+          date: entry.entry_date,
+          reference: entry.reference || '',
+          description: entry.description || '',
+          type: entry.source || 'manual',
+          lineItems: entry.lines?.map((line: any) => ({
+            id: line.id,
+            accountCode: line.account_code,
+            accountName: line.account_name,
+            accountId: line.account_id,
+            description: line.description,
+            debit: line.debit_amount,
+            credit: line.credit_amount,
+          })) || [],
+        });
+      } catch (error) {
+        console.error('Error loading data:', error);
+        alert('Failed to load journal entry');
+        router.push('/dashboard/general-ledger');
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchAccounts();
-  }, []);
+
+    loadData();
+  }, [entryId, router]);
 
   const addLineItem = () => {
+    if (!formData) return;
+
     const newLineItem: LineItem = {
       id: String(Date.now()),
       accountCode: '',
@@ -100,28 +122,29 @@ export default function NewJournalEntryPage() {
       debit: 0,
       credit: 0,
     };
-    setFormData(prev => ({
+    setFormData(prev => prev ? {
       ...prev,
       lineItems: [...prev.lineItems, newLineItem]
-    }));
+    } : null);
   };
 
   const removeLineItem = (id: string) => {
-    if (formData.lineItems.length <= 2) return; // Keep at least 2 line items
-    setFormData(prev => ({
+    if (!formData || formData.lineItems.length <= 2) return;
+    setFormData(prev => prev ? {
       ...prev,
       lineItems: prev.lineItems.filter(item => item.id !== id)
-    }));
+    } : null);
   };
 
   const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
-    setFormData(prev => ({
+    if (!formData) return;
+
+    setFormData(prev => prev ? {
       ...prev,
       lineItems: prev.lineItems.map(item => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
           
-          // If account ID changes, update account code and name
           if (field === 'accountId') {
             const account = accounts.find(acc => acc.id === value);
             if (account) {
@@ -134,14 +157,16 @@ export default function NewJournalEntryPage() {
         }
         return item;
       })
-    }));
+    } : null);
   };
 
   const getTotalDebits = () => {
+    if (!formData) return 0;
     return formData.lineItems.reduce((sum, item) => sum + (item.debit || 0), 0);
   };
 
   const getTotalCredits = () => {
+    if (!formData) return 0;
     return formData.lineItems.reduce((sum, item) => sum + (item.credit || 0), 0);
   };
 
@@ -152,6 +177,8 @@ export default function NewJournalEntryPage() {
   };
 
   const validateForm = () => {
+    if (!formData) return false;
+
     const newErrors: Record<string, string> = {};
 
     if (!formData.description.trim()) {
@@ -162,7 +189,6 @@ export default function NewJournalEntryPage() {
       newErrors.reference = 'Reference is required';
     }
 
-    // Validate line items
     formData.lineItems.forEach((item, index) => {
       if (!item.accountId) {
         newErrors[`lineItem_${index}_account`] = 'Account is required';
@@ -186,21 +212,19 @@ export default function NewJournalEntryPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, postEntry: boolean) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!formData || !validateForm()) return;
 
     setIsSubmitting(true);
     try {
-      // Prepare the data for API
       const requestData = {
         entry_date: formData.date,
         description: formData.description,
         reference: formData.reference,
-        source: formData.type.toLowerCase(),
-        source_id: null,
-        is_posted: true,  // Post immediately
+        source: formData.type,
+        is_posted: postEntry,
         lines: formData.lineItems.map(item => ({
           account_id: item.accountId,
           debit_amount: item.debit || 0,
@@ -209,8 +233,8 @@ export default function NewJournalEntryPage() {
         })),
       };
 
-      const response = await fetch('/api/journal-entries', {
-        method: 'POST',
+      const response = await fetch(`/api/journal-entries/${entryId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -219,88 +243,47 @@ export default function NewJournalEntryPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create journal entry');
+        throw new Error(errorData.error || 'Failed to update journal entry');
       }
 
-      const result = await response.json();
-      console.log('Journal entry created:', result);
-      
-      // Redirect to general ledger
       router.push('/dashboard/general-ledger');
       
     } catch (error) {
-      console.error('Error creating journal entry:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create journal entry. Please try again.');
+      console.error('Error updating journal entry:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update journal entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
-    try {
-      // Prepare the data for API
-      const requestData = {
-        entry_date: formData.date,
-        description: formData.description,
-        reference: formData.reference,
-        source: formData.type.toLowerCase(),
-        source_id: null,
-        is_posted: false,  // Save as draft
-        lines: formData.lineItems.map(item => ({
-          account_id: item.accountId,
-          debit_amount: item.debit || 0,
-          credit_amount: item.credit || 0,
-          description: item.description,
-        })),
-      };
-
-      const response = await fetch('/api/journal-entries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save draft');
-      }
-
-      const result = await response.json();
-      console.log('Draft saved:', result);
-      
-      // Redirect to general ledger
-      router.push('/dashboard/general-ledger');
-      
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      alert(error instanceof Error ? error.message : 'Failed to save draft. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  if (isLoading || !formData) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sceneside-navy mx-auto"></div>
+        <p className="text-gray-500 mt-4">Loading journal entry...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/reports/journal-entries" className="btn-ghost p-1.5 sm:p-2">
+          <Link href="/dashboard/general-ledger" className="btn-ghost p-1.5 sm:p-2">
             <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
           <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">New Journal Entry</h1>
-            <p className="text-sm sm:text-base text-gray-600">Create a new accounting journal entry</p>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
+              Edit Journal Entry: {formData.entryNumber}
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600">Modify this draft journal entry</p>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
         {/* Entry Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
           <div className="flex items-center gap-2 sm:gap-3 mb-4">
@@ -308,14 +291,13 @@ export default function NewJournalEntryPage() {
             <h3 className="text-sm sm:text-base font-semibold text-gray-900">Entry Details</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Entry Number</label>
               <input
                 type="text"
                 value={formData.entryNumber}
-                onChange={(e) => setFormData(prev => ({ ...prev, entryNumber: e.target.value }))}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy bg-gray-50"
+                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm bg-gray-50"
                 readOnly
               />
             </div>
@@ -325,23 +307,10 @@ export default function NewJournalEntryPage() {
               <input
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                onChange={(e) => setFormData(prev => prev ? ({ ...prev, date: e.target.value }) : null)}
                 className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
                 required
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
-              >
-                <option value="Manual">Manual</option>
-                <option value="Adjustment">Adjustment</option>
-                <option value="Closing">Closing</option>
-              </select>
             </div>
 
             <div>
@@ -349,7 +318,7 @@ export default function NewJournalEntryPage() {
               <input
                 type="text"
                 value={formData.reference}
-                onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
+                onChange={(e) => setFormData(prev => prev ? ({ ...prev, reference: e.target.value }) : null)}
                 placeholder="Invoice #, Check #, etc."
                 className={cn(
                   "block w-full px-3 py-2 text-sm border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy",
@@ -367,7 +336,7 @@ export default function NewJournalEntryPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => setFormData(prev => prev ? ({ ...prev, description: e.target.value }) : null)}
               placeholder="Describe the purpose of this journal entry..."
               rows={3}
               className={cn(
@@ -548,25 +517,25 @@ export default function NewJournalEntryPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end">
           <Link
-            href="/dashboard/reports/journal-entries"
+            href="/dashboard/general-ledger"
             className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </Link>
           <button
-            type="button"
-            onClick={handleSaveDraft}
+            type="submit"
             disabled={isSubmitting}
             className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Saving...' : 'Save Draft'}
+            {isSubmitting ? 'Saving...' : 'Save as Draft'}
           </button>
           <button
-            type="submit"
+            type="button"
+            onClick={(e) => handleSubmit(e, true)}
             disabled={isSubmitting || !isBalanced()}
             className="inline-flex items-center justify-center px-4 py-2 bg-sceneside-navy text-white rounded-lg text-sm font-medium hover:bg-sceneside-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Creating...' : 'Create Entry'}
+            {isSubmitting ? 'Saving...' : 'Save & Post'}
           </button>
         </div>
       </form>
