@@ -118,17 +118,25 @@ export default function InvoiceDetailPage() {
 
       setLineItems(parsedItems);
 
-      // Fetch payments
+      // Fetch payments through payment_applications
       const { data: paymentsData } = await supabase
-        .from('invoice_payments')
-        .select('*')
+        .from('payment_applications')
+        .select(`
+          *,
+          payment:payments_received(*)
+        `)
         .eq('invoice_id', params.id)
-        .order('payment_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
-      // Parse payment numeric fields
-      const parsedPayments = (paymentsData || []).map(payment => ({
-        ...payment,
-        amount: parseFloat(payment.amount || 0),
+      // Parse payment numeric fields and flatten the structure
+      const parsedPayments = (paymentsData || []).map(app => ({
+        id: app.payment.id,
+        payment_number: app.payment.payment_number,
+        payment_date: app.payment.payment_date,
+        amount: parseFloat(app.amount_applied || 0),
+        payment_method: app.payment.payment_method,
+        reference_number: app.payment.reference_number,
+        notes: app.payment.notes,
       }));
 
       setPayments(parsedPayments);
@@ -171,7 +179,332 @@ export default function InvoiceDetailPage() {
   };
 
   const handlePrint = () => {
-    window.open(`/api/invoices/${params.id}/pdf`, '_blank');
+    if (!invoice) return;
+
+    const printHTML = `
+      <html>
+        <head>
+          <title>Invoice #${invoice.invoice_number} - Sceneside L.L.C</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              color: #111827;
+              background: white;
+              padding: 40px;
+            }
+            .header { 
+              display: flex; 
+              align-items: center; 
+              justify-content: space-between;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #e5e7eb;
+              padding-bottom: 20px;
+            }
+            .company-section {
+              display: flex;
+              align-items: center;
+            }
+            .logo { 
+              width: 60px; 
+              height: 60px; 
+              margin-right: 20px;
+              border-radius: 8px;
+              object-fit: contain;
+            }
+            .company-info h1 { 
+              font-size: 24px; 
+              font-weight: bold; 
+              color: #1e3a5f;
+              margin-bottom: 4px;
+            }
+            .company-info .address { 
+              font-size: 12px; 
+              color: #6b7280;
+              margin-bottom: 2px;
+            }
+            .invoice-header { 
+              text-align: right;
+            }
+            .invoice-header h2 { 
+              font-size: 28px; 
+              font-weight: bold; 
+              color: #1e3a5f;
+              margin-bottom: 4px;
+            }
+            .invoice-header .number { 
+              font-size: 14px; 
+              color: #6b7280;
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 12px;
+              font-size: 11px;
+              font-weight: 600;
+              text-transform: uppercase;
+              margin-top: 8px;
+            }
+            .status-draft { background: #f3f4f6; color: #374151; }
+            .status-sent { background: #dbeafe; color: #1e40af; }
+            .status-partial { background: #fef3c7; color: #92400e; }
+            .status-paid { background: #d1fae5; color: #065f46; }
+            .status-overdue { background: #fee2e2; color: #991b1b; }
+            .invoice-details {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin: 25px 0;
+            }
+            .section {
+              border: 1px solid #e5e7eb;
+              border-radius: 8px;
+              padding: 15px;
+              background: #f9fafb;
+            }
+            .section h3 {
+              font-size: 12px;
+              font-weight: bold;
+              color: #6b7280;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+            }
+            .section p {
+              font-size: 14px;
+              color: #111827;
+              margin-bottom: 4px;
+            }
+            .section .label {
+              font-size: 12px;
+              color: #6b7280;
+            }
+            .section .value {
+              font-size: 14px;
+              color: #111827;
+              font-weight: 500;
+            }
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 25px 0;
+            }
+            .items-table thead {
+              background: #f9fafb;
+            }
+            .items-table th {
+              text-align: left;
+              padding: 12px;
+              font-size: 12px;
+              font-weight: bold;
+              color: #6b7280;
+              text-transform: uppercase;
+              border-bottom: 2px solid #e5e7eb;
+            }
+            .items-table th.text-right {
+              text-align: right;
+            }
+            .items-table td {
+              padding: 12px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            .items-table td.text-right {
+              text-align: right;
+            }
+            .totals-section {
+              margin: 30px 0;
+              padding: 20px;
+              border: 2px solid #e5e7eb;
+              border-radius: 8px;
+              display: flex;
+              justify-content: flex-end;
+            }
+            .totals-box {
+              min-width: 300px;
+            }
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              font-size: 14px;
+            }
+            .total-row.subtotal {
+              color: #6b7280;
+            }
+            .total-row.total {
+              border-top: 2px solid #111827;
+              margin-top: 10px;
+              padding-top: 15px;
+              font-size: 18px;
+              font-weight: bold;
+            }
+            .total-row.balance-due {
+              font-size: 18px;
+              font-weight: bold;
+              color: #dc2626;
+            }
+            .total-row.paid {
+              color: #16a34a;
+            }
+            .notes-section {
+              margin: 25px 0;
+              padding: 20px;
+              background: #f9fafb;
+              border-radius: 8px;
+            }
+            .notes-section h3 {
+              font-size: 12px;
+              font-weight: bold;
+              color: #6b7280;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+            }
+            .notes-section p {
+              font-size: 14px;
+              color: #111827;
+              white-space: pre-wrap;
+            }
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #e5e7eb;
+              text-align: center;
+              font-size: 11px;
+              color: #6b7280;
+            }
+            @media print {
+              body { padding: 20px; }
+              @page { margin: 0.5in; }
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Header -->
+          <div class="header">
+            <div class="company-section">
+              <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside Logo" class="logo" />
+              <div class="company-info">
+                <h1>Sceneside L.L.C</h1>
+                <p class="address">121 Bedford Street</p>
+                <p class="address">Waltham, MA 02453</p>
+                <p class="address">Massachusetts, USA</p>
+                <p class="address" style="margin-top: 8px;">Director: N.Maureen</p>
+              </div>
+            </div>
+            <div class="invoice-header">
+              <h2>INVOICE</h2>
+              <p class="number">#${invoice.invoice_number}</p>
+              <span class="status-badge status-${invoice.status}">${invoice.status.toUpperCase()}</span>
+            </div>
+          </div>
+
+          <!-- Customer and Date Info -->
+          <div class="invoice-details">
+            <!-- Customer -->
+            <div class="section">
+              <h3>Bill To</h3>
+              <p><strong>${invoice.customer?.name || 'N/A'}</strong></p>
+              ${invoice.customer?.email ? `<p>${invoice.customer.email}</p>` : ''}
+              ${invoice.customer?.phone ? `<p>${invoice.customer.phone}</p>` : ''}
+              ${invoice.customer?.address ? `<p style="margin-top: 8px;">${invoice.customer.address}</p>` : ''}
+              ${invoice.customer?.city ? `<p>${[invoice.customer.city, invoice.customer.state, invoice.customer.zip_code].filter(Boolean).join(', ')}</p>` : ''}
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="section">
+              <h3>Invoice Details</h3>
+              <p><span class="label">Invoice Date:</span> <span class="value">${formatDate(invoice.invoice_date)}</span></p>
+              <p><span class="label">Due Date:</span> <span class="value">${formatDate(invoice.due_date)}</span></p>
+              ${invoice.po_number ? `<p><span class="label">PO Number:</span> <span class="value">${invoice.po_number}</span></p>` : ''}
+            </div>
+          </div>
+
+          <!-- Line Items -->
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Description</th>
+                <th class="text-right">Quantity</th>
+                <th class="text-right">Unit Price</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItems.map(item => `
+                <tr>
+                  <td>${item.line_number}</td>
+                  <td>${item.description}</td>
+                  <td class="text-right">${item.quantity}</td>
+                  <td class="text-right">${formatCurrency(Number(item.unit_price))}</td>
+                  <td class="text-right"><strong>${formatCurrency(Number(item.amount))}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <!-- Totals -->
+          <div class="totals-section">
+            <div class="totals-box">
+              <div class="total-row subtotal">
+                <span>Subtotal</span>
+                <span>${formatCurrency(Number(invoice.subtotal))}</span>
+              </div>
+              ${Number(invoice.discount_amount) > 0 ? `
+              <div class="total-row subtotal" style="color: #16a34a;">
+                <span>Discount</span>
+                <span>-${formatCurrency(Number(invoice.discount_amount))}</span>
+              </div>
+              ` : ''}
+              <div class="total-row subtotal">
+                <span>Tax (${invoice.tax_rate}%)</span>
+                <span>${formatCurrency(Number(invoice.tax_amount))}</span>
+              </div>
+              <div class="total-row total">
+                <span>TOTAL</span>
+                <span>${formatCurrency(Number(invoice.total_amount))}</span>
+              </div>
+              ${Number(invoice.amount_paid) > 0 ? `
+              <div class="total-row paid">
+                <span>Amount Paid</span>
+                <span>-${formatCurrency(Number(invoice.amount_paid))}</span>
+              </div>
+              <div class="total-row balance-due">
+                <span>BALANCE DUE</span>
+                <span>${formatCurrency(Number(invoice.total_amount) - Number(invoice.amount_paid))}</span>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Notes -->
+          ${invoice.notes ? `
+          <div class="notes-section">
+            <h3>Notes</h3>
+            <p>${invoice.notes}</p>
+          </div>
+          ` : ''}
+
+          <!-- Footer -->
+          <div class="footer">
+            <p>This is a computer-generated document. No signature required.</p>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Open print dialog in new window
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Wait a moment for content to load, then show print dialog
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
   };
 
   const handleMarkAsSent = async () => {

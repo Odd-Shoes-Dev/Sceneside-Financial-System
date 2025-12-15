@@ -12,6 +12,7 @@ interface Invoice {
   invoice_number: string;
   total: number;
   amount_paid: number;
+  customer_id: string;
   customer: {
     name: string | null;
   } | null;
@@ -46,6 +47,7 @@ export default function RecordPaymentPage() {
           invoice_number,
           total,
           amount_paid,
+          customer_id,
           customer:customers(name)
         `)
         .eq('id', params.id)
@@ -58,6 +60,7 @@ export default function RecordPaymentPage() {
         invoice_number: data.invoice_number,
         total: data.total,
         amount_paid: data.amount_paid,
+        customer_id: data.customer_id,
         customer: Array.isArray(customerData)
           ? customerData[0] ?? null
           : customerData ?? null,
@@ -92,19 +95,55 @@ export default function RecordPaymentPage() {
         throw new Error(`Amount cannot exceed balance due (${formatCurrency(balanceDue)})`);
       }
 
-      // Record payment
-      const { error: paymentError } = await supabase
-        .from('invoice_payments')
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Generate payment number
+      const { data: lastPayment } = await supabase
+        .from('payments_received')
+        .select('payment_number')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      let paymentNumber = 'PMT-2025-00001';
+      if (lastPayment?.payment_number) {
+        const match = lastPayment.payment_number.match(/PMT-(\d{4})-(\d{5})/);
+        if (match) {
+          const year = new Date().getFullYear();
+          const num = parseInt(match[2]) + 1;
+          paymentNumber = `PMT-${year}-${num.toString().padStart(5, '0')}`;
+        }
+      }
+
+      // Create payment record
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments_received')
         .insert({
-          invoice_id: params.id,
+          payment_number: paymentNumber,
+          customer_id: invoice!.customer_id,
           payment_date: formData.payment_date,
           amount: amount,
           payment_method: formData.payment_method,
           reference_number: formData.reference_number || null,
           notes: formData.notes || null,
-        });
+          created_by: user?.id,
+        })
+        .select()
+        .single();
 
       if (paymentError) throw paymentError;
+
+      // Create payment application (link payment to invoice)
+      const { error: applicationError } = await supabase
+        .from('payment_applications')
+        .insert({
+          payment_id: paymentData.id,
+          invoice_id: params.id,
+          amount_applied: amount,
+        });
+
+      if (applicationError) throw applicationError;
 
       // Update invoice amount_paid and status
       const newAmountPaid = Number(invoice!.amount_paid) + amount;

@@ -1,0 +1,339 @@
+'use client';
+
+import { useState, useEffect, use } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+import {
+  ArrowLeftIcon,
+  PencilIcon,
+  TrashIcon,
+  UserIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+} from '@heroicons/react/24/outline';
+
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company_name: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  payment_terms: number;
+  credit_limit: number;
+  balance: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface Invoice {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  due_date: string;
+  total: number;
+  status: string;
+}
+
+export default function CustomerDetailPage({ params }: PageProps) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    loadCustomer();
+    loadInvoices();
+  }, [id]);
+
+  const loadCustomer = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      setCustomer(data);
+    } catch (error) {
+      console.error('Failed to load customer:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInvoices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, invoice_date, due_date, total, status')
+        .eq('customer_id', id)
+        .order('invoice_date', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setInvoices(data || []);
+    } catch (error) {
+      console.error('Failed to load invoices:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete "${customer?.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Customer deleted successfully');
+      router.push('/dashboard/customers');
+    } catch (error) {
+      console.error('Failed to delete customer:', error);
+      alert('Failed to delete customer. They may have associated invoices.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
+      </div>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Customer not found</p>
+        <Link href="/dashboard/customers" className="btn-primary mt-4">
+          Back to Customers
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/customers" className="btn-ghost p-2">
+            <ArrowLeftIcon className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
+            <p className="text-gray-500 mt-1">{customer.company_name || 'Individual Customer'}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href={`/dashboard/customers/${id}/edit`}
+            className="btn-ghost p-2"
+          >
+            <PencilIcon className="w-5 h-5" />
+          </Link>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="btn-ghost p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            <TrashIcon className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Status Badge */}
+      <div>
+        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+          customer.is_active
+            ? 'bg-green-100 text-green-800'
+            : 'bg-red-100 text-red-800'
+        }`}>
+          {customer.is_active ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+
+      {/* Customer Information */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Contact Information */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <UserIcon className="w-5 h-5" />
+            Contact Information
+          </h2>
+          <div className="space-y-4">
+            {customer.email && (
+              <div className="flex items-start gap-3">
+                <EnvelopeIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-base text-gray-900">{customer.email}</p>
+                </div>
+              </div>
+            )}
+            {customer.phone && (
+              <div className="flex items-start gap-3">
+                <PhoneIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-base text-gray-900">{customer.phone}</p>
+                </div>
+              </div>
+            )}
+            {(customer.address_line1 || customer.city) && (
+              <div className="flex items-start gap-3">
+                <MapPinIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-500">Address</p>
+                  <div className="text-base text-gray-900">
+                    {customer.address_line1 && <p>{customer.address_line1}</p>}
+                    {customer.address_line2 && <p>{customer.address_line2}</p>}
+                    {(customer.city || customer.state || customer.zip_code) && (
+                      <p>
+                        {customer.city}{customer.city && (customer.state || customer.zip_code) ? ', ' : ''}
+                        {customer.state} {customer.zip_code}
+                      </p>
+                    )}
+                    {customer.country && <p>{customer.country}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Account Summary */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Account Summary</h2>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500">Current Balance</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(customer.balance || 0)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+              <div>
+                <p className="text-sm text-gray-500">Payment Terms</p>
+                <p className="text-base font-medium text-gray-900">Net {customer.payment_terms} days</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Credit Limit</p>
+                <p className="text-base font-medium text-gray-900">
+                  {customer.credit_limit ? formatCurrency(customer.credit_limit) : 'Unlimited'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Invoices */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900">Recent Invoices</h3>
+          <Link
+            href={`/dashboard/invoices/new?customer_id=${id}`}
+            className="btn-primary text-sm"
+          >
+            New Invoice
+          </Link>
+        </div>
+
+        {invoices.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No invoices yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {invoices.map((invoice) => (
+                  <tr
+                    key={invoice.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}
+                  >
+                    <td className="px-6 py-4 text-sm text-gray-900">{invoice.invoice_number}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{formatDate(invoice.invoice_date)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{formatDate(invoice.due_date)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
+                      {formatCurrency(invoice.total)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        invoice.status === 'paid'
+                          ? 'bg-green-100 text-green-800'
+                          : invoice.status === 'overdue'
+                          ? 'bg-red-100 text-red-800'
+                          : invoice.status === 'partial'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Metadata */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <p className="text-xs text-gray-500">
+          Customer since {formatDate(customer.created_at)}
+        </p>
+      </div>
+    </div>
+  );
+}

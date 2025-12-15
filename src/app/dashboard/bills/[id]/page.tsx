@@ -240,8 +240,8 @@ export default function BillDetailPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 print:hidden">
-        <div className="flex items-center gap-4">
+      <div className="mb-6 print:hidden">
+        <div className="flex items-center gap-4 mb-4">
           <Link
             href="/dashboard/bills"
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -249,54 +249,56 @@ export default function BillDetailPage() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{bill.bill_number}</h1>
-            <p className="text-gray-600">Bill Details</p>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{bill.bill_number}</h1>
+            <p className="text-sm md:text-base text-gray-600">Bill Details</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <button onClick={handlePrint} className="btn-secondary">
-            <PrinterIcon className="w-5 h-5 mr-2" />
-            Print
+        
+        {/* Action Buttons - Mobile Optimized */}
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handlePrint} className="btn-secondary text-sm">
+            <PrinterIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+            <span className="hidden md:inline">Print</span>
           </button>
           
           {bill.status === 'draft' && (
             <>
-              <Link href={`/dashboard/bills/${params.id}/edit`} className="btn-secondary">
-                <PencilIcon className="w-5 h-5 mr-2" />
-                Edit
+              <Link href={`/dashboard/bills/${params.id}/edit`} className="btn-secondary text-sm">
+                <PencilIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <span className="hidden md:inline">Edit</span>
               </Link>
               <button 
                 onClick={handleApprove} 
                 disabled={actionLoading}
-                className="btn-secondary"
+                className="btn-secondary text-sm"
               >
-                <CheckIcon className="w-5 h-5 mr-2" />
-                Approve
+                <CheckIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <span className="hidden md:inline">Approve</span>
               </button>
               <button 
                 onClick={handleDelete} 
                 disabled={actionLoading}
-                className="btn-secondary text-red-600 hover:bg-red-50"
+                className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
               >
-                <TrashIcon className="w-5 h-5 mr-2" />
-                Delete
+                <TrashIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <span className="hidden md:inline">Delete</span>
               </button>
             </>
           )}
 
           {['approved', 'partial', 'overdue'].includes(bill.status) && balanceDue > 0 && (
             <>
-              <Link href={`/dashboard/bills/${params.id}/payment`} className="btn-primary">
-                <CreditCardIcon className="w-5 h-5 mr-2" />
+              <Link href={`/dashboard/bills/${params.id}/payment`} className="btn-primary text-sm flex-1 md:flex-none justify-center">
+                <CreditCardIcon className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                 Record Payment
               </Link>
               <button 
                 onClick={handleVoid} 
                 disabled={actionLoading}
-                className="btn-secondary text-red-600 hover:bg-red-50"
+                className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
               >
-                <XMarkIcon className="w-5 h-5 mr-2" />
-                Void
+                <XMarkIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+                <span className="hidden md:inline">Void</span>
               </button>
             </>
           )}
@@ -305,10 +307,10 @@ export default function BillDetailPage() {
             <button 
               onClick={handleVoid} 
               disabled={actionLoading}
-              className="btn-secondary text-red-600 hover:bg-red-50"
+              className="btn-secondary text-red-600 hover:bg-red-50 text-sm"
             >
-              <XMarkIcon className="w-5 h-5 mr-2" />
-              Void
+              <XMarkIcon className="w-4 h-4 md:w-5 md:h-5 md:mr-2" />
+              <span className="hidden md:inline">Void</span>
             </button>
           )}
         </div>
@@ -317,17 +319,17 @@ export default function BillDetailPage() {
       {/* Bill Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Header Section */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-start">
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">BILL</h2>
-              <p className="text-gray-600">Bill #: {bill.bill_number}</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">BILL</h2>
+              <p className="text-sm md:text-base text-gray-600">Bill #: {bill.bill_number}</p>
               {bill.vendor_invoice_number && (
-                <p className="text-gray-600">Vendor Invoice: {bill.vendor_invoice_number}</p>
+                <p className="text-sm md:text-base text-gray-600">Vendor Invoice: {bill.vendor_invoice_number}</p>
               )}
             </div>
-            <div className="text-right">
-              <span className={`badge ${getStatusBadge(bill.status)} text-lg px-4 py-2`}>
+            <div className="self-start">
+              <span className={`badge ${getStatusBadge(bill.status)} text-sm md:text-lg px-3 py-1 md:px-4 md:py-2`}>
                 {bill.status.replace('_', ' ')}
               </span>
             </div>
@@ -335,14 +337,14 @@ export default function BillDetailPage() {
         </div>
 
         {/* Vendor & Date Info */}
-        <div className="grid md:grid-cols-2 gap-6 p-6 border-b border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-4 md:p-6 border-b border-gray-200">
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">VENDOR</h3>
-            <p className="font-medium text-gray-900">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2 uppercase">Vendor</h3>
+            <p className="font-medium text-gray-900 text-sm md:text-base">
               {bill.vendors?.company_name || bill.vendors?.name}
             </p>
             {(bill.vendors?.address_line1 || bill.vendors?.city) && (
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="text-xs md:text-sm text-gray-600 mt-1">
                 {bill.vendors.address_line1 && <p>{bill.vendors.address_line1}</p>}
                 {bill.vendors.address_line2 && <p>{bill.vendors.address_line2}</p>}
                 {(bill.vendors.city || bill.vendors.state || bill.vendors.zip_code) && (
@@ -356,70 +358,93 @@ export default function BillDetailPage() {
               </div>
             )}
             {bill.vendors?.email && (
-              <p className="text-sm text-gray-600">{bill.vendors.email}</p>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">{bill.vendors.email}</p>
             )}
             {bill.vendors?.phone && (
-              <p className="text-sm text-gray-600">{bill.vendors.phone}</p>
+              <p className="text-xs md:text-sm text-gray-600">{bill.vendors.phone}</p>
             )}
           </div>
           <div>
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2 uppercase md:hidden">Date Information</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Bill Date</p>
-                <p className="font-medium">{formatDate(bill.bill_date)}</p>
+                <p className="text-xs md:text-sm text-gray-600">Bill Date</p>
+                <p className="font-medium text-sm md:text-base">{formatDate(bill.bill_date)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Due Date</p>
-                <p className="font-medium">{formatDate(bill.due_date)}</p>
+                <p className="text-xs md:text-sm text-gray-600">Due Date</p>
+                <p className="font-medium text-sm md:text-base">{formatDate(bill.due_date)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Line Items */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Unit Cost
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {lines.map((line) => (
-                <tr key={line.id}>
-                  <td className="px-6 py-4">
-                    <p className="text-gray-900">{line.description}</p>
-                  </td>
-                  <td className="px-6 py-4 text-right text-gray-900">
-                    {parseFloat(line.quantity as any)}
-                  </td>
-                  <td className="px-6 py-4 text-right text-gray-900">
-                    {formatCurrency(line.unit_cost)}
-                  </td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-900">
-                    {formatCurrency(line.line_total)}
-                  </td>
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-4 uppercase">Line Items</h3>
+          
+          {/* Mobile View */}
+          <div className="md:hidden space-y-3">
+            {lines.map((line) => (
+              <div key={line.id} className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="font-medium text-gray-900 flex-1 pr-2">{line.description}</p>
+                  <p className="font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(line.line_total)}</p>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-600">
+                  <span>Qty: {parseFloat(line.quantity as any)}</span>
+                  <span>•</span>
+                  <span>Unit: {formatCurrency(line.unit_cost)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Unit Cost
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Amount
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {lines.map((line) => (
+                  <tr key={line.id}>
+                    <td className="px-4 py-3">
+                      <p className="text-gray-900">{line.description}</p>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-900">
+                      {parseFloat(line.quantity as any)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-900">
+                      {formatCurrency(line.unit_cost)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                      {formatCurrency(line.line_total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Totals */}
-        <div className="p-6 bg-gray-50">
+        <div className="p-4 md:p-6 bg-gray-50">
           <div className="flex justify-end">
-            <div className="w-full md:w-80 space-y-2">
+            <div className="w-full md:w-80 space-y-2 text-sm md:text-base">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">{formatCurrency(bill.subtotal)}</span>
@@ -432,7 +457,7 @@ export default function BillDetailPage() {
               )}
               <div className="flex justify-between pt-2 border-t border-gray-300">
                 <span className="font-semibold text-gray-900">Total</span>
-                <span className="font-semibold text-gray-900 text-lg">
+                <span className="font-semibold text-gray-900 text-base md:text-lg">
                   {formatCurrency(bill.total)}
                 </span>
               </div>
@@ -443,8 +468,8 @@ export default function BillDetailPage() {
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t border-gray-300">
-                <span className="font-bold text-gray-900">Balance Due</span>
-                <span className="font-bold text-gray-900 text-xl">
+                <span className="font-semibold">Balance Due</span>
+                <span className="font-semibold text-base md:text-lg">
                   {formatCurrency(balanceDue)}
                 </span>
               </div>
@@ -454,9 +479,9 @@ export default function BillDetailPage() {
 
         {/* Notes */}
         {bill.notes && (
-          <div className="p-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">NOTES</h3>
-            <p className="text-gray-600 whitespace-pre-line">{bill.notes}</p>
+          <div className="p-4 md:p-6 border-t border-gray-200">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2 uppercase">Notes</h3>
+            <p className="text-sm md:text-base text-gray-700 whitespace-pre-wrap">{bill.notes}</p>
           </div>
         )}
       </div>
