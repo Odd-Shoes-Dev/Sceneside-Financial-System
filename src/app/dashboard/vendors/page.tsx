@@ -17,13 +17,14 @@ export default function VendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 20;
 
   useEffect(() => {
     loadVendors();
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, statusFilter, currentPage]);
 
   const loadVendors = async () => {
     try {
@@ -32,6 +33,14 @@ export default function VendorsPage() {
         .from('vendors')
         .select('*', { count: 'exact' })
         .order('name');
+
+      // Apply status filter
+      if (statusFilter === 'active') {
+        query = query.eq('is_active', true);
+      } else if (statusFilter === 'inactive') {
+        query = query.eq('is_active', false);
+      }
+      // 'all' shows both active and inactive
 
       if (searchQuery) {
         query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`);
@@ -77,7 +86,7 @@ export default function VendorsPage() {
         </Link>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <div className="card">
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-4">
@@ -93,6 +102,20 @@ export default function VendorsPage() {
                 }}
                 className="input pl-10"
               />
+            </div>
+            <div className="w-full md:w-48">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as 'active' | 'inactive' | 'all');
+                  setCurrentPage(1);
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              >
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="all">All Vendors</option>
+              </select>
             </div>
           </div>
         </div>

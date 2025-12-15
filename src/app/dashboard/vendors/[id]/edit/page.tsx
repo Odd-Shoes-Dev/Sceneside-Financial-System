@@ -1,15 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeftIcon,
   TruckIcon,
 } from '@heroicons/react/24/outline';
 
-export default function NewVendorPage() {
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function EditVendorPage({ params }: PageProps) {
+  const { id } = use(params);
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,13 +36,57 @@ export default function NewVendorPage() {
     payment_terms: 30,
     default_expense_account_id: '',
     notes: '',
+    is_active: true,
   });
 
+  useEffect(() => {
+    loadVendor();
+  }, [id]);
+
+  const loadVendor = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData({
+          name: data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          address_line1: data.address_line1 || '',
+          address_line2: data.address_line2 || '',
+          city: data.city || '',
+          state: data.state || 'MA',
+          zip_code: data.zip_code || '',
+          country: data.country || 'USA',
+          tax_id: data.tax_id || '',
+          payment_terms: data.payment_terms || 30,
+          default_expense_account_id: data.default_expense_account_id || '',
+          notes: data.notes || '',
+          is_active: data.is_active ?? true,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load vendor:', err);
+      setError('Failed to load vendor details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'payment_terms' ? Number(value) : value,
+      [name]: type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+        : (name === 'payment_terms' ? Number(value) : value),
     }));
   };
 
@@ -49,15 +102,15 @@ export default function NewVendorPage() {
         default_expense_account_id: formData.default_expense_account_id || null,
       };
 
-      const response = await fetch('/api/vendors', {
-        method: 'POST',
+      const response = await fetch(`/api/vendors/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create vendor');
+        throw new Error(data.error || 'Failed to update vendor');
       }
 
       router.push('/dashboard/vendors');
@@ -67,6 +120,35 @@ export default function NewVendorPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/vendors/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete vendor');
+      }
+
+      router.push('/dashboard/vendors');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -79,8 +161,8 @@ export default function NewVendorPage() {
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">New Vendor</h1>
-          <p className="text-gray-600">Add a new vendor/supplier to your database</p>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Vendor</h1>
+          <p className="text-gray-600">Update vendor information</p>
         </div>
       </div>
 
@@ -154,6 +236,19 @@ export default function NewVendorPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="XX-XXXXXXX"
               />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={formData.is_active}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-[#52b53b] border-gray-300 rounded focus:ring-[#1e3a5f]"
+                />
+                <span className="text-sm font-medium text-gray-700">Active Vendor</span>
+              </label>
             </div>
           </div>
         </div>
@@ -318,20 +413,29 @@ export default function NewVendorPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
-          <Link
-            href="/dashboard/vendors"
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </Link>
+        <div className="flex items-center justify-between">
           <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2 bg-[#52b53b] text-white rounded-lg text-sm font-medium hover:bg-[#449932] disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
           >
-            {isSubmitting ? 'Creating...' : 'Create Vendor'}
+            Delete Vendor
           </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/vendors"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-[#52b53b] text-white rounded-lg text-sm font-medium hover:bg-[#449932] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

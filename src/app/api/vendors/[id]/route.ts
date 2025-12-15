@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/vendors/[id]
 export async function GET(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('vendors')
       .select('*, accounts:default_expense_account_id (id, name, code)')
       .eq('id', params.id)
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, context: any) {
 
 // PATCH /api/vendors/[id]
 export async function PATCH(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -72,7 +72,7 @@ export async function PATCH(request: NextRequest, context: any) {
 
 // DELETE /api/vendors/[id]
 export async function DELETE(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
 
