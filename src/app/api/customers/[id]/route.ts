@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/customers/[id]
 export async function GET(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, context: any) {
 
 // PATCH /api/customers/[id]
 export async function PATCH(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, context: any) {
 
 // DELETE /api/customers/[id]
 export async function DELETE(request: NextRequest, context: any) {
-  const { params } = context || {};
+  const params = await context.params;
   try {
     const supabase = await createClient();
 

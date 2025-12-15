@@ -16,13 +16,14 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 20;
 
   useEffect(() => {
     loadCustomers();
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, statusFilter, currentPage]);
 
   const loadCustomers = async () => {
     try {
@@ -31,6 +32,14 @@ export default function CustomersPage() {
         .from('customers')
         .select('*', { count: 'exact' })
         .order('name');
+
+      // Apply status filter
+      if (statusFilter === 'active') {
+        query = query.eq('is_active', true);
+      } else if (statusFilter === 'inactive') {
+        query = query.eq('is_active', false);
+      }
+      // 'all' shows both active and inactive
 
       if (searchQuery) {
         query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`);
@@ -92,6 +101,20 @@ export default function CustomersPage() {
                 }}
                 className="input pl-10"
               />
+            </div>
+            <div className="w-full md:w-48">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as 'active' | 'inactive' | 'all');
+                  setCurrentPage(1);
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+              >
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="all">All Customers</option>
+              </select>
             </div>
           </div>
         </div>
@@ -166,13 +189,15 @@ export default function CustomersPage() {
                         {customer.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="text-right">
-                      <Link
-                        href={`/dashboard/customers/${customer.id}/edit`}
-                        className="btn-ghost p-2"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </Link>
+                    <td>
+                      <div className="flex justify-end">
+                        <Link
+                          href={`/dashboard/customers/${customer.id}/edit`}
+                          className="btn-ghost p-2"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
