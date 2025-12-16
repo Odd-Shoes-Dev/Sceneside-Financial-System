@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
         unit_of_measure: body.unit_of_measure || 'each',
         cost_price: body.unit_cost || 0,
         unit_price: body.unit_price || 0,
+        currency: body.currency || 'USD',
         quantity_on_hand: body.quantity_on_hand || 0,
         quantity_reserved: 0,
         reorder_point: body.reorder_point || 0,

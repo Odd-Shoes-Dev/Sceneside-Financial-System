@@ -21,7 +21,7 @@ export function CurrencySelect({
       onChange={onChange}
       name={name}
       disabled={disabled}
-      className={`rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] ${className}`}
+      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] ${className}`}
     >
       {Object.entries(SUPPORTED_CURRENCIES).map(([code, info]) => (
         <option key={code} value={code}>

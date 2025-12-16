@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatCurrency as currencyFormatter, type SupportedCurrency } from '@/lib/currency';
+import { CurrencySelect } from '@/components/ui/currency-select';
 import {
   ArrowLeftIcon,
   CubeIcon,
@@ -21,6 +23,7 @@ export default function NewInventoryItemPage() {
     unit_of_measure: 'each',
     unit_cost: 0,
     selling_price: 0,
+    currency: 'USD',
     quantity_on_hand: 0,
     reorder_point: 10,
     reorder_quantity: 50,
@@ -47,10 +50,15 @@ export default function NewInventoryItemPage() {
     setError(null);
 
     try {
+      const payload = {
+        ...formData,
+        unit_price: formData.selling_price, // Map selling_price to unit_price for API
+      };
+      
       const response = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -241,25 +249,22 @@ export default function NewInventoryItemPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Pricing</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unit Cost <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  name="unit_cost"
-                  value={formData.unit_cost}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                  placeholder="0.00"
-                />
-              </div>
+              <input
+                type="number"
+                name="unit_cost"
+                value={formData.unit_cost}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
               <p className="text-xs text-gray-500 mt-1">Your purchase cost</p>
             </div>
 
@@ -267,32 +272,40 @@ export default function NewInventoryItemPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Selling Price <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  name="selling_price"
-                  value={formData.selling_price}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                  placeholder="0.00"
-                />
-              </div>
+              <input
+                type="number"
+                name="selling_price"
+                value={formData.selling_price}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
               <p className="text-xs text-gray-500 mt-1">Customer price</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Gross Margin
+                Currency <span className="text-red-500">*</span>
               </label>
-              <div className="h-10 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-900">
-                {grossMargin}%
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Profit margin</p>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              />
+              <p className="text-xs text-gray-500 mt-1">Pricing currency</p>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Gross Margin
+            </label>
+            <div className="h-10 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-900 max-w-xs">
+              {grossMargin}%
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Profit margin</p>
           </div>
         </div>
 

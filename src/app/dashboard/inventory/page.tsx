@@ -74,11 +74,13 @@ export default function InventoryPage() {
     try {
       const { data: allItems } = await supabase
         .from('products')
-        .select('quantity_on_hand, cost_price, reorder_point')
+        .select('quantity_on_hand, cost_price, currency, reorder_point')
         .eq('track_inventory', true);
 
       if (allItems) {
         const totalItems = allItems.length;
+        // Note: For multi-currency, total value shows in USD equivalent
+        // In a production system, you'd convert using exchange rates
         const totalValue = allItems.reduce((sum, item) => sum + ((item.quantity_on_hand || 0) * (item.cost_price || 0)), 0);
         const lowStock = allItems.filter(item => (item.quantity_on_hand || 0) <= (item.reorder_point || 0) && (item.quantity_on_hand || 0) > 0).length;
         const outOfStock = allItems.filter(item => (item.quantity_on_hand || 0) === 0).length;
@@ -90,8 +92,8 @@ export default function InventoryPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const getStockStatus = (item: Product) => {
@@ -251,9 +253,9 @@ export default function InventoryPage() {
                       <td className="text-right font-medium">
                         {available} {item.unit_of_measure}
                       </td>
-                      <td className="text-right">{formatCurrency(item.cost_price)}</td>
+                      <td className="text-right">{formatCurrency(item.cost_price, item.currency)}</td>
                       <td className="text-right font-medium">
-                        {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0))}
+                        {formatCurrency((item.quantity_on_hand || 0) * (item.cost_price || 0), item.currency)}
                       </td>
                       <td>
                         <span className={`badge ${status.class}`}>
