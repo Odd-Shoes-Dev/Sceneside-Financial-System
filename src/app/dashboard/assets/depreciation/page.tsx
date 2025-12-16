@@ -21,6 +21,7 @@ interface Asset {
   useful_life_months: number;
   depreciation_method: string;
   depreciation_start_date: string;
+  currency: string;
 }
 
 export default function DepreciationPage() {
@@ -106,13 +107,9 @@ export default function DepreciationPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
-
-  const totalDepreciation = assets.reduce((sum, asset) => 
-    sum + calculateMonthlyDepreciation(asset), 0
-  );
 
   return (
     <div className="space-y-6">
@@ -166,7 +163,7 @@ export default function DepreciationPage() {
 
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600 mb-1">Total Depreciation</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalDepreciation)}</p>
+            <p className="text-sm text-gray-500">(in asset currencies)</p>
           </div>
         </div>
 
@@ -228,16 +225,16 @@ export default function DepreciationPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {formatCurrency(asset.purchase_price)}
+                      {formatCurrency(asset.purchase_price, asset.currency)}
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-red-600">
-                      {formatCurrency(asset.accumulated_depreciation)}
+                      {formatCurrency(asset.accumulated_depreciation, asset.currency)}
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
-                      {formatCurrency(asset.book_value)}
+                      {formatCurrency(asset.book_value, asset.currency)}
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium text-orange-600">
-                      {formatCurrency(calculateMonthlyDepreciation(asset))}
+                      {formatCurrency(calculateMonthlyDepreciation(asset), asset.currency)}
                     </td>
                   </tr>
                 ))}

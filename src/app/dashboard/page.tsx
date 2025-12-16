@@ -78,7 +78,6 @@ export default function DashboardPage() {
           ...statsData,
           overdueInvoices,
           overdueBills,
-          inventoryValue: 0, // Will be calculated separately if needed
         });
       }
     } catch (error) {

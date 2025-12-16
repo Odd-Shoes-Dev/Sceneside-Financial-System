@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 interface AssetDepreciation {
   assetId: string;
@@ -151,6 +152,7 @@ export async function GET(request: NextRequest) {
         book_value,
         status,
         location,
+        currency,
         asset_categories (
           name
         )
@@ -170,7 +172,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform and calculate depreciation for each asset
-    let assetDepreciations: AssetDepreciation[] = (assets || []).map((asset: any) => {
+    const assetDepreciationsPromises = (assets || []).map(async (asset: any) => {
       const depCalc = calculateDepreciation(
         asset.purchase_date,
         parseFloat(asset.purchase_price) || 0,
@@ -208,6 +210,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    let assetDepreciations: AssetDepreciation[] = await Promise.all(assetDepreciationsPromises);
+
     // Filter by category
     if (category !== 'all') {
       assetDepreciations = assetDepreciations.filter(
@@ -231,38 +235,103 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculate summary statistics
-    const totalCost = assetDepreciations.reduce((sum, a) => sum + a.purchasePrice, 0);
-    const totalAccumulatedDepreciation = assetDepreciations.reduce((sum, a) => sum + a.accumulatedDepreciation, 0);
-    const totalBookValue = assetDepreciations.reduce((sum, a) => sum + a.currentBookValue, 0);
-    const annualDepreciation = assetDepreciations.reduce((sum, a) => sum + a.annualDepreciation, 0);
-    const monthlyDepreciation = assetDepreciations.reduce((sum, a) => sum + a.monthlyDepreciation, 0);
+    // Calculate summary statistics with currency conversion to USD
+    let totalCost = 0;
+    let totalAccumulatedDepreciation = 0;
+    let totalBookValue = 0;
+    let annualDepreciation = 0;
+    let monthlyDepreciation = 0;
+
+    for (const asset of assetDepreciations) {
+      const assetData = assets?.find((a: any) => a.id === asset.assetId);
+      const assetCurrency = (assetData?.currency || 'USD') as SupportedCurrency;
+
+      // Convert purchase price to USD
+      const costUSD = await convertCurrency(
+        supabase,
+        asset.purchasePrice,
+        assetCurrency,
+        'USD' as SupportedCurrency
+      ) || asset.purchasePrice;
+
+      // Convert accumulated depreciation to USD
+      const accumulatedUSD = await convertCurrency(
+        supabase,
+        asset.accumulatedDepreciation,
+        assetCurrency,
+        'USD' as SupportedCurrency
+      ) || asset.accumulatedDepreciation;
+
+      // Convert book value to USD
+      const bookValueUSD = await convertCurrency(
+        supabase,
+        asset.currentBookValue,
+        assetCurrency,
+        'USD' as SupportedCurrency
+      ) || asset.currentBookValue;
+
+      // Convert annual depreciation to USD
+      const annualDepUSD = await convertCurrency(
+        supabase,
+        asset.annualDepreciation,
+        assetCurrency,
+        'USD' as SupportedCurrency
+      ) || asset.annualDepreciation;
+
+      // Convert monthly depreciation to USD
+      const monthlyDepUSD = await convertCurrency(
+        supabase,
+        asset.monthlyDepreciation,
+        assetCurrency,
+        'USD' as SupportedCurrency
+      ) || asset.monthlyDepreciation;
+
+      totalCost += costUSD;
+      totalAccumulatedDepreciation += accumulatedUSD;
+      totalBookValue += bookValueUSD;
+      annualDepreciation += annualDepUSD;
+      monthlyDepreciation += monthlyDepUSD;
+    }
     const activeAssets = assetDepreciations.filter(a => a.status === 'active').length;
     const fullyDepreciated = assetDepreciations.filter(a => a.status === 'fully_depreciated').length;
 
-    // Category breakdown
+    // Category breakdown with currency conversion
     const byCategory: Record<string, any> = {};
-    assetDepreciations.forEach(asset => {
+    for (const asset of assetDepreciations) {
+      const assetData = assets?.find((a: any) => a.id === asset.assetId);
+      const assetCurrency = (assetData?.currency || 'USD') as SupportedCurrency;
+      
       const cat = asset.category || 'Uncategorized';
       if (!byCategory[cat]) {
         byCategory[cat] = { count: 0, cost: 0, accumulated: 0, bookValue: 0 };
       }
+      
+      const costUSD = await convertCurrency(supabase, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
+      const accUSD = await convertCurrency(supabase, asset.accumulatedDepreciation, assetCurrency, 'USD' as SupportedCurrency) || asset.accumulatedDepreciation;
+      const bookUSD = await convertCurrency(supabase, asset.currentBookValue, assetCurrency, 'USD' as SupportedCurrency) || asset.currentBookValue;
+      
       byCategory[cat].count += 1;
-      byCategory[cat].cost += asset.purchasePrice;
-      byCategory[cat].accumulated += asset.accumulatedDepreciation;
-      byCategory[cat].bookValue += asset.currentBookValue;
-    });
+      byCategory[cat].cost += costUSD;
+      byCategory[cat].accumulated += accUSD;
+      byCategory[cat].bookValue += bookUSD;
+    }
 
-    // Method breakdown
+    // Method breakdown with currency conversion
     const byMethod: Record<string, any> = {};
-    assetDepreciations.forEach(asset => {
+    for (const asset of assetDepreciations) {
+      const assetData = assets?.find((a: any) => a.id === asset.assetId);
+      const assetCurrency = (assetData?.currency || 'USD') as SupportedCurrency;
+      
       const method = asset.depreciationMethod || 'straight_line';
       if (!byMethod[method]) {
         byMethod[method] = { count: 0, cost: 0 };
       }
+      
+      const costUSD = await convertCurrency(supabase, asset.purchasePrice, assetCurrency, 'USD' as SupportedCurrency) || asset.purchasePrice;
+      
       byMethod[method].count += 1;
-      byMethod[method].cost += asset.purchasePrice;
-    });
+      byMethod[method].cost += costUSD;
+    }
 
     const response: DepreciationScheduleData = {
       reportPeriod: {

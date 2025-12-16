@@ -11,22 +11,18 @@ export async function GET() {
       { data: bills },
       { data: expenses },
       { data: bankAccounts },
-      { data: inventory },
     ] = await Promise.all([
       supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date'),
       supabase.from('bills').select('total, amount_paid, status, currency, bill_date'),
       supabase.from('expenses').select('total, currency, expense_date'),
       supabase.from('bank_transactions').select('amount, type, currency, transaction_date'),
-      supabase.from('products').select('quantity_on_hand, cost_price, currency').eq('track_inventory', true),
     ]);
 
-    // Convert all amounts to USD
     let totalRevenue = 0;
     let totalExpenses = 0;
     let accountsReceivable = 0;
     let accountsPayable = 0;
     let cashBalance = 0;
-    let inventoryValue = 0;
 
     // Process invoices
     if (invoices) {
@@ -129,9 +125,15 @@ export async function GET() {
       }
     }
 
-    // Process inventory
-    if (inventory) {
-      for (const item of inventory) {
+    // Calculate inventory value
+    let inventoryValue = 0;
+    const { data: inventoryItems } = await supabase
+      .from('products')
+      .select('quantity_on_hand, cost_price, currency')
+      .eq('track_inventory', true);
+
+    if (inventoryItems) {
+      for (const item of inventoryItems) {
         const quantity = item.quantity_on_hand || 0;
         const cost = item.cost_price || 0;
         const itemValue = quantity * cost;
