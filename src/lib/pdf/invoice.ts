@@ -55,7 +55,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #52b53b;
+          border-bottom: 2px solid #1e3a5f;
         }
         .logo-section {
           display: flex;
@@ -72,7 +72,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .company-details {
@@ -88,7 +88,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         }
         .invoice-title h1 {
           font-size: 32px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .invoice-number {
@@ -111,7 +111,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #52b53b;
+          color: #1e3a5f;
         }
         .dates-block {
           text-align: right;
@@ -136,7 +136,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #52b53b;
+          background: #1e3a5f;
           color: white;
           padding: 12px;
           text-align: left;
@@ -170,8 +170,8 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #52b53b;
-          border-bottom: 2px solid #52b53b;
+          color: #1e3a5f;
+          border-bottom: 2px solid #1e3a5f;
           padding-top: 12px;
         }
         .payment-info {
@@ -182,7 +182,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         }
         .payment-info h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 12px;
         }
         .payment-details {
@@ -200,7 +200,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 8px;
         }
         .notes p {

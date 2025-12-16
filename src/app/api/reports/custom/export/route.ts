@@ -217,7 +217,7 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string, 
           .company-info h1 { 
             font-size: 24px; 
             font-weight: bold; 
-            color: #52b53b;
+            color: #1e3a5f;
             margin-bottom: 4px;
           }
           .company-info .address { 
@@ -253,7 +253,7 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string, 
           .summary h3 {
             font-size: 14px;
             font-weight: bold;
-            color: #52b53b;
+            color: #1e3a5f;
             margin-bottom: 10px;
           }
           .summary-grid {

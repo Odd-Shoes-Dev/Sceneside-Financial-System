@@ -61,7 +61,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #059669;
+          border-bottom: 2px solid #1e3a5f;
         }
         .logo-section {
           display: flex;
@@ -78,7 +78,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #059669;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .company-details {
@@ -94,7 +94,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
         }
         .receipt-title h1 {
           font-size: 32px;
-          color: #059669;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .receipt-number {
@@ -105,22 +105,22 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           display: inline-block;
           padding: 8px 20px;
           background: #d1fae5;
-          color: #065f46;
+          color: #152a45;
           font-weight: 700;
           font-size: 16px;
           border-radius: 6px;
-          border: 2px solid #059669;
+          border: 2px solid #1e3a5f;
           margin-top: 8px;
         }
         .payment-received-box {
           background: #d1fae5;
-          border-left: 4px solid #059669;
+          border-left: 4px solid #1e3a5f;
           padding: 20px;
           margin-bottom: 30px;
           border-radius: 6px;
         }
         .payment-received-box h3 {
-          color: #065f46;
+          color: #152a45;
           font-size: 16px;
           margin-bottom: 12px;
         }
@@ -134,11 +134,11 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           justify-content: space-between;
         }
         .payment-detail-item .label {
-          color: #047857;
+          color: #1e3a5f;
           font-weight: 600;
         }
         .payment-detail-item .value {
-          color: #065f46;
+          color: #152a45;
         }
         .info-section {
           display: flex;
@@ -156,7 +156,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #059669;
+          color: #1e3a5f;
         }
         .dates-block {
           text-align: right;
@@ -181,7 +181,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #059669;
+          background: #1e3a5f;
           color: white;
           padding: 12px;
           text-align: left;
@@ -215,14 +215,14 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #059669;
-          border-bottom: 2px solid #059669;
+          color: #1e3a5f;
+          border-bottom: 2px solid #1e3a5f;
           padding-top: 12px;
         }
         .totals-row.amount-paid {
           font-size: 20px;
           font-weight: 700;
-          color: #059669;
+          color: #1e3a5f;
           background: #d1fae5;
           padding: 12px;
           margin-top: 8px;
@@ -235,7 +235,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #059669;
+          color: #1e3a5f;
           margin-bottom: 8px;
         }
         .notes p {
@@ -396,7 +396,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
               <span>✓ Amount Paid</span>
               <span>${formatCurrency(Number(invoice.amount_paid || invoice.total))}</span>
             </div>
-            <div class="totals-row" style="font-weight: 600; color: #059669;">
+            <div class="totals-row" style="font-weight: 600; color: #1e3a5f;">
               <span>Balance Due</span>
               <span>${formatCurrency(0)}</span>
             </div>

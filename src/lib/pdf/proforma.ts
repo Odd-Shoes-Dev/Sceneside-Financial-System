@@ -54,7 +54,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #f59e0b;
+          border-bottom: 2px solid #1e3a5f;
         }
         .logo-section {
           display: flex;
@@ -71,7 +71,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #f59e0b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .company-details {
@@ -87,7 +87,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         }
         .proforma-title h1 {
           font-size: 28px;
-          color: #f59e0b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .proforma-subtitle {
@@ -102,7 +102,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         }
         .warning-box {
           background: #fef3c7;
-          border: 2px solid #f59e0b;
+          border: 2px solid #1e3a5f;
           padding: 12px;
           border-radius: 6px;
           margin-bottom: 20px;
@@ -126,7 +126,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #f59e0b;
+          color: #1e3a5f;
         }
         .dates-block {
           text-align: right;
@@ -151,7 +151,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #f59e0b;
+          background: #1e3a5f;
           color: white;
           padding: 12px;
           text-align: left;
@@ -185,8 +185,8 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #f59e0b;
-          border-bottom: 2px solid #f59e0b;
+          color: #1e3a5f;
+          border-bottom: 2px solid #1e3a5f;
           padding-top: 12px;
         }
         .payment-info {
@@ -197,7 +197,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         }
         .payment-info h3 {
           font-size: 14px;
-          color: #f59e0b;
+          color: #1e3a5f;
           margin-bottom: 12px;
         }
         .payment-details {
@@ -215,7 +215,7 @@ export function generateProformaHTML(data: ProformaPDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #f59e0b;
+          color: #1e3a5f;
           margin-bottom: 8px;
         }
         .notes p {

@@ -172,7 +172,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sceneside-green mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sceneside-navy mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -210,7 +210,7 @@ export default function DashboardLayout({
               height={36}
               className="rounded"
             />
-            <span className="font-semibold text-sceneside-green">Sceneside L.L.C</span>
+            <span className="font-semibold text-sceneside-navy">Sceneside L.L.C</span>
           </Link>
           <button
             className="lg:hidden p-1 rounded hover:bg-gray-100"
@@ -266,7 +266,7 @@ export default function DashboardLayout({
               >
                 <BellIcon className="w-5 h-5 text-gray-600" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-sceneside-green rounded-full" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-sceneside-navy rounded-full" />
                 )}
               </button>
 
@@ -321,7 +321,7 @@ export default function DashboardLayout({
                             setNotificationsOpen(false);
                             router.push('/dashboard/reports');
                           }}
-                          className="text-sm text-sceneside-green hover:text-sceneside-green-dark hover:underline"
+                        className="text-sm text-sceneside-navy hover:text-sceneside-navy-dark hover:underline"
                         >
                           View all reports
                         </button>
@@ -338,7 +338,7 @@ export default function DashboardLayout({
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
-                <div className="w-8 h-8 bg-sceneside-green rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-sceneside-navy rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
                     {user?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
                   </span>

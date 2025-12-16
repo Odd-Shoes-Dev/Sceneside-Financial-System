@@ -58,7 +58,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #3b82f6;
+          border-bottom: 2px solid #1e3a5f;
         }
         .logo-section {
           display: flex;
@@ -75,7 +75,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #3b82f6;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .company-details {
@@ -91,7 +91,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
         }
         .quotation-title h1 {
           font-size: 32px;
-          color: #3b82f6;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .quotation-number {
@@ -114,7 +114,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #3b82f6;
+          color: #1e3a5f;
         }
         .dates-block {
           text-align: right;
@@ -148,7 +148,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #3b82f6;
+          background: #1e3a5f;
           color: white;
           padding: 12px;
           text-align: left;
@@ -182,20 +182,20 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #3b82f6;
-          border-bottom: 2px solid #3b82f6;
+          color: #1e3a5f;
+          border-bottom: 2px solid #1e3a5f;
           padding-top: 12px;
         }
         .terms-box {
           background: #f0f9ff;
           padding: 20px;
           border-radius: 8px;
-          border-left: 4px solid #3b82f6;
+          border-left: 4px solid #1e3a5f;
           margin-bottom: 30px;
         }
         .terms-box h3 {
           font-size: 14px;
-          color: #3b82f6;
+          color: #1e3a5f;
           margin-bottom: 12px;
         }
         .terms-box p {
@@ -209,7 +209,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #3b82f6;
+          color: #1e3a5f;
           margin-bottom: 8px;
         }
         .notes p {

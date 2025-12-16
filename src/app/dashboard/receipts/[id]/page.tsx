@@ -115,7 +115,7 @@ export default function ReceiptDetailPage() {
               align-items: center; 
               justify-content: space-between;
               margin-bottom: 30px;
-              border-bottom: 3px solid #52b53b;
+              border-bottom: 3px solid #1e3a5f;
               padding-bottom: 20px;
             }
             .company-section {
@@ -132,7 +132,7 @@ export default function ReceiptDetailPage() {
             .company-info h1 { 
               font-size: 24px; 
               font-weight: bold; 
-              color: #52b53b;
+              color: #1e3a5f;
               margin-bottom: 4px;
             }
             .company-info .address { 
@@ -146,7 +146,7 @@ export default function ReceiptDetailPage() {
             .receipt-header h2 { 
               font-size: 32px; 
               font-weight: bold; 
-              color: #52b53b;
+              color: #1e3a5f;
               margin-bottom: 4px;
             }
             .receipt-header .number { 
@@ -212,7 +212,7 @@ export default function ReceiptDetailPage() {
               font-weight: bold;
               color: #2e7d32;
               text-transform: uppercase;
-              border-bottom: 2px solid #52b53b;
+              border-bottom: 2px solid #1e3a5f;
             }
             .items-table th.text-right {
               text-align: right;
@@ -227,7 +227,7 @@ export default function ReceiptDetailPage() {
             .totals-section {
               margin: 30px 0;
               padding: 20px;
-              border: 2px solid #52b53b;
+              border: 2px solid #1e3a5f;
               border-radius: 8px;
               background: #f1f8e9;
               display: flex;
@@ -246,22 +246,22 @@ export default function ReceiptDetailPage() {
               color: #6b7280;
             }
             .total-row.total {
-              border-top: 2px solid #52b53b;
+              border-top: 2px solid #1e3a5f;
               margin-top: 10px;
               padding-top: 15px;
               font-size: 18px;
               font-weight: bold;
-              color: #52b53b;
+              color: #1e3a5f;
             }
             .total-row.paid {
-              color: #52b53b;
+              color: #1e3a5f;
               font-weight: 600;
             }
             .total-row.balance {
               font-size: 20px;
               font-weight: bold;
-              color: #52b53b;
-              border-top: 2px solid #52b53b;
+              color: #1e3a5f;
+              border-top: 2px solid #1e3a5f;
               margin-top: 10px;
               padding-top: 15px;
             }
@@ -270,12 +270,12 @@ export default function ReceiptDetailPage() {
               padding: 20px;
               background: #f1f8e9;
               border-radius: 8px;
-              border-left: 4px solid #52b53b;
+              border-left: 4px solid #1e3a5f;
             }
             .notes-section h3 {
               font-size: 12px;
               font-weight: bold;
-              color: #52b53b;
+              color: #1e3a5f;
               margin-bottom: 10px;
               text-transform: uppercase;
             }
@@ -298,7 +298,7 @@ export default function ReceiptDetailPage() {
               padding: 20px;
               font-size: 18px;
               font-weight: 600;
-              color: #52b53b;
+              color: #1e3a5f;
             }
             @media print {
               body { padding: 20px; }
@@ -525,7 +525,7 @@ export default function ReceiptDetailPage() {
 
         <div className="flex items-center gap-2">
           {customer?.email && (
-            <button onClick={handleSendEmail} className="px-3 py-2 text-sm rounded-lg font-medium bg-[#52b53b] hover:bg-[#469f32] text-white flex items-center gap-2">
+            <button onClick={handleSendEmail} className="px-3 py-2 text-sm rounded-lg font-medium bg-[#1e3a5f] hover:bg-[#152a45] text-white flex items-center gap-2">
               <EnvelopeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Send Email</span>
               <span className="sm:hidden">Send</span>

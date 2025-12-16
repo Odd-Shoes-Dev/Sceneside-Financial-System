@@ -107,7 +107,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-sceneside-green border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-sceneside-navy border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -137,28 +137,28 @@ export default function DashboardPage() {
           value={formatCurrency(stats?.cashBalance || 0)}
           icon={BanknotesIcon}
           trend={12.5}
-          color="green"
+          color="navy"
         />
         <StatCard
           title="Accounts Receivable"
           value={formatCurrency(stats?.accountsReceivable || 0)}
           icon={DocumentTextIcon}
           subtitle={`${stats?.overdueInvoices || 0} overdue`}
-          color="green"
+          color="navy"
         />
         <StatCard
           title="Accounts Payable"
           value={formatCurrency(stats?.accountsPayable || 0)}
           icon={CurrencyDollarIcon}
           subtitle={`${stats?.overdueBills || 0} overdue`}
-          color="green"
+          color="navy"
         />
         <StatCard
           title="Net Income"
           value={formatCurrency(stats?.netIncome || 0)}
           icon={ArrowTrendingUpIcon}
           trend={8.2}
-          color="green"
+          color="navy"
         />
       </div>
 

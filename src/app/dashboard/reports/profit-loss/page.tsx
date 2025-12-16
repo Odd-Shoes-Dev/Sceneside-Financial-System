@@ -156,8 +156,8 @@ export default function ProfitLossReportPage() {
             gap: 15px; 
           }
           .logo { 
-            width: 200px; 
-            height: 200px; 
+            width: 150px; 
+            height: 30px; 
           }
           .company-info { 
             display: flex; 
@@ -244,7 +244,7 @@ export default function ProfitLossReportPage() {
             .header { border-bottom-color: #1e3a5f !important; }
             .company-name { color: #1e3a5f !important; }
             .report-title { color: #1e3a5f !important; }
-            .logo { width: 150px; height: 150px; }
+            .logo { width: 150px; height: 30px; }
             .section { page-break-inside: avoid; }
           }
         </style>

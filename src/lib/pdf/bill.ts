@@ -54,7 +54,7 @@ export function generateBillHTML(data: BillPDFData): string {
           align-items: flex-start;
           margin-bottom: 40px;
           padding-bottom: 20px;
-          border-bottom: 2px solid #52b53b;
+          border-bottom: 2px solid #1e3a5f;
         }
         .logo-section {
           display: flex;
@@ -71,7 +71,7 @@ export function generateBillHTML(data: BillPDFData): string {
         .company-name {
           font-size: 24px;
           font-weight: 700;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .company-details {
@@ -87,7 +87,7 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         .bill-title h1 {
           font-size: 32px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 4px;
         }
         .bill-number {
@@ -126,7 +126,7 @@ export function generateBillHTML(data: BillPDFData): string {
           margin-bottom: 4px;
         }
         .info-block strong {
-          color: #52b53b;
+          color: #1e3a5f;
         }
         .dates-block {
           text-align: right;
@@ -151,7 +151,7 @@ export function generateBillHTML(data: BillPDFData): string {
           margin-bottom: 30px;
         }
         .items-table th {
-          background: #52b53b;
+          background: #1e3a5f;
           color: white;
           padding: 12px;
           text-align: left;
@@ -185,15 +185,15 @@ export function generateBillHTML(data: BillPDFData): string {
         .totals-row.grand-total {
           font-size: 18px;
           font-weight: 700;
-          color: #52b53b;
-          border-bottom: 2px solid #52b53b;
+          color: #1e3a5f;
+          border-bottom: 2px solid #1e3a5f;
           padding-top: 12px;
         }
         .totals-row.balance-due {
           font-size: 18px;
           font-weight: 700;
           color: #dc2626;
-          border-top: 2px solid #52b53b;
+          border-top: 2px solid #1e3a5f;
           margin-top: 8px;
           padding-top: 12px;
         }
@@ -205,7 +205,7 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         .payment-info h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 12px;
         }
         .payment-details {
@@ -223,7 +223,7 @@ export function generateBillHTML(data: BillPDFData): string {
         }
         .notes h3 {
           font-size: 14px;
-          color: #52b53b;
+          color: #1e3a5f;
           margin-bottom: 8px;
         }
         .notes p {
