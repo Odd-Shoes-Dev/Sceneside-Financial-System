@@ -49,7 +49,7 @@ export default function LoginPage() {
         <div className="text-center mb-6">
           <Link href="/" className="inline-block">
             <Image
-              src="/Sceneside assets/Sceneside_logo_name.png"
+              src="/Sceneside assets/Sceneside_logo.png"
               alt="Sceneside L.L.C"
               width={270}
               height={108}
@@ -109,12 +109,6 @@ export default function LoginPage() {
                 />
                 Remember me
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
-              >
-                Forgot password?
-              </Link>
             </div>
 
             <button

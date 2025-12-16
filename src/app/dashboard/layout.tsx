@@ -204,13 +204,13 @@ export default function DashboardLayout({
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
-              src="/Sceneside assets/Sceneside_logo.png"
+              src="/Sceneside%20assets/logo.png"
               alt="Sceneside"
               width={36}
               height={36}
               className="rounded"
             />
-            <span className="font-semibold text-sceneside-green">Sceneside</span>
+            <span className="font-semibold text-sceneside-green">Sceneside L.L.C</span>
           </Link>
           <button
             className="lg:hidden p-1 rounded hover:bg-gray-100"
