@@ -27,6 +27,27 @@ export async function GET(request: NextRequest) {
       .gte('code', '5000')
       .order('code');
 
+    // Get invoices for the period (revenue)
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('id, total, currency, invoice_date, status')
+      .gte('invoice_date', startDate)
+      .lte('invoice_date', endDate);
+
+    // Get bills for the period (expenses)
+    const { data: bills } = await supabase
+      .from('bills')
+      .select('id, total, currency, bill_date, status')
+      .gte('bill_date', startDate)
+      .lte('bill_date', endDate);
+
+    // Get expenses for the period
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('id, amount, currency, date, category')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
     // Get journal entry lines for the period
     const { data: entries } = await supabase
       .from('journal_lines')
@@ -69,6 +90,32 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Add invoice revenue (convert to USD)
+    for (const invoice of invoices || []) {
+      let amountInUSD = invoice.total;
+      const currency = invoice.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: invoice.total,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: invoice.invoice_date,
+        });
+        amountInUSD = convertedValue || invoice.total;
+      }
+      
+      totalRevenue += amountInUSD;
+    }
+
+    if (totalRevenue > 0 && invoices && invoices.length > 0) {
+      revenue.push({
+        code: '4000',
+        name: 'Sales Revenue',
+        amount: totalRevenue - revenue.reduce((sum, item) => sum + item.amount, 0),
+      });
+    }
+
     // Build expense sections
     const costOfSales: any[] = [];
     const operatingExpenses: any[] = [];
@@ -100,6 +147,60 @@ export async function GET(request: NextRequest) {
         }
       }
     });
+
+    // Add bills to operating expenses (convert to USD)
+    for (const bill of bills || []) {
+      let amountInUSD = bill.total;
+      const currency = bill.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: bill.total,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: bill.bill_date,
+        });
+        amountInUSD = convertedValue || bill.total;
+      }
+      
+      totalOperatingExpenses += amountInUSD;
+    }
+
+    // Add expenses to operating expenses (convert to USD)
+    for (const expense of expenses || []) {
+      let amountInUSD = expense.amount;
+      const currency = expense.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: expense.amount,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: expense.date,
+        });
+        amountInUSD = convertedValue || expense.amount;
+      }
+      
+      totalOperatingExpenses += amountInUSD;
+    }
+
+    if (bills && bills.length > 0) {
+      const billsTotal = bills.reduce((sum, bill) => sum + bill.total, 0);
+      operatingExpenses.push({
+        code: '5000',
+        name: 'Vendor Bills',
+        amount: billsTotal,
+      });
+    }
+
+    if (expenses && expenses.length > 0) {
+      const expensesTotal = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      operatingExpenses.push({
+        code: '5100',
+        name: 'Operating Expenses',
+        amount: expensesTotal,
+      });
+    }
 
     const grossProfit = totalRevenue - totalCostOfSales;
     const operatingIncome = grossProfit - totalOperatingExpenses;

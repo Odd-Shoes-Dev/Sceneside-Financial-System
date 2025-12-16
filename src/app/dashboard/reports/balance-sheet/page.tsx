@@ -47,7 +47,7 @@ export default function BalanceSheetPage() {
     try {
       const response = await fetch(`/api/reports/balance-sheet?asOfDate=${asOfDate}`);
       const result = await response.json();
-      setData(result);
+      setData(result.data);
     } catch (error) {
       console.error('Failed to fetch balance sheet:', error);
     } finally {

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
-    const asOfDate = searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
+    const asOfDate = searchParams.get('asOfDate') || searchParams.get('as_of_date') || new Date().toISOString().split('T')[0];
 
     // Get all accounts
     const { data: accounts } = await supabase
@@ -40,6 +40,38 @@ export async function GET(request: NextRequest) {
       }
       accountBalances[entry.account_id] += (entry.debit || 0) - (entry.credit || 0);
     });
+
+    // Get fixed assets purchased on or before asOfDate
+    const { data: assets } = await supabase
+      .from('fixed_assets')
+      .select('id, name, purchase_price, accumulated_depreciation, status, purchase_date, currency')
+      .lte('purchase_date', asOfDate)
+      .in('status', ['active', 'fully_depreciated']);
+
+    // Get inventory as of date
+    const { data: inventory } = await supabase
+      .from('products')
+      .select('id, name, quantity_on_hand, cost, currency')
+      .gt('quantity_on_hand', 0);
+
+    // Get bank accounts and their transactions
+    const { data: bankAccounts } = await supabase
+      .from('bank_accounts')
+      .select('id, name, currency, created_at');
+
+    // Get accounts receivable (unpaid invoices)
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('id, total, currency, invoice_date')
+      .lte('invoice_date', asOfDate)
+      .neq('status', 'paid');
+
+    // Get accounts payable (unpaid bills)
+    const { data: bills } = await supabase
+      .from('bills')
+      .select('id, total, currency, bill_date')
+      .lte('bill_date', asOfDate)
+      .neq('status', 'paid');
 
     // Build sections
     const currentAssets: any[] = [];
@@ -104,6 +136,157 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Add fixed assets from fixed_assets table (convert to USD)
+    for (const asset of assets || []) {
+      const bookValue = asset.purchase_price - (asset.accumulated_depreciation || 0);
+      if (bookValue <= 0) continue;
+
+      // Convert to USD if needed
+      let bookValueInUSD = bookValue;
+      const currency = asset.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: bookValue,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: asOfDate,
+        });
+        bookValueInUSD = convertedValue || bookValue;
+      }
+
+      fixedAssets.push({
+        code: '',
+        name: asset.name,
+        amount: bookValueInUSD,
+      });
+      totalFixedAssets += bookValueInUSD;
+    }
+
+    // Add inventory (convert to USD)
+    let inventoryTotal = 0;
+    for (const item of inventory || []) {
+      const inventoryValue = item.quantity_on_hand * item.cost;
+      let valueInUSD = inventoryValue;
+      const currency = item.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: inventoryValue,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: asOfDate,
+        });
+        valueInUSD = convertedValue || inventoryValue;
+      }
+      
+      inventoryTotal += valueInUSD;
+    }
+
+    if (inventoryTotal > 0) {
+      currentAssets.push({
+        code: '1300',
+        name: 'Inventory',
+        amount: inventoryTotal,
+      });
+      totalCurrentAssets += inventoryTotal;
+    }
+
+    // Add bank account balances from transactions (convert to USD)
+    for (const account of bankAccounts || []) {
+      // Get transactions for this account up to the date
+      const { data: transactions } = await supabase
+        .from('bank_transactions')
+        .select('amount, transaction_date')
+        .eq('bank_account_id', account.id)
+        .lte('transaction_date', asOfDate);
+
+      if (!transactions || transactions.length === 0) continue;
+
+      // Calculate balance (amounts are already signed)
+      let balance = 0;
+      for (const txn of transactions) {
+        let amountInUSD = txn.amount;
+        const currency = account.currency || 'USD';
+        
+        if (currency !== 'USD') {
+          const { data: convertedValue } = await supabase.rpc('convert_currency', {
+            p_amount: Math.abs(txn.amount),
+            p_from_currency: currency,
+            p_to_currency: 'USD',
+            p_date: txn.transaction_date,
+          });
+          amountInUSD = txn.amount < 0 ? -(convertedValue || Math.abs(txn.amount)) : (convertedValue || Math.abs(txn.amount));
+        }
+        balance += amountInUSD;
+      }
+
+      if (balance === 0) continue;
+
+      currentAssets.push({
+        code: '1100',
+        name: account.name,
+        amount: Math.abs(balance),
+      });
+      totalCurrentAssets += balance;
+    }
+
+    // Add accounts receivable (convert to USD)
+    let totalAR = 0;
+    for (const invoice of invoices || []) {
+      let amountInUSD = invoice.total;
+      const currency = invoice.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: invoice.total,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: invoice.invoice_date,
+        });
+        amountInUSD = convertedValue || invoice.total;
+      }
+      
+      totalAR += amountInUSD;
+    }
+
+    if (totalAR > 0) {
+      currentAssets.push({
+        code: '1200',
+        name: 'Accounts Receivable',
+        amount: totalAR,
+      });
+      totalCurrentAssets += totalAR;
+    }
+
+    // Add accounts payable (convert to USD)
+    let totalAP = 0;
+    for (const bill of bills || []) {
+      let amountInUSD = bill.total;
+      const currency = bill.currency || 'USD';
+      
+      if (currency !== 'USD') {
+        const { data: convertedValue } = await supabase.rpc('convert_currency', {
+          p_amount: bill.total,
+          p_from_currency: currency,
+          p_to_currency: 'USD',
+          p_date: bill.bill_date,
+        });
+        amountInUSD = convertedValue || bill.total;
+      }
+      
+      totalAP += amountInUSD;
+    }
+
+    if (totalAP > 0) {
+      currentLiabilities.push({
+        code: '2100',
+        name: 'Accounts Payable',
+        amount: totalAP,
+      });
+      totalCurrentLiabilities += totalAP;
+    }
+
     // Calculate retained earnings (net income for all time)
     // This is a simplified calculation - in production you'd close periods
     const { data: incomeEntries } = await supabase
@@ -148,34 +331,22 @@ export async function GET(request: NextRequest) {
       data: {
         asOfDate,
         assets: {
-          current: {
-            items: currentAssets,
-            total: totalCurrentAssets,
-          },
-          fixed: {
-            items: fixedAssets,
-            total: totalFixedAssets,
-          },
-          other: {
-            items: otherAssets,
-            total: totalOtherAssets,
-          },
-          total: totalAssets,
+          current: currentAssets.map(item => ({ account: item.name, balance: item.amount })),
+          fixed: fixedAssets.map(item => ({ account: item.name, balance: item.amount })),
+          totalCurrent: totalCurrentAssets,
+          totalFixed: totalFixedAssets,
+          totalAssets: totalAssets,
         },
         liabilities: {
-          current: {
-            items: currentLiabilities,
-            total: totalCurrentLiabilities,
-          },
-          longTerm: {
-            items: longTermLiabilities,
-            total: totalLongTermLiabilities,
-          },
-          total: totalLiabilities,
+          current: currentLiabilities.map(item => ({ account: item.name, balance: item.amount })),
+          longTerm: longTermLiabilities.map(item => ({ account: item.name, balance: item.amount })),
+          totalCurrent: totalCurrentLiabilities,
+          totalLongTerm: totalLongTermLiabilities,
+          totalLiabilities: totalLiabilities,
         },
         equity: {
-          items: equity,
-          total: totalEquity,
+          items: equity.map(item => ({ account: item.name, balance: item.amount })),
+          totalEquity: totalEquity,
         },
         totalLiabilitiesAndEquity,
         isBalanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
