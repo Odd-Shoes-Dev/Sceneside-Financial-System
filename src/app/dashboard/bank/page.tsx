@@ -15,7 +15,7 @@ import type { BankAccount, BankTransaction } from '@/types/database';
 
 export default function BankPage() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [recentTransactions, setRecentTransactions] = useState<(BankTransaction & { bank_accounts?: { name: string } })[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<(BankTransaction & { bank_accounts?: { name: string; currency: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalBalance: 0,
@@ -49,7 +49,7 @@ export default function BankPage() {
         .from('bank_transactions')
         .select(`
           *,
-          bank_accounts (name)
+          bank_accounts (name, currency)
         `)
         .order('transaction_date', { ascending: false })
         .limit(10);
@@ -74,8 +74,8 @@ export default function BankPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return currencyFormatter(amount, 'USD');
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return currencyFormatter(amount, currency as any);
   };
 
   const formatDate = (dateString: string) => {
@@ -245,7 +245,7 @@ export default function BankPage() {
                         isIncoming ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {isIncoming ? '+' : '-'}
-                        {formatCurrency(Math.abs(transaction.amount))}
+                        {formatCurrency(Math.abs(transaction.amount), transaction.bank_accounts?.currency || 'USD')}
                       </p>
                       {!transaction.is_reconciled && (
                         <span className="text-xs text-amber-600">Unreconciled</span>

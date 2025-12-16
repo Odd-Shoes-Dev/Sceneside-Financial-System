@@ -15,7 +15,7 @@ export async function GET() {
       supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date'),
       supabase.from('bills').select('total, amount_paid, status, currency, bill_date'),
       supabase.from('expenses').select('total, currency, expense_date'),
-      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date'),
+      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date, bank_accounts(currency)'),
     ]);
 
     let totalRevenue = 0;
@@ -104,8 +104,27 @@ export async function GET() {
     // Process bank transactions for cash balance
     if (bankTransactions) {
       for (const transaction of bankTransactions) {
-        // Amounts are already signed (negative for outflows, positive for inflows)
-        cashBalance += transaction.amount || 0;
+        const bankAccount = Array.isArray(transaction.bank_accounts) 
+          ? transaction.bank_accounts[0] 
+          : transaction.bank_accounts;
+        const currency = bankAccount?.currency || 'USD';
+        
+        let amountInUSD = transaction.amount || 0;
+
+        // Convert to USD if not already
+        if (currency !== 'USD') {
+          const { data: converted } = await supabase.rpc('convert_currency', {
+            p_amount: Math.abs(transaction.amount),
+            p_from_currency: currency,
+            p_to_currency: 'USD',
+            p_date: transaction.transaction_date,
+          });
+
+          // Preserve the sign (positive or negative)
+          amountInUSD = transaction.amount < 0 ? -(converted || Math.abs(transaction.amount)) : (converted || Math.abs(transaction.amount));
+        }
+
+        cashBalance += amountInUSD;
       }
     }
 
