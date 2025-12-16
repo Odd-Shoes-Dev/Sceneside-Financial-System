@@ -106,8 +106,8 @@ export default function SalesByCustomerPage() {
               padding-bottom: 20px;
             }
             .logo { 
-              width: 60px; 
-              height: 60px; 
+              width: 200px; 
+              height: 200px; 
               margin-right: 20px;
               border-radius: 8px;
               object-fit: contain;

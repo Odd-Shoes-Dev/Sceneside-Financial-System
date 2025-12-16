@@ -10,12 +10,12 @@ export const metadata: Metadata = {
   description: 'Financial Management System for Sceneside L.L.C',
   icons: {
     icon: [
-      { url: '/Sceneside assets/Sceneside_logo.png', sizes: '32x32', type: 'image/png' },
-      { url: '/Sceneside assets/Sceneside_logo.png', sizes: '16x16', type: 'image/png' },
-      { url: '/Sceneside assets/Sceneside_logo.png', sizes: '192x192', type: 'image/png' },
+      { url: '/Sceneside%20assets/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/Sceneside%20assets/logo.png', sizes: '16x16', type: 'image/png' },
+      { url: '/Sceneside%20assets/logo.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: [{ url: '/Sceneside assets/Sceneside_logo.png', sizes: '180x180', type: 'image/png' }],
-    shortcut: '/Sceneside assets/Sceneside_logo.png',
+    apple: [{ url: '/Sceneside%20assets/logo.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: '/Sceneside%20assets/logo.png',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -42,9 +42,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Sceneside Financial" />
-        <link rel="apple-touch-icon" href="/Sceneside assets/Sceneside_logo.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/Sceneside assets/Sceneside_logo.png" />
-        <link rel="apple-touch-startup-image" href="/Sceneside assets/Sceneside_logo.png" />
+        <link rel="apple-touch-icon" href="/Sceneside%20assets/logo.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/Sceneside%20assets/logo.png" />
+        <link rel="apple-touch-startup-image" href="/Sceneside%20assets/logo.png" />
       </head>
       <body className={inter.className}>
         {children}

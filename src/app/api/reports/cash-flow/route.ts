@@ -40,8 +40,6 @@ export async function GET(request: NextRequest) {
       beginningCash += balanceInUSD;
     }
 
-    }
-
     // Get period transactions for cash flow calculation
     let netChangeInCash = 0;
     for (const account of bankAccounts || []) {
@@ -153,8 +151,6 @@ export async function GET(request: NextRequest) {
       const endMonth = new Date(endDate);
       const monthsInPeriod = Math.max(0, Math.floor((endMonth.getTime() - startMonth.getTime()) / (30 * 24 * 60 * 60 * 1000)));
       depreciation += monthlyDepreciation * Math.min(monthsInPeriod, asset.useful_life_months);
-    }
-
     }
 
     // Get changes in AR (from invoices)

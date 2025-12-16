@@ -208,8 +208,8 @@ function exportPDF(config: CustomReportConfig, reportData: any, origin: string, 
             padding-bottom: 20px;
           }
           .logo { 
-            width: 50px; 
-            height: 50px; 
+            width: 200px; 
+            height: 200px; 
             margin-right: 15px;
             border-radius: 6px;
             object-fit: contain;
