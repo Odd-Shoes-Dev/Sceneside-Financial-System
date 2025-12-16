@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 interface VendorPurchase {
   vendorId: string;
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
         vendor_id,
         bill_date,
         total,
+        currency,
         payment_terms,
         vendors (
           id,
@@ -108,11 +110,14 @@ export async function GET(request: NextRequest) {
     // Group bills by vendor
     const vendorMap = new Map<string, VendorPurchase>();
 
-    (bills || []).forEach((bill: any) => {
-      if (!bill.vendors) return;
+    for (const bill of bills || []) {
+      if (!bill.vendors) continue;
+
+      const vendorData: any = Array.isArray(bill.vendors) ? bill.vendors[0] : bill.vendors;
+      if (!vendorData) continue;
 
       const vendorId = bill.vendor_id;
-      const vendorName = bill.vendors.company_name || bill.vendors.name;
+      const vendorName = vendorData.company_name || vendorData.name;
       const vendorTypeRaw = 'Supplier'; // Default since vendor_type doesn't exist in vendors table
       const paymentTerms = bill.payment_terms || 30;
 
@@ -133,7 +138,17 @@ export async function GET(request: NextRequest) {
       }
 
       const vendor = vendorMap.get(vendorId)!;
-      vendor.totalPurchases += parseFloat(bill.total);
+      
+      // Convert total to USD for reporting
+      const total = parseFloat(bill.total);
+      const totalUSD = await convertCurrency(
+        supabase,
+        total,
+        (bill.currency || 'USD') as SupportedCurrency,
+        'USD' as SupportedCurrency
+      ) || total;
+      
+      vendor.totalPurchases += totalUSD;
       vendor.purchaseCount += 1;
       vendor.lastPurchaseDate = bill.bill_date;
 
@@ -142,10 +157,10 @@ export async function GET(request: NextRequest) {
         vendor.firstPurchaseDate = bill.bill_date;
       }
 
-      // Aggregate categories for this vendor
+      // Aggregate categories for this vendor (already in USD via bill conversion)
       const billCategories = categoryData[bill.id] || [];
       billCategories.forEach((category: any) => {
-        const existingCategory = vendor.topCategories.find(c => c.category === category.name);
+        const existingCategory = vendor.topCategories.find((c: any) => c.category === category.name);
         if (existingCategory) {
           existingCategory.amount += category.amount;
         } else {
@@ -156,7 +171,7 @@ export async function GET(request: NextRequest) {
           });
         }
       });
-    });
+    }
 
     // Calculate averages, percentages, and sort categories for each vendor
     let vendors = Array.from(vendorMap.values());
@@ -164,12 +179,12 @@ export async function GET(request: NextRequest) {
       vendor.averagePurchase = vendor.purchaseCount > 0 ? vendor.totalPurchases / vendor.purchaseCount : 0;
       
       // Calculate percentages for categories
-      vendor.topCategories.forEach(cat => {
+      vendor.topCategories.forEach((cat: any) => {
         cat.percentage = vendor.totalPurchases > 0 ? (cat.amount / vendor.totalPurchases) * 100 : 0;
       });
       
       // Sort by amount and keep top 5
-      vendor.topCategories.sort((a, b) => b.amount - a.amount);
+      vendor.topCategories.sort((a: any, b: any) => b.amount - a.amount);
       vendor.topCategories = vendor.topCategories.slice(0, 5);
     });
 

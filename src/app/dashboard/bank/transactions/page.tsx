@@ -26,6 +26,11 @@ export default function BankTransactionsPage() {
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [reconcileFilter, setReconcileFilter] = useState<string>('all');
+  const [stats, setStats] = useState({
+    totalDeposits: 0,
+    totalWithdrawals: 0,
+    unreconciledCount: 0,
+  });
 
   useEffect(() => {
     loadAccounts();
@@ -33,6 +38,7 @@ export default function BankTransactionsPage() {
 
   useEffect(() => {
     loadTransactions();
+    loadStats();
   }, [selectedAccount, selectedType, reconcileFilter]);
 
   const loadAccounts = async () => {
@@ -89,6 +95,23 @@ export default function BankTransactionsPage() {
       console.error('Error loading transactions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (selectedAccount !== 'all') params.append('account_id', selectedAccount);
+      if (selectedType !== 'all') params.append('type', selectedType);
+      if (reconcileFilter !== 'all') params.append('reconciled', reconcileFilter);
+
+      const response = await fetch(`/api/bank-transactions/stats?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
     }
   };
 
@@ -404,27 +427,17 @@ export default function BankTransactionsPage() {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="card">
             <div className="card-body">
-              <p className="text-sm text-gray-500">Total Deposits</p>
+              <p className="text-sm text-gray-500">Total Deposits (USD)</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(
-                  transactions
-                    .filter((t) => t.transaction_type === 'deposit')
-                    .reduce((sum, t) => sum + t.amount, 0)
-                )}
+                {formatCurrency(stats.totalDeposits)}
               </p>
             </div>
           </div>
           <div className="card">
             <div className="card-body">
-              <p className="text-sm text-gray-500">Total Withdrawals</p>
+              <p className="text-sm text-gray-500">Total Withdrawals (USD)</p>
               <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(
-                  Math.abs(
-                    transactions
-                      .filter((t) => t.transaction_type === 'withdrawal')
-                      .reduce((sum, t) => sum + t.amount, 0)
-                  )
-                )}
+                {formatCurrency(stats.totalWithdrawals)}
               </p>
             </div>
           </div>
@@ -432,7 +445,7 @@ export default function BankTransactionsPage() {
             <div className="card-body">
               <p className="text-sm text-gray-500">Unreconciled</p>
               <p className="text-2xl font-bold text-amber-600">
-                {transactions.filter((t) => !t.is_reconciled).length}
+                {stats.unreconciledCount}
               </p>
             </div>
           </div>

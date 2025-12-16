@@ -27,10 +27,17 @@ export default function ExpensesPage() {
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({
+    thisMonth: 0,
+    pendingApproval: 0,
+    approved: 0,
+    paid: 0,
+  });
   const pageSize = 20;
 
   useEffect(() => {
     loadExpenses();
+    loadStats();
   }, [searchQuery, statusFilter, currentPage]);
 
   const loadExpenses = async () => {
@@ -62,6 +69,18 @@ export default function ExpensesPage() {
       console.error('Failed to load expenses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await fetch('/api/expenses/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
     }
   };
 
@@ -141,26 +160,26 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card">
           <div className="card-body">
-            <p className="text-sm text-gray-500">This Month</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">$0.00</p>
+            <p className="text-sm text-gray-500">This Month (USD)</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">{formatCurrency(stats.thisMonth)}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Pending Approval</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">{stats.pendingApproval}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Approved</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1">{stats.approved}</p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Paid</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">0</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">{stats.paid}</p>
           </div>
         </div>
       </div>

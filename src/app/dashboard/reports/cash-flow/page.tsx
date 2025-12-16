@@ -184,14 +184,14 @@ export default function CashFlowPage() {
           </div>
           
           <div class="report-title">
-            <h2>Statement of Cash Flows</h2>
+            <h2>Statement of Cash Flow</h2>
             <div class="period">
               For the Period ${new Date(data.period.startDate).toLocaleDateString()} to ${new Date(data.period.endDate).toLocaleDateString()}
             </div>
           </div>
 
           <div class="section">
-            <div class="section-title">CASH FLOWS FROM OPERATING ACTIVITIES</div>
+            <div class="section-title">CASH FLOW FROM OPERATING ACTIVITIES</div>
             <div class="line-item">
               <span>Net Income</span>
               <span class="amount">${data.operatingActivities.netIncome >= 0 ? formatCurrency(data.operatingActivities.netIncome) : `(${formatCurrency(Math.abs(data.operatingActivities.netIncome))})`}</span>
@@ -215,7 +215,7 @@ export default function CashFlowPage() {
           </div>
 
           <div class="section">
-            <div class="section-title">CASH FLOWS FROM INVESTING ACTIVITIES</div>
+            <div class="section-title">CASH FLOW FROM INVESTING ACTIVITIES</div>
             ${data.investingActivities.items.map(item => `
               <div class="line-item">
                 <span>${item.label}</span>
@@ -229,7 +229,7 @@ export default function CashFlowPage() {
           </div>
 
           <div class="section">
-            <div class="section-title">CASH FLOWS FROM FINANCING ACTIVITIES</div>
+            <div class="section-title">CASH FLOW FROM FINANCING ACTIVITIES</div>
             ${data.financingActivities.items.map(item => `
               <div class="line-item">
                 <span>${item.label}</span>
@@ -347,7 +347,7 @@ export default function CashFlowPage() {
               <div>
                 <h2 className="text-sm sm:text-base font-semibold text-gray-900">Sceneside L.L.C</h2>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  Statement of Cash Flows for the period{' '}
+                  Statement of Cash Flow for the period{' '}
                   {new Date(data.period.startDate).toLocaleDateString()} to{' '}
                   {new Date(data.period.endDate).toLocaleDateString()}
                 </p>
@@ -360,7 +360,7 @@ export default function CashFlowPage() {
             <div>
               <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 pb-2 border-b border-gray-200 flex items-center gap-1 sm:gap-2">
                 <ArrowTrendingUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                <span className="text-xs sm:text-sm lg:text-base">CASH FLOWS FROM OPERATING ACTIVITIES</span>
+                <span className="text-xs sm:text-sm lg:text-base">CASH FLOW FROM OPERATING ACTIVITIES</span>
               </h3>
 
               <div className="space-y-1 sm:space-y-2">
@@ -406,7 +406,7 @@ export default function CashFlowPage() {
             <div>
               <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 pb-2 border-b border-gray-200 flex items-center gap-1 sm:gap-2">
                 <ArrowTrendingDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                <span className="text-xs sm:text-sm lg:text-base">CASH FLOWS FROM INVESTING ACTIVITIES</span>
+                <span className="text-xs sm:text-sm lg:text-base">CASH FLOW FROM INVESTING ACTIVITIES</span>
               </h3>
 
               <div className="space-y-1 sm:space-y-2">
@@ -428,7 +428,7 @@ export default function CashFlowPage() {
             <div>
               <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 pb-2 border-b border-gray-200 flex items-center gap-1 sm:gap-2">
                 <BanknotesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-                <span className="text-xs sm:text-sm lg:text-base">CASH FLOWS FROM FINANCING ACTIVITIES</span>
+                <span className="text-xs sm:text-sm lg:text-base">CASH FLOW FROM FINANCING ACTIVITIES</span>
               </h3>
 
               <div className="space-y-1 sm:space-y-2">

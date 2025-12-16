@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 interface InventoryItem {
   itemId: string;
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
         name,
         quantity_on_hand,
         cost_price,
+        currency,
         reorder_point,
         unit_of_measure,
         product_categories (
@@ -86,11 +88,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: inventoryError.message }, { status: 500 });
     }
 
-    // Transform inventory data - using same approach as inventory page
-    let items: InventoryItem[] = (inventory || []).map((item: any) => {
+    // Transform inventory data and convert to USD
+    let items: InventoryItem[] = [];
+    
+    for (const item of inventory || []) {
       const quantityOnHand = item.quantity_on_hand || 0;
       const unitCost = item.cost_price || 0;
-      const totalValue = quantityOnHand * unitCost;
+      
+      // Convert unit cost to USD if needed
+      const unitCostUSD = await convertCurrency(
+        supabase,
+        unitCost,
+        (item.currency || 'USD') as SupportedCurrency,
+        'USD' as SupportedCurrency
+      ) || unitCost;
+      
+      const totalValue = quantityOnHand * unitCostUSD;
       const reorderLevel = item.reorder_point || 0;
 
       // Determine status
@@ -101,30 +114,22 @@ export async function GET(request: NextRequest) {
         itemStatus = 'Low Stock';
       }
 
-      return {
+      const category: any = Array.isArray(item.product_categories) ? item.product_categories[0] : item.product_categories;
+      
+      items.push({
         itemId: item.id,
         itemCode: item.sku || `ITEM-${item.id}`,
         itemName: item.name || 'Unknown Product',
-        category: item.product_categories?.name || 'Uncategorized',
+        category: category?.name || 'Uncategorized',
         location: 'Main Warehouse',
         quantityOnHand,
         unitOfMeasure: item.unit_of_measure || 'EA',
-        unitCost,
-        averageCost: unitCost,
-        fifoValue: totalValue,
-        lifoValue: totalValue,
-        standardCost: unitCost,
-        lastReceived: item.created_at || new Date().toISOString(),
-        lastIssued: item.updated_at || new Date().toISOString(),
-        reorderLevel,
-        maxLevel: reorderLevel * 2,
-        leadTimeDays: 7,
-        supplier: 'Default Supplier',
-        lotNumbers: [],
+        unitCost: unitCostUSD,
         totalValue,
-        status: itemStatus
-      };
-    });
+        reorderLevel,
+        status: itemStatus,
+      });
+    }
 
     // Apply filters
     if (category !== 'all') {

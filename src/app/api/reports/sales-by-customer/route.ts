@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { convertCurrency, SupportedCurrency } from '@/lib/currency';
 
 interface CustomerSale {
   customerId: string;
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
         customer_id,
         invoice_date,
         total,
+        currency,
         customers (
           id,
           name,
@@ -110,12 +112,15 @@ export async function GET(request: NextRequest) {
     // Group invoices by customer
     const customerMap = new Map<string, CustomerSale>();
 
-    (invoices || []).forEach((invoice: any) => {
-      if (!invoice.customers) return;
+    for (const invoice of invoices || []) {
+      if (!invoice.customers) continue;
+
+      const customerData: any = Array.isArray(invoice.customers) ? invoice.customers[0] : invoice.customers;
+      if (!customerData) continue;
 
       const customerId = invoice.customer_id;
-      const customerName = invoice.customers.company_name || invoice.customers.name;
-      const customerTypeRaw = invoice.customers.customer_type || 'Individual';
+      const customerName = customerData.company_name || customerData.name;
+      const customerTypeRaw = customerData.customer_type || 'Individual';
       
       // Map customer type to expected format
       let customerType: 'Individual' | 'Business' | 'Government' = 'Individual';
@@ -141,7 +146,17 @@ export async function GET(request: NextRequest) {
       }
 
       const customer = customerMap.get(customerId)!;
-      customer.totalSales += parseFloat(invoice.total);
+      
+      // Convert total to USD for reporting
+      const total = parseFloat(invoice.total);
+      const totalUSD = await convertCurrency(
+        supabase,
+        total,
+        (invoice.currency || 'USD') as SupportedCurrency,
+        'USD' as SupportedCurrency
+      ) || total;
+      
+      customer.totalSales += totalUSD;
       customer.invoiceCount += 1;
       customer.lastSaleDate = invoice.invoice_date;
 
@@ -153,7 +168,7 @@ export async function GET(request: NextRequest) {
       // Aggregate products for this customer
       const invoiceProducts = productData[invoice.id] || [];
       invoiceProducts.forEach((product: any) => {
-        const existingProduct = customer.topProducts.find(p => p.product === product.name);
+        const existingProduct = customer.topProducts.find((p: any) => p.product === product.name);
         if (existingProduct) {
           existingProduct.quantity += product.quantity;
           existingProduct.revenue += product.revenue;
@@ -165,13 +180,13 @@ export async function GET(request: NextRequest) {
           });
         }
       });
-    });
+    }
 
     // Calculate average sales and sort top products for each customer
     let customers = Array.from(customerMap.values());
     customers.forEach(customer => {
       customer.averageSale = customer.invoiceCount > 0 ? customer.totalSales / customer.invoiceCount : 0;
-      customer.topProducts.sort((a, b) => b.revenue - a.revenue);
+      customer.topProducts.sort((a: any, b: any) => b.revenue - a.revenue);
       customer.topProducts = customer.topProducts.slice(0, 5); // Keep top 5 products
     });
 

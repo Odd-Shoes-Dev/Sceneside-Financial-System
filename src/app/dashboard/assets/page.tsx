@@ -76,18 +76,10 @@ export default function AssetsPage() {
 
   const loadStats = async () => {
     try {
-      const { data } = await supabase
-        .from('fixed_assets')
-        .select('purchase_price, accumulated_depreciation, book_value')
-        .eq('status', 'active');
-
-      if (data) {
-        const totalAssets = data.length;
-        const totalCost = data.reduce((sum, asset) => sum + (asset.purchase_price || 0), 0);
-        const totalDepreciation = data.reduce((sum, asset) => sum + (asset.accumulated_depreciation || 0), 0);
-        const totalBookValue = data.reduce((sum, asset) => sum + (asset.book_value || 0), 0);
-
-        setStats({ totalAssets, totalCost, totalBookValue, totalDepreciation });
+      const response = await fetch('/api/assets/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
       }
     } catch (error) {
       console.error('Failed to load stats:', error);

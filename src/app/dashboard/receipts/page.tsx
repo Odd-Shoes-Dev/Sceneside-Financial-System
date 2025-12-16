@@ -11,9 +11,15 @@ export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<(Invoice & { customers: Customer })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    totalAmount: 0,
+    totalCount: 0,
+    thisMonthCount: 0,
+  });
 
   useEffect(() => {
     loadReceipts();
+    loadStats();
   }, []);
 
   const loadReceipts = async () => {
@@ -30,6 +36,18 @@ export default function ReceiptsPage() {
       console.error('Failed to load receipts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await fetch('/api/receipts/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
     }
   };
 
@@ -176,17 +194,15 @@ export default function ReceiptsPage() {
             <div className="card-body">
               <p className="text-sm text-gray-500">Total Receipts</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {filteredReceipts.length}
+                {stats.totalCount}
               </p>
             </div>
           </div>
           <div className="card">
             <div className="card-body">
-              <p className="text-sm text-gray-500">Total Amount Received</p>
+              <p className="text-sm text-gray-500">Total Amount Received (USD)</p>
               <p className="text-2xl font-bold text-green-600 mt-1">
-                {formatCurrency(
-                  filteredReceipts.reduce((sum, r) => sum + (r.amount_paid || r.total), 0)
-                )}
+                {formatCurrency(stats.totalAmount, 'USD')}
               </p>
             </div>
           </div>
@@ -194,12 +210,7 @@ export default function ReceiptsPage() {
             <div className="card-body">
               <p className="text-sm text-gray-500">This Month</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {filteredReceipts.filter(r => {
-                  const receiptDate = new Date(r.invoice_date);
-                  const now = new Date();
-                  return receiptDate.getMonth() === now.getMonth() && 
-                         receiptDate.getFullYear() === now.getFullYear();
-                }).length}
+                {stats.thisMonthCount}
               </p>
             </div>
           </div>

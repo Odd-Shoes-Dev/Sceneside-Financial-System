@@ -72,20 +72,10 @@ export default function InventoryPage() {
 
   const loadStats = async () => {
     try {
-      const { data: allItems } = await supabase
-        .from('products')
-        .select('quantity_on_hand, cost_price, currency, reorder_point')
-        .eq('track_inventory', true);
-
-      if (allItems) {
-        const totalItems = allItems.length;
-        // Note: For multi-currency, total value shows in USD equivalent
-        // In a production system, you'd convert using exchange rates
-        const totalValue = allItems.reduce((sum, item) => sum + ((item.quantity_on_hand || 0) * (item.cost_price || 0)), 0);
-        const lowStock = allItems.filter(item => (item.quantity_on_hand || 0) <= (item.reorder_point || 0) && (item.quantity_on_hand || 0) > 0).length;
-        const outOfStock = allItems.filter(item => (item.quantity_on_hand || 0) === 0).length;
-
-        setStats({ totalItems, totalValue, lowStock, outOfStock });
+      const response = await fetch('/api/inventory/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
       }
     } catch (error) {
       console.error('Failed to load stats:', error);

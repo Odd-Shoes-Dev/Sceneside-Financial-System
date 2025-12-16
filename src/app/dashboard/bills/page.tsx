@@ -26,10 +26,17 @@ export default function BillsPage() {
   const [statusFilter, setStatusFilter] = useState<BillStatus>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({
+    totalUnpaid: 0,
+    dueThisWeek: 0,
+    overdue: 0,
+    paidThisMonth: 0,
+  });
   const pageSize = 20;
 
   useEffect(() => {
     loadBills();
+    loadStats();
   }, [searchQuery, statusFilter, currentPage]);
 
   const loadBills = async () => {
@@ -64,6 +71,18 @@ export default function BillsPage() {
       console.error('Failed to load bills:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await fetch('/api/bills/stats');
+      if (!response.ok) throw new Error('Failed to load stats');
+      
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to load stats:', error);
     }
   };
 
@@ -117,25 +136,33 @@ export default function BillsPage() {
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Unpaid</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1">
+              {formatCurrency(stats.totalUnpaid)}
+            </p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Due This Week</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">
+              {formatCurrency(stats.dueThisWeek)}
+            </p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Overdue</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">
+              {formatCurrency(stats.overdue)}
+            </p>
           </div>
         </div>
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Paid This Month</p>
-            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">$0.00</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1">
+              {formatCurrency(stats.paidThisMonth)}
+            </p>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   ArrowLeftIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
+import { CurrencySelect } from '@/components/ui';
 
 export default function NewAssetPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function NewAssetPage() {
     serial_number: '',
     purchase_date: new Date().toISOString().split('T')[0],
     purchase_cost: 0,
+    currency: 'USD',
     salvage_value: 0,
     useful_life_years: 5,
     depreciation_method: 'straight_line',
@@ -53,6 +55,7 @@ export default function NewAssetPage() {
         serial_number: formData.serial_number,
         purchase_date: formData.purchase_date,
         purchase_price: formData.purchase_cost,
+        currency: formData.currency,
         residual_value: formData.salvage_value,
         useful_life_months: formData.useful_life_years * 12, // Convert years to months
         depreciation_start_date: formData.purchase_date,
@@ -267,22 +270,29 @@ export default function NewAssetPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Currency <span className="text-red-500">*</span>
+              </label>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Purchase Cost <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  name="purchase_cost"
-                  value={formData.purchase_cost}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                  placeholder="0.00"
-                />
-              </div>
+              <input
+                type="number"
+                name="purchase_cost"
+                value={formData.purchase_cost}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="0.00"
+              />
             </div>
 
             <div>
