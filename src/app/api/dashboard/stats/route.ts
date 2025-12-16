@@ -10,12 +10,12 @@ export async function GET() {
       { data: invoices },
       { data: bills },
       { data: expenses },
-      { data: bankAccounts },
+      { data: bankTransactions },
     ] = await Promise.all([
       supabase.from('invoices').select('total, amount_paid, status, currency, invoice_date'),
       supabase.from('bills').select('total, amount_paid, status, currency, bill_date'),
       supabase.from('expenses').select('total, currency, expense_date'),
-      supabase.from('bank_transactions').select('amount, type, currency, transaction_date'),
+      supabase.from('bank_transactions').select('amount, transaction_type, transaction_date'),
     ]);
 
     let totalRevenue = 0;
@@ -102,26 +102,10 @@ export async function GET() {
     }
 
     // Process bank transactions for cash balance
-    if (bankAccounts) {
-      for (const transaction of bankAccounts) {
-        let amountInUSD = transaction.amount;
-
-        if (transaction.currency !== 'USD') {
-          const { data: converted } = await supabase.rpc('convert_currency', {
-            p_amount: transaction.amount,
-            p_from_currency: transaction.currency,
-            p_to_currency: 'USD',
-            p_date: transaction.transaction_date,
-          });
-
-          amountInUSD = converted || transaction.amount;
-        }
-
-        if (transaction.type === 'deposit' || transaction.type === 'credit') {
-          cashBalance += amountInUSD;
-        } else {
-          cashBalance -= amountInUSD;
-        }
+    if (bankTransactions) {
+      for (const transaction of bankTransactions) {
+        // Amounts are already signed (negative for outflows, positive for inflows)
+        cashBalance += transaction.amount || 0;
       }
     }
 
