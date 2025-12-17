@@ -34,18 +34,37 @@ interface Car {
   gallery_images: string[];
 }
 
-export default async function CarDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  
-  const { data: car, error } = await supabase
-    .from('website_cars')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single();
+export default function CarDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const [car, setCar] = useState<Car | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (error || !car) {
-    notFound();
+  useEffect(() => {
+    params.then(async (p) => {
+      const { data, error } = await supabase
+        .from('website_cars')
+        .select('*')
+        .eq('slug', p.slug)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        notFound();
+      }
+      setCar(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-12 w-12 border-4 border-sceneside-navy border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!car) {
+    return notFound();
   }
 
   return <CarDetailContent car={car} />;
@@ -53,6 +72,8 @@ export default async function CarDetailPage({ params }: { params: Promise<{ slug
 
 function CarDetailContent({ car }: { car: Car }) {
   const [selectedImage, setSelectedImage] = useState<string>(car.featured_image || '');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const loadCar = async () => {
     try {
@@ -72,6 +93,23 @@ function CarDetailContent({ car }: { car: Car }) {
   };
 
   const allImages = [car.featured_image, ...(car.gallery_images || [])].filter(Boolean);
+
+  const openLightbox = (index: number) => {
+    setSelectedImageIndex(index);
+    setShowLightbox(true);
+  };
+
+  const closeLightbox = () => {
+    setShowLightbox(false);
+  };
+
+  const nextImage = () => {
+    setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const prevImage = () => {
+    setSelectedImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -94,27 +132,76 @@ function CarDetailContent({ car }: { car: Car }) {
           <div className="lg:col-span-2">
             {/* Image Gallery */}
             <div className="mb-8">
-              <div className="relative h-96 bg-gray-200 rounded-lg overflow-hidden mb-4">
+              <button
+                onClick={() => openLightbox(0)}
+                className="relative h-96 bg-gray-200 rounded-lg overflow-hidden mb-4 w-full group cursor-pointer"
+              >
                 {selectedImage && (
-                  <img src={selectedImage} alt={car.name} className="w-full h-full object-cover" />
+                  <>
+                    <img src={selectedImage} alt={car.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-lg font-semibold">
+                        Click to view full size
+                      </span>
+                    </div>
+                  </>
                 )}
-              </div>
+              </button>
               {allImages.length > 1 && (
                 <div className="grid grid-cols-4 gap-4">
-                  {allImages.slice(0, 4).map((image, index) => (
+                  {allImages.slice(0, 8).map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImage(image)}
-                      className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden ${
+                      onClick={() => openLightbox(index)}
+                      className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden hover:ring-2 hover:ring-sceneside-navy transition-all ${
                         selectedImage === image ? 'ring-2 ring-sceneside-navy' : ''
                       }`}
                     >
                       <img src={image} alt={`${car.name} ${index + 1}`} className="w-full h-full object-cover" />
+                      {index === 7 && allImages.length > 8 && (
+                        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                          <span className="text-white font-semibold text-lg">+{allImages.length - 8}</span>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Lightbox */}
+            {showLightbox && (
+              <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center" onClick={closeLightbox}>
+                <button
+                  onClick={closeLightbox}
+                  className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-50"
+                >
+                  ×
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-4 text-white text-6xl hover:text-gray-300 z-50"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-4 text-white text-6xl hover:text-gray-300 z-50"
+                >
+                  ›
+                </button>
+                <div className="max-w-7xl max-h-[90vh] w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                  <img
+                    src={allImages[selectedImageIndex]}
+                    alt={`${car.name} ${selectedImageIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="text-center text-white mt-4">
+                    {selectedImageIndex + 1} / {allImages.length}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Car Info */}
             <div className="mb-8">
@@ -181,35 +268,38 @@ function CarDetailContent({ car }: { car: Car }) {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="card sticky top-4">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Pricing</h3>
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 sticky top-4">
+              <h3 className="text-lg font-semibold text-gray-600 mb-4">Rental Rates</h3>
               
               <div className="space-y-4 mb-6">
-                <div className="border-b pb-4">
-                  <p className="text-sm text-gray-600">Daily Rate</p>
-                  <p className="text-3xl font-bold text-sceneside-navy">${car.daily_rate}</p>
+                <div className="pb-4 border-b border-gray-200">
+                  <p className="text-sm text-gray-600 mb-1">Daily Rate</p>
+                  <p className="text-3xl font-bold text-sceneside-navy">${car.daily_rate.toFixed(2)}</p>
                 </div>
                 {car.weekly_rate > 0 && (
-                  <div className="border-b pb-4">
-                    <p className="text-sm text-gray-600">Weekly Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">${car.weekly_rate}</p>
-                    <p className="text-xs text-green-600">Save ${(car.daily_rate * 7 - car.weekly_rate).toFixed(2)}</p>
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Weekly Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">${car.weekly_rate.toFixed(2)}</p>
+                    <p className="text-xs text-green-600 mt-1">Save ${(car.daily_rate * 7 - car.weekly_rate).toFixed(2)}</p>
                   </div>
                 )}
                 {car.monthly_rate > 0 && (
                   <div className="pb-4">
-                    <p className="text-sm text-gray-600">Monthly Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">${car.monthly_rate}</p>
-                    <p className="text-xs text-green-600">Best Value!</p>
+                    <p className="text-sm text-gray-600 mb-1">Monthly Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">${car.monthly_rate.toFixed(2)}</p>
+                    <p className="text-xs text-green-600 mt-1">Best Value!</p>
                   </div>
                 )}
               </div>
 
-              <Link href="/website/contact" className="btn-primary w-full text-center">
+              <Link 
+                href="/website/contact" 
+                className="block w-full text-center bg-sceneside-navy text-white px-6 py-3 rounded-lg font-semibold hover:bg-sceneside-navy-dark transition-colors mb-4"
+              >
                 Reserve Now
               </Link>
 
-              <p className="text-xs text-gray-500 mt-4 text-center">Free cancellation up to 24 hours before pickup</p>
+              <p className="text-xs text-gray-500 text-center">Free cancellation up to 24 hours before pickup</p>
             </div>
           </div>
         </div>

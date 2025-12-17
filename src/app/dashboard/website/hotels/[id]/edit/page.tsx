@@ -6,16 +6,22 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeftIcon,
-  PhotoIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import ImageGalleryUpload, { uploadImagesToStorage, deleteImageFromStorage } from '@/components/image-gallery-upload';
 
-export default function EditHotelPage({ params }: { params: { id: string } }) {
+interface ImageItem {
+  url: string;
+  file?: File;
+  isNew?: boolean;
+}
+
+export default function EditHotelPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hotelId, setHotelId] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -35,10 +41,12 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
     is_featured: false,
     is_active: true,
     featured_image: '',
+    gallery_images: [] as string[],
   });
 
-  const [newImage, setNewImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [images, setImages] = useState<ImageItem[]>([]);
+  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const [originalImages, setOriginalImages] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState('');
 
   const commonAmenities = [
@@ -59,23 +67,37 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
   ];
 
   useEffect(() => {
-    fetchHotel();
-  }, [params.id]);
+    params.then(p => {
+      setHotelId(p.id);
+      fetchHotel(p.id);
+    });
+  }, []);
 
-  const fetchHotel = async () => {
+  const fetchHotel = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from('website_hotels')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
       if (data) {
         setFormData(data);
+        
+        // Load existing images
+        const allImages: ImageItem[] = [];
         if (data.featured_image) {
-          setImagePreview(data.featured_image);
+          allImages.push({ url: data.featured_image, isNew: false });
         }
+        if (data.gallery_images && Array.isArray(data.gallery_images)) {
+          data.gallery_images.forEach((url: string) => {
+            allImages.push({ url, isNew: false });
+          });
+        }
+        
+        setImages(allImages);
+        setOriginalImages([data.featured_image, ...(data.gallery_images || [])].filter(Boolean));
       }
     } catch (err) {
       console.error('Error fetching hotel:', err);
@@ -85,58 +107,24 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNewImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `hotels/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('website-images')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from('website-images')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      let featuredImageUrl = formData.featured_image;
+      // Upload all images
+      const { featuredImage, galleryImages } = await uploadImagesToStorage(
+        images,
+        'hotels',
+        primaryImageIndex
+      );
 
-      // Upload new image if provided
-      if (newImage) {
-        setUploading(true);
-        featuredImageUrl = await uploadImage(newImage);
-        setUploading(false);
-
-        // Delete old image if it exists
-        if (formData.featured_image) {
-          const oldPath = formData.featured_image.split('/').pop();
-          if (oldPath) {
-            await supabase.storage
-              .from('website-images')
-              .remove([`hotels/${oldPath}`]);
-          }
+      // Delete removed images
+      const currentImageUrls = images.map(img => img.url);
+      for (const oldUrl of originalImages) {
+        if (!currentImageUrls.includes(oldUrl)) {
+          await deleteImageFromStorage(oldUrl, 'hotels');
         }
       }
 
@@ -152,9 +140,10 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
         .update({
           ...formData,
           slug,
-          featured_image: featuredImageUrl,
+          featured_image: featuredImage,
+          gallery_images: galleryImages,
         })
-        .eq('id', params.id);
+        .eq('id', hotelId);
 
       if (updateError) throw updateError;
 
@@ -164,7 +153,6 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
       setError(err instanceof Error ? err.message : 'Failed to update hotel');
     } finally {
       setLoading(false);
-      setUploading(false);
     }
   };
 
@@ -188,19 +176,7 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const removeImage = async () => {
-    if (formData.featured_image) {
-      const oldPath = formData.featured_image.split('/').pop();
-      if (oldPath) {
-        await supabase.storage
-          .from('website-images')
-          .remove([`hotels/${oldPath}`]);
-      }
-    }
-    setFormData({ ...formData, featured_image: '' });
-    setImagePreview('');
-    setNewImage(null);
-  };
+
 
   if (fetching) {
     return (
@@ -386,46 +362,25 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* Featured Image */}
+        {/* Image Gallery */}
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-gray-900">Featured Image</h2>
+            <h2 className="font-semibold text-gray-900">Images</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Upload multiple images. The primary image will be shown in listings.
+            </p>
           </div>
           <div className="card-body">
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6">
-              {imagePreview ? (
-                <div className="relative w-full">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <PhotoIcon className="w-12 h-12 text-gray-400 mb-4" />
-                  <label className="btn-primary cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    Choose Image
-                  </label>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Recommended: 1920x1080px or higher
-                  </p>
-                </>
-              )}
-            </div>
+            <ImageGalleryUpload
+              images={images}
+              primaryImageIndex={primaryImageIndex}
+              onChange={(newImages, newPrimaryIndex) => {
+                setImages(newImages);
+                setPrimaryImageIndex(newPrimaryIndex);
+              }}
+              storageFolder="hotels"
+              maxImages={10}
+            />
           </div>
         </div>
 
@@ -543,10 +498,10 @@ export default function EditHotelPage({ params }: { params: { id: string } }) {
           </Link>
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading}
             className="btn-primary"
           >
-            {uploading ? 'Uploading...' : loading ? 'Saving...' : 'Save Changes'}
+            {loading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>

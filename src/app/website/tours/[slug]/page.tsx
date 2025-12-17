@@ -19,12 +19,19 @@ interface Tour {
   slug: string;
   description: string;
   short_description: string;
+  location: string;
   destination: string;
   duration: string;
   duration_days: number;
   price: number;
+  price_per_person: number;
+  max_group_size: number;
   group_size_max: number;
-  itinerary: Array<{ day: number; title: string; description: string }>;
+  difficulty_level: string;
+  highlights: string[];
+  itinerary: string[];
+  inclusions: string[];
+  exclusions: string[];
   included: string[];
   excluded: string[];
   requirements: string;
@@ -32,18 +39,37 @@ interface Tour {
   gallery_images: string[];
 }
 
-export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  
-  const { data: tour, error } = await supabase
-    .from('website_tours')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single();
+export default function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const [tour, setTour] = useState<Tour | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (error || !tour) {
-    notFound();
+  useEffect(() => {
+    params.then(async (p) => {
+      const { data, error } = await supabase
+        .from('website_tours')
+        .select('*')
+        .eq('slug', p.slug)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        notFound();
+      }
+      setTour(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-12 w-12 border-4 border-sceneside-navy border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!tour) {
+    return notFound();
   }
 
   return <TourDetailContent tour={tour} />;
@@ -51,6 +77,8 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
 function TourDetailContent({ tour }: { tour: Tour }) {
   const [selectedImage, setSelectedImage] = useState<string>(tour.featured_image || '');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const loadTour = async () => {
     try {
@@ -70,6 +98,23 @@ function TourDetailContent({ tour }: { tour: Tour }) {
   };
 
   const allImages = [tour.featured_image, ...(tour.gallery_images || [])].filter(Boolean);
+
+  const openLightbox = (index: number) => {
+    setSelectedImageIndex(index);
+    setShowLightbox(true);
+  };
+
+  const closeLightbox = () => {
+    setShowLightbox(false);
+  };
+
+  const nextImage = () => {
+    setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const prevImage = () => {
+    setSelectedImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -92,35 +137,84 @@ function TourDetailContent({ tour }: { tour: Tour }) {
           <div className="lg:col-span-2">
             {/* Image Gallery */}
             <div className="mb-8">
-              <div className="relative h-96 bg-gray-200 rounded-lg overflow-hidden mb-4">
+              <button
+                onClick={() => openLightbox(0)}
+                className="relative h-96 bg-gray-200 rounded-lg overflow-hidden mb-4 w-full group cursor-pointer"
+              >
                 {selectedImage && (
-                  <img src={selectedImage} alt={tour.name} className="w-full h-full object-cover" />
+                  <>
+                    <img src={selectedImage} alt={tour.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-lg font-semibold">
+                        Click to view full size
+                      </span>
+                    </div>
+                  </>
                 )}
-              </div>
+              </button>
               {allImages.length > 1 && (
                 <div className="grid grid-cols-4 gap-4">
-                  {allImages.slice(0, 4).map((image, index) => (
+                  {allImages.slice(0, 8).map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImage(image)}
-                      className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden ${
+                      onClick={() => openLightbox(index)}
+                      className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden hover:ring-2 hover:ring-sceneside-navy transition-all ${
                         selectedImage === image ? 'ring-2 ring-sceneside-navy' : ''
                       }`}
                     >
                       <img src={image} alt={`${tour.name} ${index + 1}`} className="w-full h-full object-cover" />
+                      {index === 7 && allImages.length > 8 && (
+                        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                          <span className="text-white font-semibold text-lg">+{allImages.length - 8}</span>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
+            {/* Lightbox */}
+            {showLightbox && (
+              <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center" onClick={closeLightbox}>
+                <button
+                  onClick={closeLightbox}
+                  className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-50"
+                >
+                  ×
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-4 text-white text-6xl hover:text-gray-300 z-50"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-4 text-white text-6xl hover:text-gray-300 z-50"
+                >
+                  ›
+                </button>
+                <div className="max-w-7xl max-h-[90vh] w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                  <img
+                    src={allImages[selectedImageIndex]}
+                    alt={`${tour.name} ${selectedImageIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="text-center text-white mt-4">
+                    {selectedImageIndex + 1} / {allImages.length}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tour Info */}
             <div className="mb-8">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">{tour.name}</h1>
-              {tour.destination && (
+              {(tour.location || tour.destination) && (
                 <div className="flex items-center gap-2 text-gray-600 mb-6">
                   <MapPinIcon className="w-5 h-5" />
-                  <span className="text-lg">{tour.destination}</span>
+                  <span className="text-lg">{tour.location || tour.destination}</span>
                 </div>
               )}
 
@@ -134,7 +228,7 @@ function TourDetailContent({ tour }: { tour: Tour }) {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <UsersIcon className="w-6 h-6 text-sceneside-navy mb-2" />
                   <p className="text-sm text-gray-600">Group Size</p>
-                  <p className="font-bold text-gray-900">Max {tour.group_size_max || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">Max {tour.max_group_size || tour.group_size_max || 'N/A'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <CalendarIcon className="w-6 h-6 text-sceneside-navy mb-2" />
@@ -146,6 +240,21 @@ function TourDetailContent({ tour }: { tour: Tour }) {
               <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">{tour.description}</p>
             </div>
 
+            {/* Highlights */}
+            {tour.highlights && tour.highlights.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Tour Highlights</h2>
+                <ul className="space-y-3">
+                  {tour.highlights.map((highlight, index) => (
+                    <li key={index} className="flex items-start gap-3">
+                      <CheckCircleIcon className="w-6 h-6 text-sceneside-navy flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700 text-lg">{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Itinerary */}
             {tour.itinerary && tour.itinerary.length > 0 && (
               <div className="mb-8">
@@ -153,10 +262,7 @@ function TourDetailContent({ tour }: { tour: Tour }) {
                 <div className="space-y-4">
                   {tour.itinerary.map((item, index) => (
                     <div key={index} className="border-l-4 border-sceneside-navy pl-6 pb-4">
-                      <h3 className="font-bold text-lg text-gray-900 mb-2">
-                        Day {item.day}: {item.title}
-                      </h3>
-                      <p className="text-gray-700">{item.description}</p>
+                      <p className="text-gray-700">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -165,11 +271,11 @@ function TourDetailContent({ tour }: { tour: Tour }) {
 
             {/* Included/Excluded */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              {tour.included && tour.included.length > 0 && (
+              {(tour.inclusions || tour.included) && (tour.inclusions?.length > 0 || tour.included?.length > 0) && (
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">What's Included</h3>
                   <ul className="space-y-2">
-                    {tour.included.map((item, index) => (
+                    {(tour.inclusions || tour.included || []).map((item, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                         <span className="text-gray-700">{item}</span>
@@ -179,11 +285,11 @@ function TourDetailContent({ tour }: { tour: Tour }) {
                 </div>
               )}
 
-              {tour.excluded && tour.excluded.length > 0 && (
+              {(tour.exclusions || tour.excluded) && (tour.exclusions?.length > 0 || tour.excluded?.length > 0) && (
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">What's Not Included</h3>
                   <ul className="space-y-2">
-                    {tour.excluded.map((item, index) => (
+                    {(tour.exclusions || tour.excluded || []).map((item, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <XCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <span className="text-gray-700">{item}</span>
@@ -205,30 +311,34 @@ function TourDetailContent({ tour }: { tour: Tour }) {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="card sticky top-4">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Book This Tour</h3>
-              <p className="text-gray-600 mb-6">From</p>
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 sticky top-4">
               <div className="mb-6">
-                <span className="text-4xl font-bold text-sceneside-navy">${tour.price}</span>
-                <span className="text-gray-600"> per person</span>
-              </div>
-
-              <div className="space-y-3 mb-6 text-sm text-gray-700">
-                <div className="flex justify-between">
-                  <span>Duration:</span>
-                  <span className="font-semibold">{tour.duration || `${tour.duration_days} days`}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Max Group:</span>
-                  <span className="font-semibold">{tour.group_size_max} people</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Departure:</span>
-                  <span className="font-semibold">Flexible</span>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">Price</h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-sceneside-navy">${tour.price_per_person || tour.price || 0}</span>
+                  <span className="text-gray-600 text-sm">per person</span>
                 </div>
               </div>
 
-              <Link href="/website/contact" className="btn-primary w-full text-center mb-4">
+              <div className="space-y-3 mb-6 pb-6 border-b border-gray-200">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Duration:</span>
+                  <span className="font-semibold text-gray-900">{tour.duration || `${tour.duration_days} days`}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Max Group:</span>
+                  <span className="font-semibold text-gray-900">{tour.max_group_size || tour.group_size_max} people</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Departure:</span>
+                  <span className="font-semibold text-gray-900">Flexible</span>
+                </div>
+              </div>
+
+              <Link 
+                href="/website/contact" 
+                className="block w-full text-center bg-sceneside-navy text-white px-6 py-3 rounded-lg font-semibold hover:bg-sceneside-navy-dark transition-colors mb-4"
+              >
                 Request Booking
               </Link>
 

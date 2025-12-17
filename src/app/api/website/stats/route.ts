@@ -15,40 +15,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's company
-    const { data: userData } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: 'No company found' }, { status: 400 });
-    }
-
     // Get counts for each section
     const [hotels, cars, tours, inquiries, testimonials] = await Promise.all([
       supabase
         .from('website_hotels')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', userData.company_id),
+        .select('id', { count: 'exact', head: true }),
       supabase
         .from('website_cars')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', userData.company_id),
+        .select('id', { count: 'exact', head: true }),
       supabase
         .from('website_tours')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', userData.company_id),
+        .select('id', { count: 'exact', head: true }),
       supabase
         .from('website_inquiries')
         .select('id', { count: 'exact', head: true })
-        .eq('company_id', userData.company_id)
         .eq('status', 'new'),
       supabase
         .from('website_testimonials')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', userData.company_id),
+        .select('id', { count: 'exact', head: true }),
     ]);
 
     return NextResponse.json({

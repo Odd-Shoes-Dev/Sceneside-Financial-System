@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import WebsiteHeader from '@/components/website-header';
 import { PhotoIcon, TagIcon } from '@heroicons/react/24/outline';
 
 interface GalleryImage {
@@ -63,14 +64,11 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-sceneside-navy text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link href="/website" className="text-white/80 hover:text-white mb-4 inline-block">&larr; Back to Home</Link>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Gallery</h1>
-          <p className="text-xl text-gray-200">Explore our collection of memorable moments</p>
-        </div>
-      </div>
+      <WebsiteHeader 
+        title="Gallery" 
+        description="Explore our collection of memorable moments"
+        activePage="gallery"
+      />
 
       {/* Filters */}
       <div className="bg-white shadow-sm sticky top-0 z-10">

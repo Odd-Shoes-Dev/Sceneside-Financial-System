@@ -9,6 +9,7 @@ import {
   TrashIcon,
   StarIcon,
   ChatBubbleLeftIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
@@ -17,6 +18,8 @@ interface Testimonial {
   customer_name: string;
   customer_title: string;
   rating: number;
+  comment: string;
+  testimonial: string;
   content: string;
   service_type: string;
   is_featured: boolean;
@@ -119,9 +122,17 @@ export default function TestimonialsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Testimonials</h1>
-          <p className="text-gray-600 mt-1">Manage customer reviews and feedback</p>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/dashboard/website"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Testimonials</h1>
+            <p className="text-gray-600 mt-1">Manage customer reviews and feedback</p>
+          </div>
         </div>
         <Link href="/dashboard/website/testimonials/new" className="btn-primary">
           <PlusIcon className="w-5 h-5 mr-2" />
@@ -244,7 +255,7 @@ export default function TestimonialsPage() {
                 </div>
 
                 <blockquote className="text-gray-700 italic border-l-4 border-sceneside-navy pl-4">
-                  "{testimonial.content}"
+                  "{testimonial.comment || testimonial.testimonial || testimonial.content}"
                 </blockquote>
 
                 <p className="text-xs text-gray-500 mt-3">

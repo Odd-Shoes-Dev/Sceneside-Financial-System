@@ -6,15 +6,19 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeftIcon,
-  BuildingOffice2Icon,
-  PhotoIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import ImageGalleryUpload, { uploadImagesToStorage } from '@/components/image-gallery-upload';
+
+interface ImageItem {
+  url: string;
+  file?: File;
+  isNew?: boolean;
+}
 
 export default function NewHotelPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -36,8 +40,8 @@ export default function NewHotelPage() {
     is_active: true,
   });
 
-  const [featuredImage, setFeaturedImage] = useState<File | null>(null);
-  const [featuredImagePreview, setFeaturedImagePreview] = useState<string>('');
+  const [images, setImages] = useState<ImageItem[]>([]);
+  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
   const [newAmenity, setNewAmenity] = useState('');
 
   const commonAmenities = [
@@ -57,49 +61,18 @@ export default function NewHotelPage() {
     '24-Hour Front Desk',
   ];
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFeaturedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFeaturedImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `hotels/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('website-images')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from('website-images')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Upload featured image if provided
-      let featuredImageUrl = '';
-      if (featuredImage) {
-        setUploading(true);
-        featuredImageUrl = await uploadImage(featuredImage);
-        setUploading(false);
-      }
+      // Upload all images
+      const { featuredImage, galleryImages } = await uploadImagesToStorage(
+        images,
+        'hotels',
+        primaryImageIndex
+      );
 
       // Generate slug from name
       const slug = formData.name
@@ -113,7 +86,8 @@ export default function NewHotelPage() {
         .insert({
           ...formData,
           slug,
-          featured_image: featuredImageUrl,
+          featured_image: featuredImage,
+          gallery_images: galleryImages,
           amenities: formData.amenities,
         });
 
@@ -125,7 +99,6 @@ export default function NewHotelPage() {
       setError(err instanceof Error ? err.message : 'Failed to create hotel');
     } finally {
       setLoading(false);
-      setUploading(false);
     }
   };
 
@@ -331,49 +304,25 @@ export default function NewHotelPage() {
           </div>
         </div>
 
-        {/* Featured Image */}
+        {/* Image Gallery */}
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-gray-900">Featured Image</h2>
+            <h2 className="font-semibold text-gray-900">Images</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Upload multiple images. The primary image will be shown in listings.
+            </p>
           </div>
           <div className="card-body">
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6">
-              {featuredImagePreview ? (
-                <div className="relative w-full">
-                  <img
-                    src={featuredImagePreview}
-                    alt="Preview"
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFeaturedImage(null);
-                      setFeaturedImagePreview('');
-                    }}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <PhotoIcon className="w-12 h-12 text-gray-400 mb-4" />
-                  <label className="btn-primary cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    Choose Image
-                  </label>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Recommended: 1920x1080px or higher
-                  </p>
-                </>
-              )}
-            </div>
+            <ImageGalleryUpload
+              images={images}
+              primaryImageIndex={primaryImageIndex}
+              onChange={(newImages, newPrimaryIndex) => {
+                setImages(newImages);
+                setPrimaryImageIndex(newPrimaryIndex);
+              }}
+              storageFolder="hotels"
+              maxImages={10}
+            />
           </div>
         </div>
 
@@ -491,10 +440,10 @@ export default function NewHotelPage() {
           </Link>
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading}
             className="btn-primary"
           >
-            {uploading ? 'Uploading...' : loading ? 'Creating...' : 'Create Hotel'}
+            {loading ? 'Creating...' : 'Create Hotel'}
           </button>
         </div>
       </form>

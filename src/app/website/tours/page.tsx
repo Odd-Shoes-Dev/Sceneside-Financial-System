@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import WebsiteHeader from '@/components/website-header';
 import {
   MapIcon,
   MagnifyingGlassIcon,
@@ -91,14 +92,11 @@ export default function ToursPublicPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-sceneside-navy text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link href="/website" className="text-white/80 hover:text-white mb-4 inline-block">&larr; Back to Home</Link>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover America</h1>
-          <p className="text-xl text-gray-200">Unforgettable tours and experiences across the United States</p>
-        </div>
-      </div>
+      <WebsiteHeader 
+        title="Discover America" 
+        description="Unforgettable tours and experiences across the United States"
+        activePage="tours"
+      />
 
       {/* Filters */}
       <div className="bg-white shadow-sm sticky top-0 z-10">

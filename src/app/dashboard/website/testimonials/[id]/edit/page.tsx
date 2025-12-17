@@ -7,11 +7,12 @@ import { supabase } from '@/lib/supabase/client';
 import { ArrowLeftIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
-export default function EditTestimonialPage({ params }: { params: { id: string } }) {
+export default function EditTestimonialPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [testimonialId, setTestimonialId] = useState<string>('');
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -26,20 +27,31 @@ export default function EditTestimonialPage({ params }: { params: { id: string }
   const serviceTypes = ['General', 'Hotel', 'Car Rental', 'Tour', 'Customer Service'];
 
   useEffect(() => {
-    fetchTestimonial();
-  }, [params.id]);
+    params.then((p) => {
+      setTestimonialId(p.id);
+      fetchTestimonial(p.id);
+    });
+  }, []);
 
-  const fetchTestimonial = async () => {
+  const fetchTestimonial = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from('website_testimonials')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
       if (data) {
-        setFormData(data);
+        setFormData({
+          customer_name: data.customer_name,
+          customer_title: data.customer_title || '',
+          rating: data.rating,
+          content: data.comment || data.testimonial || '', // Map comment/testimonial to content
+          service_type: data.service_type || 'General',
+          is_featured: data.is_featured,
+          is_active: data.is_active,
+        });
       }
     } catch (err) {
       console.error('Error fetching testimonial:', err);
@@ -57,8 +69,16 @@ export default function EditTestimonialPage({ params }: { params: { id: string }
     try {
       const { error: updateError } = await supabase
         .from('website_testimonials')
-        .update(formData)
-        .eq('id', params.id);
+        .update({
+          customer_name: formData.customer_name,
+          customer_title: formData.customer_title,
+          rating: formData.rating,
+          comment: formData.content, // Map content to comment field
+          service_type: formData.service_type,
+          is_featured: formData.is_featured,
+          is_active: formData.is_active,
+        })
+        .eq('id', testimonialId);
 
       if (updateError) throw updateError;
 

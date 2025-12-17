@@ -8,6 +8,7 @@ import {
   PlusIcon,
   TrashIcon,
   TagIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
 interface GalleryImage {
@@ -19,15 +20,18 @@ interface GalleryImage {
   created_at: string;
 }
 
+interface ImageFile {
+  file: File;
+  preview: string;
+}
+
 export default function GalleryPage() {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  const [newImage, setNewImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const [title, setTitle] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<ImageFile[]>([]);
   const [category, setCategory] = useState('General');
   const [tags, setTags] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -54,16 +58,48 @@ export default function GalleryPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNewImage(file);
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newImages: ImageFile[] = [];
+
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        newImages.push({
+          file,
+          preview: reader.result as string,
+        });
+        if (newImages.length === files.length) {
+          setSelectedFiles((prev) => [...prev, ...newImages]);
+        }
       };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    
+    const newImages: ImageFile[] = [];
+    imageFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newImages.push({
+          file,
+          preview: reader.result as string,
+        });
+        if (newImages.length === imageFiles.length) {
+          setSelectedFiles((prev) => [...prev, ...newImages]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadImage = async (file: File): Promise<string> => {
@@ -86,35 +122,41 @@ export default function GalleryPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newImage) return;
+    if (selectedFiles.length === 0) return;
 
     setUploading(true);
     try {
-      const imageUrl = await uploadImage(newImage);
+      const tagArray = tags.split(',').map((t) => t.trim()).filter((t) => t);
+
+      // Upload all images
+      const uploadPromises = selectedFiles.map(async (imageFile, index) => {
+        const imageUrl = await uploadImage(imageFile.file);
+        return {
+          title: `${category} Image ${index + 1}`,
+          image_url: imageUrl,
+          category,
+          tags: tagArray,
+        };
+      });
+
+      const imageData = await Promise.all(uploadPromises);
 
       const { error: insertError } = await supabase
         .from('website_gallery')
-        .insert({
-          title,
-          image_url: imageUrl,
-          category,
-          tags: tags.split(',').map((t) => t.trim()).filter((t) => t),
-        });
+        .insert(imageData);
 
       if (insertError) throw insertError;
 
       // Reset form
-      setNewImage(null);
-      setImagePreview('');
-      setTitle('');
+      setSelectedFiles([]);
       setCategory('General');
       setTags('');
       setShowUploadForm(false);
 
       fetchImages();
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Failed to upload image');
+      console.error('Error uploading images:', error);
+      alert('Failed to upload images');
     } finally {
       setUploading(false);
     }
@@ -161,6 +203,13 @@ export default function GalleryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link 
+            href="/dashboard/website" 
+            className="text-gray-600 hover:text-sceneside-navy mb-2 inline-flex items-center gap-2"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+            Back to Website
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Gallery</h1>
           <p className="text-gray-600 mt-1">Manage your image library</p>
         </div>
@@ -177,49 +226,57 @@ export default function GalleryPage() {
       {showUploadForm && (
         <div className="card">
           <div className="card-header">
-            <h2 className="font-semibold text-gray-900">Upload New Image</h2>
+            <h2 className="font-semibold text-gray-900">Upload Images</h2>
           </div>
           <div className="card-body">
             <form onSubmit={handleUpload} className="space-y-4">
-              <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6">
-                {imagePreview ? (
-                  <div className="relative w-full">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <PhotoIcon className="w-12 h-12 text-gray-400 mb-4" />
-                    <label className="btn-primary cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        required
-                      />
-                      Choose Image
-                    </label>
-                  </>
-                )}
+              {/* Drag and Drop Zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-sceneside-navy transition-colors"
+              >
+                <PhotoIcon className="w-12 h-12 text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-2">Drag and drop images here, or</p>
+                <label className="btn-primary cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFilesChange}
+                    className="hidden"
+                  />
+                  Choose Images
+                </label>
+                <p className="text-sm text-gray-500 mt-2">You can select multiple images</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Selected Images Preview */}
+              {selectedFiles.length > 0 && (
                 <div>
-                  <label className="label">Title</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="input"
-                    placeholder="Image title"
-                    required
-                  />
+                  <label className="label">Selected Images ({selectedFiles.length})</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {selectedFiles.map((imageFile, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={imageFile.preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Category</label>
                   <select
@@ -233,7 +290,7 @@ export default function GalleryPage() {
                   </select>
                 </div>
 
-                <div className="md:col-span-2">
+                <div>
                   <label className="label">Tags (comma separated)</label>
                   <input
                     type="text"
@@ -250,8 +307,7 @@ export default function GalleryPage() {
                   type="button"
                   onClick={() => {
                     setShowUploadForm(false);
-                    setNewImage(null);
-                    setImagePreview('');
+                    setSelectedFiles([]);
                   }}
                   className="btn-secondary"
                 >
@@ -259,10 +315,10 @@ export default function GalleryPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading}
+                  disabled={uploading || selectedFiles.length === 0}
                   className="btn-primary"
                 >
-                  {uploading ? 'Uploading...' : 'Upload'}
+                  {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} Image${selectedFiles.length !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </form>

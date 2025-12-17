@@ -50,6 +50,7 @@ interface Tour {
 interface Testimonial {
   id: string;
   customer_name: string;
+  customer_title: string;
   rating: number;
   comment: string;
   service_type: string;
@@ -61,12 +62,19 @@ interface WebsiteContent {
   content: string;
 }
 
+interface GalleryImage {
+  id: string;
+  image_url: string;
+}
+
 export default function WebsiteHomePage() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
   const [tours, setTours] = useState<Tour[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [content, setContent] = useState<Record<string, string>>({});
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -123,10 +131,19 @@ export default function WebsiteHomePage() {
       
       if (contentError) console.warn('Content table not ready:', contentError.message);
 
+      // Load gallery images for hero background
+      const { data: galleryData, error: galleryError } = await supabase
+        .from('website_gallery')
+        .select('id, image_url')
+        .limit(10);
+      
+      if (galleryError) console.warn('Gallery table not ready:', galleryError.message);
+
       setHotels(hotelsData || []);
       setCars(carsData || []);
       setTours(toursData || []);
       setTestimonials(testimonialsData || []);
+      setGalleryImages(galleryData || []);
 
       // Convert content array to object
       const contentObj: Record<string, string> = {};
@@ -140,6 +157,17 @@ export default function WebsiteHomePage() {
       setLoading(false);
     }
   };
+
+  // Rotate background images every 5 seconds
+  useEffect(() => {
+    if (galleryImages.length === 0) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [galleryImages.length]);
 
   if (loading) {
     return (
@@ -155,10 +183,13 @@ export default function WebsiteHomePage() {
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <BuildingOffice2Icon className="w-8 h-8 text-sceneside-navy" />
-              <span className="text-xl font-bold text-gray-900">Sceneside L.L.C</span>
-            </div>
+            <Link href="/website" className="flex items-center">
+              <img 
+                src="/Sceneside assets/Sceneside_logo.png" 
+                alt="Sceneside L.L.C" 
+                className="h-10 w-auto"
+              />
+            </Link>
             <div className="hidden md:flex space-x-8">
               <Link href="/website" className="text-gray-700 hover:text-sceneside-navy">Home</Link>
               <Link href="/website/hotels" className="text-gray-700 hover:text-sceneside-navy">Hotels</Link>
@@ -175,20 +206,45 @@ export default function WebsiteHomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-sceneside-navy to-sceneside-navy-dark text-white py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative text-white py-24 overflow-hidden">
+        {/* Background Image Slideshow */}
+        {galleryImages.length > 0 ? (
+          <>
+            {galleryImages.map((image, index) => (
+              <div
+                key={image.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ${
+                  index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <img
+                  src={image.image_url}
+                  alt="Background"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+            {/* Dark overlay for text readability */}
+            <div className="absolute inset-0 bg-black/60" />
+          </>
+        ) : (
+          // Fallback to gradient if no gallery images
+          <div className="absolute inset-0 bg-gradient-to-r from-sceneside-navy to-sceneside-navy-dark" />
+        )}
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 drop-shadow-lg">
               {content['hero_title'] || 'Explore America with Sceneside'}
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-gray-200 max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl mb-8 text-gray-100 max-w-3xl mx-auto drop-shadow-md">
               {content['hero_subtitle'] || 'Premium hotels, reliable car rentals, and unforgettable tours across the United States'}
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/website/hotels" className="bg-white text-sceneside-navy px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+              <Link href="/website/hotels" className="bg-white text-sceneside-navy px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg">
                 Browse Hotels
               </Link>
-              <Link href="/website/cars" className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-sceneside-navy transition-colors">
+              <Link href="/website/cars" className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-sceneside-navy transition-colors shadow-lg">
                 Rent a Car
               </Link>
             </div>
@@ -327,7 +383,7 @@ export default function WebsiteHomePage() {
 
       {/* Testimonials */}
       {testimonials.length > 0 && (
-        <section className="py-16">
+        <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900">What Our Customers Say</h2>
@@ -335,16 +391,21 @@ export default function WebsiteHomePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {testimonials.slice(0, 3).map((testimonial) => (
-                <div key={testimonial.id} className="card">
-                  <div className="flex items-center gap-1 mb-4">
+                <div key={testimonial.id} className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-1 mb-6">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <StarSolidIcon key={i} className="w-5 h-5 text-yellow-400" />
+                      <StarSolidIcon key={i} className="w-6 h-6 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                  <div>
-                    <p className="font-semibold text-gray-900">{testimonial.customer_name}</p>
-                    <p className="text-sm text-gray-600">{testimonial.service_type}</p>
+                  <p className="text-gray-700 mb-6 italic text-lg leading-relaxed">"{testimonial.comment}"</p>
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="font-bold text-gray-900 text-lg">{testimonial.customer_name}</p>
+                    {testimonial.customer_title && (
+                      <p className="text-sm text-gray-500 mb-1">{testimonial.customer_title}</p>
+                    )}
+                    <span className="inline-block mt-2 px-3 py-1 bg-sceneside-navy/10 text-sceneside-navy text-xs font-semibold rounded-full">
+                      {testimonial.service_type}
+                    </span>
                   </div>
                 </div>
               ))}

@@ -13,6 +13,23 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {},
+    // Optimize builds
+    optimizePackageImports: ['@heroicons/react'],
+  },
+  // Production optimizations
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Faster dev refreshes
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
   },
 }
 

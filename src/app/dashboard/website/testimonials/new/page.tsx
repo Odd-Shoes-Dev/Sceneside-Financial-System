@@ -33,7 +33,13 @@ export default function NewTestimonialPage() {
       const { error: insertError } = await supabase
         .from('website_testimonials')
         .insert({
-          ...formData,
+          customer_name: formData.customer_name,
+          customer_title: formData.customer_title,
+          rating: formData.rating,
+          comment: formData.content, // Map 'content' to 'comment' field
+          service_type: formData.service_type,
+          is_featured: formData.is_featured,
+          is_active: formData.is_active,
         });
 
       if (insertError) throw insertError;

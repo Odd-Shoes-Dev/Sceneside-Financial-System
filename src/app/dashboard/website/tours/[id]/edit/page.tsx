@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
@@ -10,7 +10,7 @@ import {
   PlusIcon,
   MinusIcon,
 } from '@heroicons/react/24/outline';
-import ImageGalleryUpload, { uploadImagesToStorage } from '@/components/image-gallery-upload';
+import ImageGalleryUpload, { uploadImagesToStorage, deleteImageFromStorage } from '@/components/image-gallery-upload';
 
 interface ImageItem {
   url: string;
@@ -18,10 +18,12 @@ interface ImageItem {
   isNew?: boolean;
 }
 
-export default function NewTourPage() {
+export default function EditTourPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tourId, setTourId] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -38,10 +40,13 @@ export default function NewTourPage() {
     exclusions: [] as string[],
     is_featured: false,
     is_active: true,
+    featured_image: '',
+    gallery_images: [] as string[],
   });
 
   const [images, setImages] = useState<ImageItem[]>([]);
   const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const [originalImages, setOriginalImages] = useState<string[]>([]);
   
   const [newHighlight, setNewHighlight] = useState('');
   const [newItinerary, setNewItinerary] = useState('');
@@ -49,6 +54,47 @@ export default function NewTourPage() {
   const [newExclusion, setNewExclusion] = useState('');
 
   const difficultyLevels = ['Easy', 'Moderate', 'Challenging', 'Difficult'];
+
+  useEffect(() => {
+    params.then(p => {
+      setTourId(p.id);
+      fetchTour(p.id);
+    });
+  }, []);
+
+  const fetchTour = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('website_tours')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setFormData(data);
+        
+        // Load existing images
+        const allImages: ImageItem[] = [];
+        if (data.featured_image) {
+          allImages.push({ url: data.featured_image, isNew: false });
+        }
+        if (data.gallery_images && Array.isArray(data.gallery_images)) {
+          data.gallery_images.forEach((url: string) => {
+            allImages.push({ url, isNew: false });
+          });
+        }
+        
+        setImages(allImages);
+        setOriginalImages([data.featured_image, ...(data.gallery_images || [])].filter(Boolean));
+      }
+    } catch (err) {
+      console.error('Error fetching tour:', err);
+      setError('Failed to load tour');
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,26 +109,37 @@ export default function NewTourPage() {
         primaryImageIndex
       );
 
+      // Delete removed images
+      const currentImageUrls = images.map(img => img.url);
+      for (const oldUrl of originalImages) {
+        if (!currentImageUrls.includes(oldUrl)) {
+          await deleteImageFromStorage(oldUrl, 'tours');
+        }
+      }
+
+      // Generate slug from name
       const slug = formData.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      const { error: insertError } = await supabase
+      // Update tour
+      const { error: updateError } = await supabase
         .from('website_tours')
-        .insert({
+        .update({
           ...formData,
           slug,
           featured_image: featuredImage,
           gallery_images: galleryImages,
-        });
+        })
+        .eq('id', tourId);
 
-      if (insertError) throw insertError;
+      if (updateError) throw updateError;
 
       router.push('/dashboard/website/tours');
     } catch (err) {
-      console.error('Error creating tour:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create tour');
+      console.error('Error updating tour:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update tour');
     } finally {
       setLoading(false);
     }
@@ -104,6 +161,14 @@ export default function NewTourPage() {
     });
   };
 
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sceneside-navy"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
@@ -114,8 +179,8 @@ export default function NewTourPage() {
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Add New Tour</h1>
-          <p className="text-gray-600 mt-1">Create a new tour package</p>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Tour</h1>
+          <p className="text-gray-600 mt-1">{formData.name}</p>
         </div>
       </div>
 
@@ -520,7 +585,7 @@ export default function NewTourPage() {
             disabled={loading}
             className="btn-primary"
           >
-            {loading ? 'Creating...' : 'Create Tour'}
+            {loading ? 'Updating...' : 'Update Tour'}
           </button>
         </div>
       </form>
