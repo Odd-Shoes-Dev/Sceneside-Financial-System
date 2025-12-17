@@ -43,7 +43,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex flex-col justify-center p-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-gray-50 flex flex-col justify-center p-4 py-8">
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="text-center mb-6">
@@ -56,16 +56,16 @@ export default function LoginPage() {
               className="mx-auto -mb-4"
             />
           </Link>
-          <p className="text-emerald-800 font-semibold text-lg mt-6">
+          <p className="text-slate-700 font-semibold text-lg mt-6">
             Financial Management System
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="card shadow-xl border border-emerald-100">
+        <div className="card shadow-xl border border-gray-200">
           <div className="card-header bg-[#fff]">
-            <h1 className="text-xl font-semibold text-emerald-800">Sign In</h1>
-            <p className="text-sm text-emerald-800 mt-1">
+            <h1 className="text-xl font-semibold text-slate-800">Sign In</h1>
+            <p className="text-sm text-slate-700 mt-1">
               Access your financial dashboard
             </p>
           </div>
@@ -105,7 +105,7 @@ export default function LoginPage() {
               <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 Remember me
               </label>
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600">
               Need an account?{' '}
               {process.env.NEXT_PUBLIC_SIGNUPS_ENABLED === 'true' ? (
-                <Link href="/signup" className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium">
+                <Link href="/signup" className="text-blue-600 hover:text-blue-700 hover:underline font-medium">
                   Contact administrator
                 </Link>
               ) : (
