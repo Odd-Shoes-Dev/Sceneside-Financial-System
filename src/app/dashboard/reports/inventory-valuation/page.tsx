@@ -19,7 +19,7 @@ interface InventoryItem {
   itemId: string;
   itemCode: string;
   itemName: string;
-  category: 'Medical Equipment' | 'Surgical Instruments' | 'Disposables' | 'Pharmaceuticals' | 'Laboratory Supplies';
+  category: string;
   location: string;
   quantityOnHand: number;
   unitOfMeasure: string;
@@ -60,13 +60,15 @@ interface InventoryValuationData {
     overstockItems: number;
   };
   items: InventoryItem[];
-  categoryBreakdown: {
-    medicalEquipment: { items: number; quantity: number; value: number };
-    surgicalInstruments: { items: number; quantity: number; value: number };
-    disposables: { items: number; quantity: number; value: number };
-    pharmaceuticals: { items: number; quantity: number; value: number };
-    laboratorySupplies: { items: number; quantity: number; value: number };
-  };
+  categoryBreakdown: Record<string, {
+    count: number;
+    value: number;
+    percentage: number;
+  }>;
+  locationBreakdown: Record<string, {
+    count: number;
+    value: number;
+  }>;
   valuationMethods: {
     fifo: { totalValue: number; variance: number };
     lifo: { totalValue: number; variance: number };
@@ -84,6 +86,8 @@ export default function InventoryValuationPage() {
   const [sortBy, setSortBy] = useState('totalValue');
   const [isLoading, setIsLoading] = useState(false);
   const [showLotDetails, setShowLotDetails] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
 
   const fetchInventoryData = async () => {
     setIsLoading(true);
@@ -93,6 +97,14 @@ export default function InventoryValuationPage() {
       );
       const result = await response.json();
       setData(result);
+      
+      // Extract unique categories and locations from the data
+      if (result.items) {
+        const categories = Array.from(new Set(result.items.map((item: InventoryItem) => item.category).filter(Boolean)));
+        const locations = Array.from(new Set(result.items.map((item: InventoryItem) => item.location).filter(Boolean)));
+        setAvailableCategories(categories as string[]);
+        setAvailableLocations(locations as string[]);
+      }
     } catch (error) {
       console.error('Failed to fetch inventory data:', error);
     } finally {
@@ -217,11 +229,6 @@ export default function InventoryValuationPage() {
               text-align: right;
               font-family: 'SF Mono', Consolas, monospace;
             }
-            .category-medical { color: #2563eb; }
-            .category-surgical { color: #16a34a; }
-            .category-disposables { color: #dc2626; }
-            .category-pharmaceuticals { color: #7c3aed; }
-            .category-laboratory { color: #ea580c; }
             .status-in-stock { color: #16a34a; }
             .status-low-stock { color: #d97706; }
             .status-out-of-stock { color: #dc2626; }
@@ -297,7 +304,7 @@ export default function InventoryValuationPage() {
                   <td class="number">${item.quantityOnHand} ${item.unitOfMeasure}</td>
                   <td class="number">${formatCurrency(item.unitCost)}</td>
                   <td class="number">${formatCurrency(item.totalValue)}</td>
-                  <td class="status-${item.status.toLowerCase().replace(/\s+/g, '-')}">${item.status}</td>
+                  <td style="color: #6b7280;item.status}</td>
                   <td>${formatDate(item.lastReceived)}</td>
                 </tr>
               `).join('')}
@@ -320,20 +327,27 @@ export default function InventoryValuationPage() {
   };
 
   const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'Medical Equipment':
-        return 'text-blue-600 bg-blue-50';
-      case 'Surgical Instruments':
-        return 'text-green-600 bg-green-50';
-      case 'Disposables':
-        return 'text-red-600 bg-red-50';
-      case 'Pharmaceuticals':
-        return 'text-purple-600 bg-purple-50';
-      case 'Laboratory Supplies':
-        return 'text-orange-600 bg-orange-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
+    // Generate consistent colors based on category name hash
+    const colors = [
+      'text-blue-600 bg-blue-50',
+      'text-green-600 bg-green-50',
+      'text-purple-600 bg-purple-50',
+      'text-orange-600 bg-orange-50',
+      'text-pink-600 bg-pink-50',
+      'text-indigo-600 bg-indigo-50',
+      'text-teal-600 bg-teal-50',
+      'text-cyan-600 bg-cyan-50',
+    ];
+    
+    if (!category) return 'text-gray-600 bg-gray-50';
+    
+    // Simple hash function to pick a color consistently
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) {
+      hash = category.charCodeAt(i) + ((hash << 5) - hash);
     }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   const getStatusColor = (status: string) => {
@@ -425,11 +439,9 @@ export default function InventoryValuationPage() {
               className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
             >
               <option value="all">All Categories</option>
-              <option value="Medical Equipment">Medical Equipment</option>
-              <option value="Surgical Instruments">Surgical Instruments</option>
-              <option value="Disposables">Disposables</option>
-              <option value="Pharmaceuticals">Pharmaceuticals</option>
-              <option value="Laboratory Supplies">Laboratory Supplies</option>
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -440,11 +452,9 @@ export default function InventoryValuationPage() {
               className="block w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sceneside-navy focus:border-sceneside-navy"
             >
               <option value="all">All Locations</option>
-              <option value="Main Warehouse">Main Warehouse</option>
-              <option value="Surgery Suite">Surgery Suite</option>
-              <option value="Emergency Room">Emergency Room</option>
-              <option value="Laboratory">Laboratory</option>
-              <option value="Pharmacy">Pharmacy</option>
+              {availableLocations.map((loc) => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
             </select>
           </div>
           <div>
