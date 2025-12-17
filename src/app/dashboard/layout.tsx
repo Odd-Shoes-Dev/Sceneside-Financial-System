@@ -25,6 +25,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ReceiptPercentIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -40,6 +41,7 @@ const navigation = [
   { name: 'Bank & Cash', href: '/dashboard/bank', icon: BuildingLibraryIcon },
   { name: 'General Ledger', href: '/dashboard/general-ledger', icon: BookOpenIcon },
   { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
+  { name: 'Website', href: '/dashboard/website', icon: GlobeAltIcon },
   { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
 ];
 
