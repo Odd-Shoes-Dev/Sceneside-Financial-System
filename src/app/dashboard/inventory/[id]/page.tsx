@@ -23,6 +23,7 @@ interface Product {
   description: string | null;
   category_id: string | null;
   product_type: 'inventory' | 'non_inventory' | 'service';
+  inventory_category?: 'physical_stock' | 'tour_product' | 'permit';
   unit_price: number;
   cost_price: number;
   currency: string;
@@ -41,6 +42,22 @@ interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Tour product fields
+  tour_duration_hours?: number;
+  min_participants?: number;
+  max_participants?: number;
+  difficulty_level?: string;
+  age_restriction?: string;
+  equipment_list?: string[];
+  required_permits?: string[];
+  // Permit fields
+  permit_number?: string;
+  permit_type?: string;
+  issuing_authority?: string;
+  permit_issue_date?: string;
+  permit_expiry_date?: string;
+  annual_quota?: number;
+  quota_used?: number;
   revenue_account?: {
     name: string;
     code: string;
@@ -218,38 +235,112 @@ export default function InventoryDetailPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">On Hand</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {item.quantity_on_hand} {item.unit_of_measure}
-            </p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Reserved</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {item.quantity_reserved} {item.unit_of_measure}
-            </p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Available</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">
-              {item.quantity_available} {item.unit_of_measure}
-            </p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <p className="text-sm text-gray-500">Total Value</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(calculateTotalValue(), item.currency)}
-            </p>
-          </div>
-        </div>
+        {item.inventory_category === 'tour_product' ? (
+          <>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Duration</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.tour_duration_hours || 0}h
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Min Participants</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.min_participants || 1}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Max Capacity</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">
+                  {item.max_participants || 10}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Price per Person</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {formatCurrency(item.unit_price, item.currency)}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : item.inventory_category === 'permit' ? (
+          <>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Permit Number</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.permit_number || 'N/A'}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Quota Used</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.quota_used || 0}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Quota Available</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">
+                  {(item.annual_quota || 0) - (item.quota_used || 0)}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Expiry Date</p>
+                <p className="text-2xl font-bold text-amber-600 mt-1">
+                  {item.permit_expiry_date ? new Date(item.permit_expiry_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">On Hand</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.quantity_on_hand} {item.unit_of_measure}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Reserved</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {item.quantity_reserved} {item.unit_of_measure}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Available</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">
+                  {item.quantity_available} {item.unit_of_measure}
+                </p>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-gray-500">Total Value</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {formatCurrency(calculateTotalValue(), item.currency)}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Main Details */}
@@ -327,41 +418,135 @@ export default function InventoryDetailPage() {
       </div>
 
       {/* Stock Levels */}
-      <div className="card">
-        <div className="card-body">
-          <h2 className="font-semibold text-gray-900 mb-4">Stock Management</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Quantity on Hand</p>
-              <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.quantity_on_hand} {item.unit_of_measure}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Current stock count</p>
+      {/* Stock Management / Tour Details / Permit Details */}
+      {item.inventory_category === 'tour_product' ? (
+        <div className="card">
+          <div className="card-body">
+            <h2 className="font-semibold text-gray-900 mb-4">Tour Details</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Duration</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.tour_duration_hours || 0} hours
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Tour length</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Min Participants</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.min_participants || 1}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Minimum required</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Max Capacity</p>
+                <p className="text-xl font-semibold text-[#52b53b] mt-1">
+                  {item.max_participants || 10} people
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Maximum per tour</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Difficulty</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1 capitalize">
+                  {item.difficulty_level || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Difficulty level</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Reserved</p>
-              <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.quantity_reserved} {item.unit_of_measure}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Allocated to orders</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Reorder Point</p>
-              <p className="text-xl font-semibold text-amber-600 mt-1">
-                {item.reorder_point || 0} {item.unit_of_measure}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Alert when stock falls below</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Reorder Quantity</p>
-              <p className="text-xl font-semibold text-gray-900 mt-1">
-                {item.reorder_quantity || 0} {item.unit_of_measure}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Suggested order amount</p>
+            {(item.age_restriction || item.equipment_list?.length || item.required_permits?.length) && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                {item.age_restriction && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">Age Restriction:</span> {item.age_restriction}
+                  </p>
+                )}
+                {item.equipment_list && item.equipment_list.length > 0 && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">Equipment:</span> {item.equipment_list.join(', ')}
+                  </p>
+                )}
+                {item.required_permits && item.required_permits.length > 0 && (
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Required Permits:</span> {item.required_permits.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : item.inventory_category === 'permit' ? (
+        <div className="card">
+          <div className="card-body">
+            <h2 className="font-semibold text-gray-900 mb-4">Permit Details</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Permit Number</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.permit_number || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Official number</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Issuing Authority</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.issuing_authority || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Issued by</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Expiry Date</p>
+                <p className="text-xl font-semibold text-amber-600 mt-1">
+                  {item.permit_expiry_date ? new Date(item.permit_expiry_date).toLocaleDateString() : 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Valid until</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Quota Usage</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.quota_used || 0} / {item.annual_quota || 0}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Used / Total</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="card">
+          <div className="card-body">
+            <h2 className="font-semibold text-gray-900 mb-4">Stock Management</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Quantity on Hand</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.quantity_on_hand} {item.unit_of_measure}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Current stock count</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Reserved</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.quantity_reserved} {item.unit_of_measure}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Allocated to orders</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Reorder Point</p>
+                <p className="text-xl font-semibold text-amber-600 mt-1">
+                  {item.reorder_point || 0} {item.unit_of_measure}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Alert when stock falls below</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Reorder Quantity</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">
+                  {item.reorder_quantity || 0} {item.unit_of_measure}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Suggested order amount</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Accounting Configuration */}
       {(item.revenue_account || item.cogs_account || item.inventory_account) && (

@@ -40,9 +40,15 @@ export default function BankPage() {
       if (accountsError) throw accountsError;
       setAccounts(accountsData || []);
 
-      // Calculate total balance (from bank transactions, since BankAccount doesn't have current_balance)
-      // We'll calculate balance from the GL account linked to each bank account
-      const totalBalance = 0; // This would need to be calculated from GL balances
+      // Get total balance in USD using the view
+      const { data: balancesUSD } = await supabase
+        .from('v_bank_balances_usd')
+        .select('balance_usd');
+
+      let totalBalance = 0;
+      if (balancesUSD) {
+        totalBalance = balancesUSD.reduce((sum, account) => sum + Number(account.balance_usd || 0), 0);
+      }
 
       // Load recent transactions
       const { data: transactionsData, error: transactionsError } = await supabase
@@ -115,12 +121,10 @@ export default function BankPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card bg-gradient-to-br from-navy-600 to-navy-700 text-white">
-          <div className="card-body">
-            <p className="text-navy-200 text-sm">Total Cash Balance</p>
-            <p className="text-3xl font-bold mt-1">{formatCurrency(stats.totalBalance)}</p>
-            <p className="text-navy-200 text-sm mt-2">Across {accounts.length} accounts</p>
-          </div>
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <p className="text-sm text-gray-500">Total Cash Balance</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(stats.totalBalance)}</p>
+          <p className="text-sm text-gray-500 mt-2">Across {accounts.length} accounts</p>
         </div>
         <div className="card">
           <div className="card-body">

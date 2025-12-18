@@ -31,6 +31,46 @@ export type UserRole = 'admin' | 'accountant' | 'manager' | 'sales' | 'auditor';
 export type RecurringFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually';
 
 // =====================================================
+// NEW INVENTORY SYSTEM TYPES
+// =====================================================
+
+// Stock Types for Physical Inventory
+export type StockType = 'consumable' | 'reusable' | 'merchandise' | 'spare_parts';
+
+// Item Condition for Reusable Items
+export type ItemCondition = 'new' | 'excellent' | 'good' | 'fair' | 'needs_repair' | 'out_of_service' | 'disposed';
+
+// Inventory Categories
+export type InventoryCategory = 'physical_stock' | 'tour_product' | 'permit' | 'fixed_asset';
+
+// Permit Status
+export type PermitStatus = 'active' | 'expiring_soon' | 'expired' | 'pending_renewal' | 'suspended' | 'cancelled';
+
+// Tour Schedule Status
+export type TourScheduleStatus = 'draft' | 'open' | 'nearly_full' | 'sold_out' | 'in_progress' | 'completed' | 'cancelled';
+
+// Location Type
+export type LocationType = 'warehouse' | 'office' | 'vehicle' | 'retail' | 'storage' | 'partner_site';
+
+// Transfer Status
+export type TransferStatus = 'draft' | 'pending' | 'approved' | 'in_transit' | 'completed' | 'cancelled';
+
+// Valuation Method
+export type ValuationMethod = 'fifo' | 'lifo' | 'weighted_average' | 'standard';
+
+// Booking Status
+export type BookingStatus = 'pending' | 'confirmed' | 'paid' | 'cancelled' | 'completed' | 'no_show';
+
+// Payment Status
+export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'refunded';
+
+// Assignment Type
+export type AssignmentType = 'tour' | 'rental' | 'maintenance' | 'staff';
+
+// Maintenance Type
+export type MaintenanceType = 'scheduled' | 'repair' | 'inspection' | 'cleaning' | 'replacement';
+
+// =====================================================
 // CORE ENTITIES
 // =====================================================
 
@@ -235,6 +275,12 @@ export interface ProductCategory {
   name: string;
   description: string | null;
   parent_id: string | null;
+  inventory_category: InventoryCategory | null;
+  code: string | null;
+  sort_order: number;
+  is_active: boolean;
+  icon: string | null;
+  color: string | null;
   created_at: string;
 }
 
@@ -263,6 +309,68 @@ export interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  
+  // New Inventory Category Fields
+  inventory_category: InventoryCategory | null;
+  stock_type: StockType | null;
+  condition_status: ItemCondition | null;
+  
+  // Batch/Lot Tracking
+  batch_number: string | null;
+  lot_number: string | null;
+  expiry_date: string | null;
+  
+  // Location
+  default_location_id: string | null;
+  
+  // Maintenance Tracking (for reusable items)
+  last_maintenance_date: string | null;
+  next_maintenance_date: string | null;
+  maintenance_interval_days: number | null;
+  
+  // Assignment
+  currently_assigned_to: string | null;
+  assigned_tour_id: string | null;
+  
+  // Tour Product Fields
+  capacity: number | null;
+  booked_capacity: number | null;
+  available_capacity: number | null;
+  duration_days: number | null;
+  duration_hours: number | null;
+  inclusions: string[] | null;
+  exclusions: string[] | null;
+  meeting_point: string | null;
+  difficulty_level: string | null;
+  
+  // Permit Fields
+  issuing_authority: string | null;
+  issue_date: string | null;
+  permit_expiry_date: string | null;
+  renewal_frequency: string | null;
+  renewal_reminder_days: number | null;
+  permit_status: PermitStatus | null;
+  permit_number: string | null;
+  linked_tour_ids: string[] | null;
+  permit_quota: number | null;
+  permit_used_quota: number | null;
+  
+  // Valuation
+  valuation_method: ValuationMethod | null;
+  standard_cost: number | null;
+  last_purchase_cost: number | null;
+  average_cost: number | null;
+  
+  // Supplier
+  primary_vendor_id: string | null;
+  
+  // Spare Parts
+  compatible_asset_ids: string[] | null;
+  is_critical_part: boolean;
+  
+  // Images
+  image_url: string | null;
+  image_urls: string[] | null;
 }
 
 export interface InventoryMovement {
@@ -747,6 +855,384 @@ export interface ExchangeRate {
 }
 
 // =====================================================
+// INVENTORY LOCATION MANAGEMENT
+// =====================================================
+
+export interface InventoryLocation {
+  id: string;
+  code: string;
+  name: string;
+  location_type: LocationType;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  is_default: boolean;
+  is_active: boolean;
+  is_mobile: boolean;
+  total_capacity: number | null;
+  capacity_unit: string;
+  current_utilization: number;
+  operating_hours: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface ProductStockLocation {
+  id: string;
+  product_id: string;
+  location_id: string;
+  quantity_on_hand: number;
+  quantity_reserved: number;
+  quantity_available: number;
+  reorder_point: number | null;
+  reorder_quantity: number | null;
+  min_stock_level: number | null;
+  max_stock_level: number | null;
+  bin_location: string | null;
+  aisle: string | null;
+  shelf: string | null;
+  bin: string | null;
+  last_counted_at: string | null;
+  last_restocked_at: string | null;
+  last_movement_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StockTransfer {
+  id: string;
+  transfer_number: string;
+  transfer_date: string;
+  status: TransferStatus;
+  from_location_id: string;
+  to_location_id: string;
+  requested_date: string | null;
+  shipped_date: string | null;
+  expected_delivery_date: string | null;
+  received_date: string | null;
+  shipping_method: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  requested_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  shipped_by: string | null;
+  received_by: string | null;
+  total_items: number;
+  total_quantity: number;
+  total_value: number;
+  reason: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface StockTransferItem {
+  id: string;
+  transfer_id: string;
+  product_id: string;
+  variant_id: string | null;
+  quantity_requested: number;
+  quantity_shipped: number;
+  quantity_received: number;
+  quantity_variance: number;
+  unit_of_measure: string | null;
+  unit_cost: number | null;
+  line_value: number;
+  batch_number: string | null;
+  lot_number: string | null;
+  serial_numbers: string[] | null;
+  expiry_date: string | null;
+  condition_on_send: ItemCondition | null;
+  condition_on_receive: ItemCondition | null;
+  from_bin_location: string | null;
+  to_bin_location: string | null;
+  notes: string | null;
+  variance_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// =====================================================
+// INVENTORY COST LAYERS & TRANSACTIONS
+// =====================================================
+
+export interface InventoryCostLayer {
+  id: string;
+  product_id: string;
+  location_id: string | null;
+  transaction_type: string;
+  transaction_id: string | null;
+  transaction_date: string;
+  quantity_received: number;
+  quantity_remaining: number;
+  quantity_used: number;
+  unit_cost: number;
+  currency: string;
+  exchange_rate: number;
+  unit_cost_base: number | null;
+  total_cost: number;
+  remaining_value: number;
+  lot_number: string | null;
+  batch_number: string | null;
+  serial_numbers: string[] | null;
+  expiry_date: string | null;
+  reference_type: string | null;
+  reference_number: string | null;
+  vendor_id: string | null;
+  is_depleted: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  location_id: string | null;
+  transaction_number: string;
+  transaction_type: string;
+  transaction_date: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  reference_number: string | null;
+  quantity: number;
+  quantity_before: number | null;
+  quantity_after: number | null;
+  unit_cost: number | null;
+  total_value: number | null;
+  valuation_method: ValuationMethod | null;
+  cost_layers_affected: Record<string, unknown>[] | null;
+  customer_id: string | null;
+  vendor_id: string | null;
+  journal_entry_id: string | null;
+  notes: string | null;
+  created_at: string;
+  created_by: string | null;
+}
+
+// =====================================================
+// PRODUCT VARIANTS
+// =====================================================
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  variant_name: string;
+  variant_sku: string | null;
+  barcode: string | null;
+  attributes: Record<string, unknown>;
+  additional_cost: number;
+  additional_price: number;
+  quantity_on_hand: number;
+  quantity_reserved: number;
+  reorder_point: number | null;
+  image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// =====================================================
+// TOUR SCHEDULES & BOOKINGS
+// =====================================================
+
+export interface TourSchedule {
+  id: string;
+  product_id: string;
+  schedule_name: string | null;
+  start_date: string;
+  end_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  total_capacity: number;
+  booked_capacity: number;
+  available_capacity: number;
+  min_participants: number;
+  max_participants: number | null;
+  status: TourScheduleStatus;
+  price_override: number | null;
+  early_bird_price: number | null;
+  early_bird_deadline: string | null;
+  group_discount_percent: number | null;
+  group_min_size: number | null;
+  guide_id: string | null;
+  guide_name: string | null;
+  vehicle_id: string | null;
+  vehicle_name: string | null;
+  permit_ids: string[] | null;
+  permits_confirmed: boolean;
+  meeting_point: string | null;
+  meeting_time: string | null;
+  pickup_available: boolean;
+  pickup_locations: string[] | null;
+  internal_notes: string | null;
+  customer_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface TourBooking {
+  id: string;
+  schedule_id: string;
+  product_id: string;
+  booking_number: string;
+  booking_date: string;
+  booking_status: BookingStatus;
+  customer_id: string | null;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
+  num_adults: number;
+  num_children: number;
+  num_infants: number;
+  total_participants: number;
+  participant_details: Record<string, unknown>[];
+  special_requests: string | null;
+  dietary_requirements: string[] | null;
+  accessibility_needs: string | null;
+  pickup_required: boolean;
+  pickup_location: string | null;
+  pickup_time: string | null;
+  unit_price: number;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  total_amount: number;
+  currency: string;
+  amount_paid: number;
+  balance_due: number;
+  payment_status: PaymentStatus;
+  invoice_id: string | null;
+  permits_allocated: Record<string, unknown>[];
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  refund_amount: number | null;
+  internal_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+// =====================================================
+// PERMITS & EQUIPMENT
+// =====================================================
+
+export interface PermitAllocation {
+  id: string;
+  permit_product_id: string;
+  allocation_date: string;
+  allocation_type: string;
+  quantity: number;
+  tour_booking_id: string | null;
+  tour_schedule_id: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
+  permit_numbers: string[] | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  status: string;
+  used_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface EquipmentAssignment {
+  id: string;
+  product_id: string;
+  assignment_type: AssignmentType;
+  quantity: number;
+  tour_schedule_id: string | null;
+  customer_id: string | null;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  assigned_to_user_id: string | null;
+  assigned_to_name: string | null;
+  condition_on_checkout: ItemCondition | null;
+  condition_on_return: ItemCondition | null;
+  status: string;
+  checked_out_at: string | null;
+  checked_out_by: string | null;
+  checked_in_at: string | null;
+  checked_in_by: string | null;
+  expected_return_date: string | null;
+  checkout_notes: string | null;
+  checkin_notes: string | null;
+  damage_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceRecord {
+  id: string;
+  product_id: string;
+  fixed_asset_id: string | null;
+  maintenance_type: MaintenanceType;
+  maintenance_date: string;
+  completed_date: string | null;
+  description: string;
+  work_performed: string | null;
+  condition_before: ItemCondition | null;
+  condition_after: ItemCondition | null;
+  parts_used: Record<string, unknown>[];
+  labor_cost: number;
+  parts_cost: number;
+  total_cost: number;
+  external_vendor_id: string | null;
+  external_reference: string | null;
+  next_maintenance_date: string | null;
+  next_maintenance_type: string | null;
+  status: string;
+  bill_id: string | null;
+  expense_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  performed_by: string | null;
+}
+
+// =====================================================
+// EXTENDED INTERFACES WITH RELATIONS
+// =====================================================
+
+export interface ProductWithCategory extends Product {
+  category?: ProductCategory;
+}
+
+export interface ProductWithLocations extends Product {
+  stock_locations?: ProductStockLocation[];
+  default_location?: InventoryLocation;
+}
+
+export interface StockTransferWithDetails extends StockTransfer {
+  from_location?: InventoryLocation;
+  to_location?: InventoryLocation;
+  items?: StockTransferItem[];
+}
+
+export interface TourScheduleWithBookings extends TourSchedule {
+  product?: Product;
+  bookings?: TourBooking[];
+}
+
+// =====================================================
 // DATABASE SCHEMA TYPE
 // =====================================================
 
@@ -763,8 +1249,20 @@ export interface Database {
       vendors: { Row: Vendor; Insert: Partial<Vendor>; Update: Partial<Vendor> };
       products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> };
       product_categories: { Row: ProductCategory; Insert: Partial<ProductCategory>; Update: Partial<ProductCategory> };
+      product_variants: { Row: ProductVariant; Insert: Partial<ProductVariant>; Update: Partial<ProductVariant> };
       inventory_movements: { Row: InventoryMovement; Insert: Partial<InventoryMovement>; Update: Partial<InventoryMovement> };
       inventory_lots: { Row: InventoryLot; Insert: Partial<InventoryLot>; Update: Partial<InventoryLot> };
+      inventory_locations: { Row: InventoryLocation; Insert: Partial<InventoryLocation>; Update: Partial<InventoryLocation> };
+      product_stock_locations: { Row: ProductStockLocation; Insert: Partial<ProductStockLocation>; Update: Partial<ProductStockLocation> };
+      stock_transfers: { Row: StockTransfer; Insert: Partial<StockTransfer>; Update: Partial<StockTransfer> };
+      stock_transfer_items: { Row: StockTransferItem; Insert: Partial<StockTransferItem>; Update: Partial<StockTransferItem> };
+      inventory_cost_layers: { Row: InventoryCostLayer; Insert: Partial<InventoryCostLayer>; Update: Partial<InventoryCostLayer> };
+      inventory_transactions: { Row: InventoryTransaction; Insert: Partial<InventoryTransaction>; Update: Partial<InventoryTransaction> };
+      tour_schedules: { Row: TourSchedule; Insert: Partial<TourSchedule>; Update: Partial<TourSchedule> };
+      tour_bookings: { Row: TourBooking; Insert: Partial<TourBooking>; Update: Partial<TourBooking> };
+      permit_allocations: { Row: PermitAllocation; Insert: Partial<PermitAllocation>; Update: Partial<PermitAllocation> };
+      equipment_assignments: { Row: EquipmentAssignment; Insert: Partial<EquipmentAssignment>; Update: Partial<EquipmentAssignment> };
+      maintenance_records: { Row: MaintenanceRecord; Insert: Partial<MaintenanceRecord>; Update: Partial<MaintenanceRecord> };
       invoices: { Row: Invoice; Insert: Partial<Invoice>; Update: Partial<Invoice> };
       invoice_lines: { Row: InvoiceLine; Insert: Partial<InvoiceLine>; Update: Partial<InvoiceLine> };
       payments_received: { Row: PaymentReceived; Insert: Partial<PaymentReceived>; Update: Partial<PaymentReceived> };

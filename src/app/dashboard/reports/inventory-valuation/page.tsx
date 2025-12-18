@@ -383,15 +383,15 @@ export default function InventoryValuationPage() {
   const getValuationMethodValue = (item: InventoryItem, method: string) => {
     switch (method) {
       case 'fifo':
-        return item.fifoValue;
+        return item.fifoValue || item.totalValue || 0;
       case 'lifo':
-        return item.lifoValue;
-      case 'average':
-        return item.averageCost * item.quantityOnHand;
+        return item.lifoValue || item.totalValue || 0;
+      case 'weighted_average':
+        return (item.averageCost || item.unitCost || 0) * (item.quantityOnHand || 0);
       case 'standard':
-        return item.standardCost * item.quantityOnHand;
+        return (item.standardCost || item.unitCost || 0) * (item.quantityOnHand || 0);
       default:
-        return item.totalValue;
+        return item.totalValue || 0;
     }
   };
 
@@ -534,7 +534,7 @@ export default function InventoryValuationPage() {
                     {formatCurrency(
                       valuationMethod === 'fifo' ? data?.summary?.totalValueFIFO :
                       valuationMethod === 'lifo' ? data?.summary?.totalValueLIFO :
-                      valuationMethod === 'average' ? data?.summary?.totalValueAverage :
+                      valuationMethod === 'weighted_average' ? data?.summary?.totalValueAverage :
                       data?.summary?.totalValueStandard || 0
                     )}
                   </p>

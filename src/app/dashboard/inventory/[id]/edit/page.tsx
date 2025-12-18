@@ -40,6 +40,7 @@ export default function EditInventoryItemPage() {
     sku: '',
     name: '',
     description: '',
+    category: '',
     unit_of_measure: 'each',
     unit_cost: 0,
     selling_price: 0,
@@ -63,17 +64,29 @@ export default function EditInventoryItemPage() {
 
       const { data, error: itemError } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          product_categories (
+            name
+          )
+        `)
         .eq('id', params.id)
         .single();
 
       if (itemError) throw itemError;
 
       setItem(data);
+      
+      // Extract category name from the related table
+      const categoryName = Array.isArray(data.product_categories) 
+        ? data.product_categories[0]?.name 
+        : data.product_categories?.name;
+      
       setFormData({
         sku: data.sku || '',
         name: data.name,
         description: data.description || '',
+        category: categoryName || '',
         unit_of_measure: data.unit_of_measure,
         unit_cost: parseFloat(data.cost_price),
         selling_price: parseFloat(data.unit_price),
@@ -110,10 +123,21 @@ export default function EditInventoryItemPage() {
     setError(null);
 
     try {
+      // If category is provided, find or create the category ID
+      let category_id = null;
+      if (formData.category) {
+        const categoryResponse = await fetch(`/api/inventory/categories?name=${encodeURIComponent(formData.category)}`);
+        if (categoryResponse.ok) {
+          const categoryData = await categoryResponse.json();
+          category_id = categoryData.id;
+        }
+      }
+
       const payload = {
         sku: formData.sku,
         name: formData.name,
         description: formData.description || null,
+        category_id,
         unit_of_measure: formData.unit_of_measure,
         cost_price: formData.unit_cost,
         unit_price: formData.selling_price,
@@ -219,6 +243,20 @@ export default function EditInventoryItemPage() {
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
                 placeholder="PROD-001"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <input
+                type="text"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
+                placeholder="e.g., Electronics, Clothing"
               />
             </div>
 

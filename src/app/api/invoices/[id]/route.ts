@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { processInvoiceInventory, reverseInvoiceInventory } from '@/lib/accounting/inventory';
 
 // GET /api/invoices/[id] - Get single invoice with lines
 export async function GET(request: NextRequest, context: any) {
@@ -56,10 +57,16 @@ export async function PATCH(request: NextRequest, context: any) {
     const supabase = await createClient();
     const body = await request.json();
 
-    // Get existing invoice
+    // Get user for inventory operations
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get existing invoice with lines
     const { data: existing, error: fetchError } = await supabase
       .from('invoices')
-      .select('status')
+      .select('*, invoice_lines(*)')
       .eq('id', params.id)
       .single();
 
@@ -74,6 +81,10 @@ export async function PATCH(request: NextRequest, context: any) {
         { status: 400 }
       );
     }
+
+    // Check if status is changing from draft to sent/paid (invoice is being finalized)
+    const isBeingFinalized = existing.status === 'draft' && 
+      body.status && ['sent', 'paid', 'overdue'].includes(body.status);
 
     // Update invoice
     const updateData: any = {};
@@ -150,6 +161,44 @@ export async function PATCH(request: NextRequest, context: any) {
         .eq('id', params.id);
     }
 
+    // Process inventory when invoice is finalized (status changes from draft)
+    if (isBeingFinalized) {
+      try {
+        const linesToProcess = body.lines || existing.invoice_lines;
+        const inventoryResult = await processInvoiceInventory(
+          params.id,
+          linesToProcess.map((line: any) => ({
+            product_id: line.product_id,
+            quantity: line.quantity,
+            description: line.description,
+          })),
+          existing.customer_id,
+          user.id
+        );
+
+        // Return inventory processing info with the response
+        return NextResponse.json({ 
+          data: invoice,
+          inventory: {
+            processed: true,
+            itemsConsumed: inventoryResult.consumptions.length,
+            totalCost: inventoryResult.totalCost,
+            journalEntryId: inventoryResult.journalEntryId,
+          }
+        });
+      } catch (inventoryError: any) {
+        console.error('Inventory processing error:', inventoryError);
+        // Invoice was updated, but log the inventory error
+        return NextResponse.json({ 
+          data: invoice,
+          inventory: {
+            processed: false,
+            error: inventoryError.message,
+          }
+        });
+      }
+    }
+
     return NextResponse.json({ data: invoice });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -163,6 +212,12 @@ export async function DELETE(request: NextRequest, context: any) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'void';
+
+    // Get user for inventory operations
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Get existing invoice
     const { data: existing, error: fetchError } = await supabase
@@ -212,7 +267,28 @@ export async function DELETE(request: NextRequest, context: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      return NextResponse.json({ data, message: 'Invoice voided' });
+      // Reverse inventory consumption if invoice was not a draft
+      let inventoryReversed = false;
+      let reversalJournalEntryId: string | undefined;
+      
+      if (existing.status !== 'draft') {
+        try {
+          const reversalResult = await reverseInvoiceInventory(params.id, user.id);
+          inventoryReversed = reversalResult.success;
+          reversalJournalEntryId = reversalResult.journalEntryId;
+        } catch (inventoryError: any) {
+          console.error('Inventory reversal error:', inventoryError);
+        }
+      }
+
+      return NextResponse.json({ 
+        data, 
+        message: 'Invoice voided',
+        inventory: {
+          reversed: inventoryReversed,
+          journalEntryId: reversalJournalEntryId,
+        }
+      });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

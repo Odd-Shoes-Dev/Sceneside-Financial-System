@@ -11,8 +11,23 @@ interface InventoryItem {
   quantityOnHand: number;
   unitOfMeasure: string;
   unitCost: number;
+  averageCost: number;
+  fifoValue: number;
+  lifoValue: number;
+  standardCost: number;
   totalValue: number;
   reorderLevel: number;
+  lastReceived: string;
+  lastIssued: string;
+  maxLevel: number;
+  leadTimeDays: number;
+  supplier: string;
+  lotNumbers: Array<{
+    lotNumber: string;
+    quantity: number;
+    unitCost: number;
+    expirationDate?: string;
+  }>;
   status: 'In Stock' | 'Low Stock' | 'Out of Stock';
 }
 
@@ -125,8 +140,18 @@ export async function GET(request: NextRequest) {
         quantityOnHand,
         unitOfMeasure: item.unit_of_measure || 'EA',
         unitCost: unitCostUSD,
+        averageCost: unitCostUSD,
+        fifoValue: totalValue,
+        lifoValue: totalValue,
+        standardCost: unitCostUSD,
         totalValue,
         reorderLevel,
+        lastReceived: '',
+        lastIssued: '',
+        maxLevel: 0,
+        leadTimeDays: 0,
+        supplier: '',
+        lotNumbers: [],
         status: itemStatus,
       });
     }
