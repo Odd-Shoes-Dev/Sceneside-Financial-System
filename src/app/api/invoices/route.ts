@@ -125,11 +125,39 @@ export async function POST(request: NextRequest) {
       .eq('code', '1200')
       .single();
 
-    // Calculate totals from lines
+    // Calculate totals from lines and validate inventory
     const lines = body.lines || [];
     let subtotal = 0;
     let taxAmount = 0;
     let discountAmount = 0;
+
+    // Validate inventory availability for tracked items
+    for (const line of lines) {
+      if (line.product_id) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('name, track_inventory, quantity_on_hand, quantity_available')
+          .eq('id', line.product_id)
+          .single();
+
+        if (product && product.track_inventory) {
+          const availableQty = product.quantity_available || 0;
+          
+          if (availableQty < line.quantity) {
+            return NextResponse.json(
+              { 
+                error: `Insufficient stock for "${product.name}". Available: ${availableQty}, Requested: ${line.quantity}`,
+                product_id: line.product_id,
+                product_name: product.name,
+                available_quantity: availableQty,
+                requested_quantity: line.quantity
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
 
     lines.forEach((line: any) => {
       const lineSubtotal = line.quantity * line.unit_price;

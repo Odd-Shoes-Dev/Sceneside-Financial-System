@@ -33,6 +33,7 @@ interface InvoiceFormData {
   po_number: string;
   notes: string;
   currency: string;
+  status: string;
   lines: InvoiceLineInput[];
 }
 
@@ -137,6 +138,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
         po_number: invoiceData.po_number || '',
         notes: invoiceData.notes || '',
         currency: invoiceData.currency || 'USD',
+        status: invoiceData.status || 'draft',
         lines: linesData.map((line: InvoiceLine) => ({
           id: line.id,
           product_id: line.product_id || '',
@@ -204,79 +206,45 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
 
     setSaving(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Calculate totals
-      const subtotal = calculateSubtotal();
-      const tax_amount = calculateTax();
-      const total = calculateTotal();
-
-      // Get AR account
-      const { data: arAccount } = await supabase
-        .from('accounts')
-        .select('id')
-        .eq('code', '1200')
-        .single();
-
-      // Update invoice
-      const { error: invoiceError } = await supabase
-        .from('invoices')
-        .update({
+      // Use API route instead of direct Supabase update to trigger inventory processing
+      const response = await fetch(`/api/invoices/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           customer_id: data.customer_id,
           invoice_date: data.invoice_date,
           due_date: data.due_date,
           payment_terms: data.payment_terms,
           po_number: data.po_number || null,
           notes: data.notes || null,
-          currency: data.currency || 'USD',
-          subtotal,
-          tax_amount,
-          total,
-          ar_account_id: arAccount?.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', resolvedParams.id);
+          status: data.status,
+          lines: data.lines.map((line, index) => ({
+            product_id: line.product_id || null,
+            description: line.description,
+            quantity: line.quantity,
+            unit_price: line.unit_price,
+            discount_percent: line.discount_percent || 0,
+            tax_rate: line.tax_rate || 0,
+          })),
+        }),
+      });
 
-      if (invoiceError) throw invoiceError;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update invoice');
+      }
 
-      // Delete existing invoice lines
-      const { error: deleteError } = await supabase
-        .from('invoice_lines')
-        .delete()
-        .eq('invoice_id', resolvedParams.id);
-
-      if (deleteError) throw deleteError;
-
-      // Create new invoice lines
-      const invoiceLines = data.lines.map((line, index) => ({
-        invoice_id: resolvedParams.id,
-        line_number: index + 1,
-        product_id: line.product_id || null,
-        description: line.description,
-        quantity: line.quantity,
-        unit_price: line.unit_price,
-        discount_percent: line.discount_percent,
-        discount_amount: (line.quantity * line.unit_price) * (line.discount_percent / 100),
-        tax_rate: line.tax_rate,
-        tax_amount: calculateLineTax(line),
-        line_total: calculateLineTotal(line),
-      }));
-
-      const { error: linesError } = await supabase
-        .from('invoice_lines')
-        .insert(invoiceLines);
-
-      if (linesError) throw linesError;
-
-      // If invoice was posted, we need to update the journal entry
-      if (invoice?.journal_entry_id) {
-        // This would require recalculating and updating the journal entry
-        // For now, we'll just show a warning
-        toast.success('Invoice updated successfully! Note: Journal entry may need manual adjustment.', {
-          duration: 5000,
-        });
+      const result = await response.json();
+      
+      // Show inventory processing result if available
+      if (result.inventory) {
+        if (result.inventory.processed) {
+          toast.success(`Invoice updated! ${result.inventory.itemsConsumed} items deducted from inventory.`);
+        } else if (result.inventory.error) {
+          toast.error(`Invoice updated but inventory processing failed: ${result.inventory.error}`);
+        }
       } else {
         toast.success('Invoice updated successfully!');
       }
@@ -426,6 +394,24 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   value={watchCurrency || 'USD'}
                   onChange={(e) => setValue('currency', e.target.value)}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Status *</label>
+                <select
+                  {...register('status')}
+                  className="input"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="paid">Paid</option>
+                  <option value="partial">Partially Paid</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="void">Void</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Changing from Draft to Sent will deduct inventory
+                </p>
               </div>
             </div>
           </div>

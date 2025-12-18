@@ -118,11 +118,36 @@ export default function NewInvoicePage() {
     }
   };
 
-  const handleProductChange = (index: number, productId: string) => {
+  const handleProductChange = async (index: number, productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
       setValue(`lines.${index}.description`, product.name);
-      setValue(`lines.${index}.unit_price`, product.unit_price);
+      
+      // Convert price if currencies don't match
+      let convertedPrice = product.unit_price;
+      const invoiceCurrency = watchCurrency;
+      const productCurrency = product.currency || 'USD';
+      
+      if (productCurrency !== invoiceCurrency && convertedPrice > 0) {
+        try {
+          const { data: convertedAmount, error } = await supabase.rpc('convert_currency', {
+            p_amount: product.unit_price,
+            p_from_currency: productCurrency,
+            p_to_currency: invoiceCurrency,
+            p_date: new Date().toISOString().split('T')[0],
+          });
+          
+          if (!error && convertedAmount) {
+            convertedPrice = convertedAmount;
+          } else {
+            console.warn(`Currency conversion failed from ${productCurrency} to ${invoiceCurrency}, using original price`);
+          }
+        } catch (error) {
+          console.error('Currency conversion error:', error);
+        }
+      }
+      
+      setValue(`lines.${index}.unit_price`, convertedPrice);
       setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
     }
   };

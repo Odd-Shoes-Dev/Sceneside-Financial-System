@@ -1,4 +1,5 @@
 import { createServerClient as createSupabaseServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
@@ -34,16 +35,27 @@ export async function createClient(): Promise<SupabaseClient<any>> {
 
 // For service role operations (bypasses RLS)
 export function createServiceClient(): SupabaseClient<any> {
-  return createSupabaseServerClient<any>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return [];
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!serviceRoleKey) {
+    console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not found, using anon key (RLS still applies)');
+    // Fallback to anon key if service role not available
+    return createSupabaseClient<any>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
         },
-        setAll() {},
-      },
+      }
+    );
+  }
+  
+  return createSupabaseClient<any>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    {
       auth: {
         autoRefreshToken: false,
         persistSession: false,

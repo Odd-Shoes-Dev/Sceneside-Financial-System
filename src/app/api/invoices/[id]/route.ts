@@ -5,6 +5,7 @@ import { processInvoiceInventory, reverseInvoiceInventory } from '@/lib/accounti
 // GET /api/invoices/[id] - Get single invoice with lines
 export async function GET(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
     const supabase = await createClient();
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest, context: any) {
           notes
         )
       `)
-      .eq('invoice_id', params.id)
+      .eq('invoice_id', resolvedParams.id)
       .order('payments_received.payment_date', { ascending: false });
 
     return NextResponse.json({
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest, context: any) {
 // PATCH /api/invoices/[id] - Update invoice
 export async function PATCH(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -67,7 +69,7 @@ export async function PATCH(request: NextRequest, context: any) {
     const { data: existing, error: fetchError } = await supabase
       .from('invoices')
       .select('*, invoice_lines(*)')
-      .eq('id', params.id)
+      .eq('id', resolvedParams.id)
       .single();
 
     if (fetchError) {
@@ -102,7 +104,7 @@ export async function PATCH(request: NextRequest, context: any) {
     const { data: invoice, error: updateError } = await supabase
       .from('invoices')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', resolvedParams.id)
       .select()
       .single();
 
@@ -113,7 +115,7 @@ export async function PATCH(request: NextRequest, context: any) {
     // If lines are provided, update them
     if (body.lines) {
       // Delete existing lines
-      await supabase.from('invoice_lines').delete().eq('invoice_id', params.id);
+      await supabase.from('invoice_lines').delete().eq('invoice_id', resolvedParams.id);
 
       // Calculate new totals
       let subtotal = 0;
@@ -131,7 +133,7 @@ export async function PATCH(request: NextRequest, context: any) {
         discountAmount += lineDiscount;
 
         return {
-          invoice_id: params.id,
+          invoice_id: resolvedParams.id,
           line_number: index + 1,
           product_id: line.product_id || null,
           description: line.description,
@@ -158,23 +160,31 @@ export async function PATCH(request: NextRequest, context: any) {
           discount_amount: discountAmount,
           total,
         })
-        .eq('id', params.id);
+        .eq('id', resolvedParams.id);
     }
 
     // Process inventory when invoice is finalized (status changes from draft)
     if (isBeingFinalized) {
+      console.log('🔄 Processing inventory for invoice:', resolvedParams.id);
+      console.log('📦 Status changing from:', existing.status, 'to:', body.status);
       try {
         const linesToProcess = body.lines || existing.invoice_lines;
+        console.log('📋 Lines to process:', linesToProcess.length);
+        
+        // Use the authenticated supabase client (already has user session)
         const inventoryResult = await processInvoiceInventory(
-          params.id,
+          resolvedParams.id,
           linesToProcess.map((line: any) => ({
             product_id: line.product_id,
             quantity: line.quantity,
             description: line.description,
           })),
           existing.customer_id,
-          user.id
+          user.id,
+          supabase
         );
+        
+        console.log('✅ Inventory processed:', inventoryResult);
 
         // Return inventory processing info with the response
         return NextResponse.json({ 
