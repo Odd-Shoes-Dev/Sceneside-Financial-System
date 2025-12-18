@@ -207,32 +207,20 @@ export async function consumeInventory(
 
   // Update the cost layers in the database
   for (const consumed of consumedLayers) {
-    const { error: updateError } = await supabase
+    // Fetch current layer and update manually
+    const { data: currentLayer } = await supabase
       .from('inventory_cost_layers')
-      .update({
-        remaining_quantity: defaultSupabase.rpc('decrement_quantity', {
-          layer_id: consumed.layerId,
-          qty: consumed.quantityUsed
-        })
-      })
-      .eq('id', consumed.layerId);
+      .select('remaining_quantity')
+      .eq('id', consumed.layerId)
+      .single();
 
-    if (updateError) {
-      // Fallback: fetch and update manually
-      const { data: currentLayer } = await supabase
+    if (currentLayer) {
+      await supabase
         .from('inventory_cost_layers')
-        .select('remaining_quantity')
-        .eq('id', consumed.layerId)
-        .single();
-
-      if (currentLayer) {
-        await supabase
-          .from('inventory_cost_layers')
-          .update({
-            remaining_quantity: Math.max(0, currentLayer.remaining_quantity - consumed.quantityUsed)
-          })
-          .eq('id', consumed.layerId);
-      }
+        .update({
+          remaining_quantity: Math.max(0, currentLayer.remaining_quantity - consumed.quantityUsed)
+        })
+        .eq('id', consumed.layerId);
     }
   }
 
@@ -850,6 +838,400 @@ export async function getInventoryValuation(
     products: valuations,
     totalValue: totalValue.toNumber(),
   };
+}
+
+/**
+ * Process inventory for a bill (receiving inventory from purchase)
+ * This is called when a bill is approved/posted
+ */
+export async function processBillInventory(
+  billId: string,
+  billLines: {
+    product_id: string | null;
+    quantity: number;
+    unit_cost: number;
+    description?: string;
+  }[],
+  billDate: string,
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
+): Promise<{
+  itemsReceived: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    totalCost: number;
+    costLayerId: string;
+  }[];
+  totalCost: number;
+  journalEntryId?: string;
+}> {
+  const itemsReceived: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitCost: number;
+    totalCost: number;
+    costLayerId: string;
+  }[] = [];
+  let totalCost = new Decimal(0);
+
+  // Get default location if needed
+  const { data: defaultLocation } = await supabase
+    .from('inventory_locations')
+    .select('id')
+    .eq('is_default', true)
+    .single();
+
+  const locationId = defaultLocation?.id;
+
+  // Process each line that has a product
+  for (const line of billLines) {
+    if (!line.product_id) {
+      console.log('⏭️ Skipping line without product_id');
+      continue;
+    }
+
+    console.log(`🔍 Processing product ${line.product_id}, qty: ${line.quantity}, cost: ${line.unit_cost}`);
+
+    // Check if product is inventory tracked
+    const tracked = await isInventoryTracked(line.product_id, supabase);
+    console.log(`📊 Product ${line.product_id} tracked:`, tracked);
+    if (!tracked) {
+      console.log(`⏭️ Skipping non-tracked product ${line.product_id}`);
+      continue;
+    }
+
+    // Get product details
+    const { data: product } = await supabase
+      .from('products')
+      .select('name, inventory_category')
+      .eq('id', line.product_id)
+      .single();
+
+    if (!product) {
+      console.log(`❌ Product ${line.product_id} not found`);
+      continue;
+    }
+    console.log(`✅ Product found: ${product.name}, category: ${product.inventory_category}`);
+
+    const lineCost = new Decimal(line.quantity).times(line.unit_cost);
+
+    // Create cost layer for this purchase
+    const { data: costLayer, error: layerError } = await supabase
+      .from('inventory_cost_layers')
+      .insert({
+        product_id: line.product_id,
+        location_id: locationId,
+        transaction_type: 'purchase',
+        transaction_id: billId,
+        transaction_date: billDate,
+        quantity_received: line.quantity,
+        quantity_remaining: line.quantity,
+        unit_cost: line.unit_cost,
+        currency: 'USD',
+        exchange_rate: 1.000000,
+      })
+      .select()
+      .single();
+
+    if (layerError) {
+      console.error(`Failed to create cost layer for product ${line.product_id}:`, layerError);
+      continue;
+    }
+
+    // Update product quantity_on_hand
+    const { data: currentProduct } = await supabase
+      .from('products')
+      .select('quantity_on_hand')
+      .eq('id', line.product_id)
+      .single();
+
+    if (currentProduct) {
+      await supabase
+        .from('products')
+        .update({
+          quantity_on_hand: (currentProduct.quantity_on_hand || 0) + line.quantity,
+        })
+        .eq('id', line.product_id);
+    }
+
+    // Create inventory transaction record
+    await supabase.from('inventory_transactions').insert({
+      product_id: line.product_id,
+      location_id: locationId,
+      transaction_type: 'purchase',
+      quantity: line.quantity,
+      unit_cost: line.unit_cost,
+      total_cost: lineCost.toNumber(),
+      reference_type: 'bill',
+      reference_id: billId,
+      notes: `Received from bill ${billId} - ${line.description || ''}`,
+    });
+
+    // Update location stock if applicable
+    if (locationId) {
+      const { data: locationStock } = await supabase
+        .from('product_stock_locations')
+        .select('quantity_on_hand')
+        .eq('product_id', line.product_id)
+        .eq('location_id', locationId)
+        .single();
+
+      if (locationStock) {
+        await supabase
+          .from('product_stock_locations')
+          .update({
+            quantity_on_hand: locationStock.quantity_on_hand + line.quantity,
+          })
+          .eq('product_id', line.product_id)
+          .eq('location_id', locationId);
+      } else {
+        // Create location stock record if doesn't exist
+        await supabase
+          .from('product_stock_locations')
+          .insert({
+            product_id: line.product_id,
+            location_id: locationId,
+            quantity_on_hand: line.quantity,
+            quantity_reserved: 0,
+          });
+      }
+    }
+
+    itemsReceived.push({
+      productId: line.product_id,
+      productName: product.name,
+      quantity: line.quantity,
+      unitCost: line.unit_cost,
+      totalCost: lineCost.toNumber(),
+      costLayerId: costLayer.id,
+    });
+
+    totalCost = totalCost.plus(lineCost);
+  }
+
+  // Create journal entry for inventory receipt (DR Inventory Asset, CR AP handled by bill posting)
+  let journalEntryId: string | undefined;
+  if (totalCost.greaterThan(0)) {
+    journalEntryId = await createInventoryReceiptJournalEntry(
+      totalCost.toNumber(),
+      billId,
+      userId
+    );
+  }
+
+  return {
+    itemsReceived,
+    totalCost: totalCost.toNumber(),
+    journalEntryId,
+  };
+}
+
+/**
+ * Creates an inventory receipt journal entry for bill
+ * Note: This is informational - the main DR/CR is in bill posting
+ */
+async function createInventoryReceiptJournalEntry(
+  totalCost: number,
+  billId: string,
+  userId: string
+): Promise<string | undefined> {
+  if (totalCost <= 0) return undefined;
+
+  // This creates a memo entry for inventory tracking
+  // The actual AP entry is created when the bill is posted
+  // This is just to track inventory value increase
+
+  try {
+    const entry = await createJournalEntry(
+      {
+        entry_date: new Date().toISOString().split('T')[0],
+        description: `Inventory receipt from bill ${billId}`,
+        memo: billId,
+        source_module: 'inventory',
+        source_document_id: billId,
+        lines: [
+          {
+            account_id: (await defaultSupabase
+              .from('accounts')
+              .select('id')
+              .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
+              .single()).data?.id || '',
+            description: 'Inventory received from purchase',
+            debit: totalCost,
+            credit: 0,
+          },
+          {
+            account_id: (await defaultSupabase
+              .from('accounts')
+              .select('id')
+              .eq('code', '2000') // AP Account
+              .single()).data?.id || '',
+            description: 'Purchase on account',
+            debit: 0,
+            credit: totalCost,
+          },
+        ],
+      },
+      userId
+    );
+
+    return entry.id;
+  } catch (error) {
+    console.error('Failed to create inventory receipt journal entry:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Reverse inventory receipt when a bill is voided
+ */
+export async function reverseBillInventory(
+  billId: string,
+  userId: string
+): Promise<{ reversed: boolean; journalEntryId?: string }> {
+  // Find original transactions
+  const { data: transactions, error } = await defaultSupabase
+    .from('inventory_transactions')
+    .select('*')
+    .eq('reference_type', 'bill')
+    .eq('reference_id', billId)
+    .eq('transaction_type', 'purchase');
+
+  if (error || !transactions || transactions.length === 0) {
+    return { reversed: false };
+  }
+
+  let totalCostReversed = new Decimal(0);
+
+  // Reverse each transaction
+  for (const transaction of transactions) {
+    // Remove cost layer or reduce its quantity
+    const { data: costLayer } = await defaultSupabase
+      .from('inventory_cost_layers')
+      .select('*')
+      .eq('product_id', transaction.product_id)
+      .eq('reference_type', 'bill')
+      .eq('reference_id', billId)
+      .single();
+
+    if (costLayer) {
+      // Check if any quantity has been consumed
+      if (costLayer.remaining_quantity === costLayer.quantity_received) {
+        // Not used yet, can delete the cost layer
+        await defaultSupabase
+          .from('inventory_cost_layers')
+          .delete()
+          .eq('id', costLayer.id);
+      } else if (costLayer.remaining_quantity > 0) {
+        // Partially consumed, adjust the layer
+        await defaultSupabase
+          .from('inventory_cost_layers')
+          .update({
+            quantity_received: costLayer.remaining_quantity,
+          })
+          .eq('id', costLayer.id);
+      }
+      // If remaining_quantity is 0, the layer is fully consumed, leave it for history
+    }
+
+    // Create reversal transaction
+    await defaultSupabase.from('inventory_transactions').insert({
+      product_id: transaction.product_id,
+      location_id: transaction.location_id,
+      transaction_type: 'adjustment',
+      quantity: -transaction.quantity,
+      unit_cost: transaction.unit_cost,
+      total_cost: -transaction.total_cost,
+      reference_type: 'bill_void',
+      reference_id: billId,
+      notes: `Reversal of voided bill ${billId}`,
+    });
+
+    // Update product quantity
+    const { data: product } = await defaultSupabase
+      .from('products')
+      .select('quantity_on_hand')
+      .eq('id', transaction.product_id)
+      .single();
+
+    if (product) {
+      await defaultSupabase
+        .from('products')
+        .update({
+          quantity_on_hand: Math.max(0, (product.quantity_on_hand || 0) - transaction.quantity),
+        })
+        .eq('id', transaction.product_id);
+    }
+
+    // Update location stock
+    if (transaction.location_id) {
+      const { data: locationStock } = await defaultSupabase
+        .from('product_stock_locations')
+        .select('quantity_on_hand')
+        .eq('product_id', transaction.product_id)
+        .eq('location_id', transaction.location_id)
+        .single();
+
+      if (locationStock) {
+        await defaultSupabase
+          .from('product_stock_locations')
+          .update({
+            quantity_on_hand: Math.max(0, locationStock.quantity_on_hand - transaction.quantity),
+          })
+          .eq('product_id', transaction.product_id)
+          .eq('location_id', transaction.location_id);
+      }
+    }
+
+    totalCostReversed = totalCostReversed.plus(Math.abs(transaction.total_cost));
+  }
+
+  // Create reversal journal entry if there was cost involved
+  let journalEntryId: string | undefined;
+  if (totalCostReversed.greaterThan(0)) {
+    try {
+      const entry = await createJournalEntry(
+        {
+          entry_date: new Date().toISOString().split('T')[0],
+          description: `Inventory receipt reversal for voided bill ${billId}`,
+          memo: billId,
+          source_module: 'inventory_reversal',
+          source_document_id: billId,
+          lines: [
+            {
+              account_id: (await defaultSupabase
+                .from('accounts')
+                .select('id')
+                .eq('code', '2000') // AP Account
+                .single()).data?.id || '',
+              description: 'Reversal of purchase on account',
+              debit: totalCostReversed.toNumber(),
+              credit: 0,
+            },
+            {
+              account_id: (await defaultSupabase
+                .from('accounts')
+                .select('id')
+                .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
+                .single()).data?.id || '',
+              description: 'Inventory receipt reversal',
+              debit: 0,
+              credit: totalCostReversed.toNumber(),
+            },
+          ],
+        },
+        userId
+      );
+      journalEntryId = entry.id;
+    } catch (error) {
+      console.error('Failed to create inventory reversal journal entry:', error);
+    }
+  }
+
+  return { reversed: true, journalEntryId };
 }
 
 

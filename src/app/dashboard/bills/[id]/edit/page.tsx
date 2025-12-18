@@ -18,8 +18,19 @@ interface Vendor {
   payment_terms: number;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  cost_price: number;
+  unit_price: number;
+  inventory_category: string;
+  currency: string;
+}
+
 interface LineItem {
   id: string;
+  product_id: string;
   description: string;
   quantity: number;
   unit_cost: number;
@@ -47,6 +58,7 @@ export default function EditBillPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [bill, setBill] = useState<Bill | null>(null);
 
   const [formData, setFormData] = useState({
@@ -61,6 +73,7 @@ export default function EditBillPage() {
 
   useEffect(() => {
     fetchVendors();
+    fetchProducts();
     loadBill();
   }, [params.id]);
 
@@ -71,6 +84,21 @@ export default function EditBillPage() {
       setVendors(result.data || []);
     } catch (error) {
       console.error('Failed to fetch vendors:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, sku, cost_price, unit_price, inventory_category, currency')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
     }
   };
 
@@ -115,6 +143,7 @@ export default function EditBillPage() {
       setLineItems(
         (linesData || []).map((line: any) => ({
           id: line.id,
+          product_id: line.product_id || '',
           description: line.description,
           quantity: parseFloat(line.quantity),
           unit_cost: parseFloat(line.unit_cost),
@@ -136,6 +165,35 @@ export default function EditBillPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleProductChange = async (id: string, productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setLineItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          
+          // Use cost_price for bills (purchase price), not selling price
+          let convertedPrice = product.cost_price || product.unit_price;
+          
+          // Set appropriate account based on inventory category
+          let accountCode = '5100'; // Default COGS
+          if (product.inventory_category === 'physical_stock') {
+            accountCode = '1300'; // Inventory Asset
+          }
+          
+          return {
+            ...item,
+            product_id: productId,
+            description: product.name,
+            unit_cost: convertedPrice,
+            account_code: accountCode,
+            amount: item.quantity * convertedPrice,
+          };
+        })
+      );
+    }
+  };
+
   const handleLineItemChange = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems((prev) =>
       prev.map((item) => {
@@ -150,7 +208,7 @@ export default function EditBillPage() {
   const addLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { id: Date.now().toString(), description: '', quantity: 1, unit_cost: 0, account_code: '5100', amount: 0 },
+      { id: Date.now().toString(), product_id: '', description: '', quantity: 1, unit_cost: 0, account_code: '5100', amount: 0 },
     ]);
   };
 
@@ -350,7 +408,8 @@ export default function EditBillPage() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="pb-2 pr-2">Description</th>
+                  <th className="pb-2 pr-2 w-32">Product</th>
+                  <th className="pb-2 px-2">Description</th>
                   <th className="pb-2 px-2 w-24">Account</th>
                   <th className="pb-2 px-2 w-20 text-right">Qty</th>
                   <th className="pb-2 px-2 w-28 text-right">Price</th>
@@ -362,6 +421,20 @@ export default function EditBillPage() {
                 {lineItems.map((item) => (
                   <tr key={item.id}>
                     <td className="py-2 pr-2">
+                      <select
+                        value={item.product_id}
+                        onChange={(e) => handleProductChange(item.id, e.target.value)}
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#52b53b]"
+                      >
+                        <option value="">Custom item</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.sku ? `${product.sku} - ` : ''}{product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
                       <input
                         type="text"
                         value={item.description}

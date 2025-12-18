@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
+import { supabase } from '@/lib/supabase/client';
 
 interface Vendor {
   id: string;
@@ -18,8 +19,19 @@ interface Vendor {
   payment_terms: number;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  cost_price: number;
+  unit_price: number;
+  inventory_category: string;
+  currency: string;
+}
+
 interface LineItem {
   id: string;
+  product_id: string;
   description: string;
   quantity: number;
   unit_price: number;
@@ -32,6 +44,7 @@ export default function NewBillPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [formData, setFormData] = useState({
     vendor_id: '',
@@ -44,11 +57,12 @@ export default function NewBillPage() {
   });
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: '1', description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
+    { id: '1', product_id: '', description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
   ]);
 
   useEffect(() => {
     fetchVendors();
+    fetchProducts();
   }, []);
 
   const fetchVendors = async () => {
@@ -58,6 +72,21 @@ export default function NewBillPage() {
       setVendors(result.data || []);
     } catch (error) {
       console.error('Failed to fetch vendors:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, sku, cost_price, unit_price, inventory_category, currency')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
     }
   };
 
@@ -85,6 +114,42 @@ export default function NewBillPage() {
     }
   };
 
+  const handleProductChange = async (id: string, productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setLineItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          
+          // Use cost_price for bills (purchase price), not selling price
+          let convertedPrice = product.cost_price || product.unit_price;
+          
+          // Convert price if currencies don't match
+          const productCurrency = product.currency || 'USD';
+          if (productCurrency !== formData.currency && convertedPrice > 0) {
+            // TODO: Add currency conversion if needed
+            console.log(`Price conversion needed from ${productCurrency} to ${formData.currency}`);
+          }
+          
+          // Set appropriate account based on inventory category
+          let accountCode = '5100'; // Default COGS
+          if (product.inventory_category === 'physical_stock') {
+            accountCode = '1300'; // Inventory Asset
+          }
+          
+          return {
+            ...item,
+            product_id: productId,
+            description: product.name,
+            unit_price: convertedPrice,
+            account_code: accountCode,
+            amount: item.quantity * convertedPrice,
+          };
+        })
+      );
+    }
+  };
+
   const handleLineItemChange = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems((prev) =>
       prev.map((item) => {
@@ -99,7 +164,7 @@ export default function NewBillPage() {
   const addLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { id: Date.now().toString(), description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
+      { id: Date.now().toString(), product_id: '', description: '', quantity: 1, unit_price: 0, account_code: '5100', amount: 0 },
     ]);
   };
 
@@ -300,7 +365,8 @@ export default function NewBillPage() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="pb-2 pr-2">Description</th>
+                  <th className="pb-2 pr-2 w-32">Product</th>
+                  <th className="pb-2 px-2">Description</th>
                   <th className="pb-2 px-2 w-24">Account</th>
                   <th className="pb-2 px-2 w-20 text-right">Qty</th>
                   <th className="pb-2 px-2 w-28 text-right">Price</th>
@@ -312,6 +378,20 @@ export default function NewBillPage() {
                 {lineItems.map((item) => (
                   <tr key={item.id}>
                     <td className="py-2 pr-2">
+                      <select
+                        value={item.product_id}
+                        onChange={(e) => handleProductChange(item.id, e.target.value)}
+                        className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                      >
+                        <option value="">Custom item</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.sku ? `${product.sku} - ` : ''}{product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
                       <input
                         type="text"
                         value={item.description}

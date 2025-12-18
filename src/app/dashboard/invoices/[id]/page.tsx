@@ -514,14 +514,29 @@ export default function InvoiceDetailPage() {
   const handleMarkAsSent = async () => {
     setActionLoading('send');
     try {
-      await supabase
-        .from('invoices')
-        .update({ status: 'sent' })
-        .eq('id', params.id);
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'sent' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update invoice');
+      }
+
+      // Show inventory processing info if available
+      if (data.inventory?.processed) {
+        alert(`Invoice marked as sent!\n\nInventory processed:\n- ${data.inventory.itemsConsumed} items consumed\n- Total COGS: $${data.inventory.totalCost.toFixed(2)}`);
+      }
       
       fetchInvoice();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating invoice:', error);
+      alert(error.message || 'Failed to mark invoice as sent');
     } finally {
       setActionLoading(null);
     }

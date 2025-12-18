@@ -151,22 +151,32 @@ export default function BillDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Approve this bill for payment?')) return;
+    if (!confirm('Approve this bill for payment? This will receive inventory into stock.')) return;
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('bills')
-        .update({ status: 'approved' })
-        .eq('id', params.id);
+      // Use API route to ensure inventory processing happens
+      const response = await fetch(`/api/bills/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'approved',
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to approve bill');
+      }
       
       // Reload bill
       await loadBillDetails();
-    } catch (error) {
+      alert('Bill approved and inventory received successfully!');
+    } catch (error: any) {
       console.error('Failed to approve bill:', error);
-      alert('Failed to approve bill');
+      alert(error.message || 'Failed to approve bill');
     } finally {
       setActionLoading(false);
     }
