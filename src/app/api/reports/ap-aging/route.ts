@@ -158,26 +158,26 @@ export async function GET(request: NextRequest) {
     // Calculate summary
     const summary = {
       totalVendors: vendors.length,
-      totalOutstanding: vendors.reduce((sum, v) => sum + v.totalAmount, 0),
-      currentTotal: vendors.reduce((sum, v) => sum + v.current, 0),
-      days1to30Total: vendors.reduce((sum, v) => sum + v.days1to30, 0),
-      days31to60Total: vendors.reduce((sum, v) => sum + v.days31to60, 0),
-      days61to90Total: vendors.reduce((sum, v) => sum + v.days61to90, 0),
-      over90Total: vendors.reduce((sum, v) => sum + v.over90, 0),
+      totalPayables: vendors.reduce((sum, v) => sum + v.totalAmount, 0),
+      current: vendors.reduce((sum, v) => sum + v.current, 0),
+      days1to30: vendors.reduce((sum, v) => sum + v.days1to30, 0),
+      days31to60: vendors.reduce((sum, v) => sum + v.days31to60, 0),
+      days61to90: vendors.reduce((sum, v) => sum + v.days61to90, 0),
+      over90: vendors.reduce((sum, v) => sum + v.over90, 0),
       criticalVendors: vendors.filter(v => v.over90 > 0 || v.days61to90 > 0).length,
-      averageDaysOverdue: vendors.length > 0 
+      averagePaymentDays: vendors.length > 0 
         ? vendors.reduce((sum, v) => sum + v.averagePaymentDays, 0) / vendors.length 
         : 0,
     };
 
     // Calculate percentages
-    const totalOutstanding = summary.totalOutstanding;
+    const totalOutstanding = summary.totalPayables;
     const agingDistribution = {
-      current: totalOutstanding > 0 ? (summary.currentTotal / totalOutstanding) * 100 : 0,
-      days1to30: totalOutstanding > 0 ? (summary.days1to30Total / totalOutstanding) * 100 : 0,
-      days31to60: totalOutstanding > 0 ? (summary.days31to60Total / totalOutstanding) * 100 : 0,
-      days61to90: totalOutstanding > 0 ? (summary.days61to90Total / totalOutstanding) * 100 : 0,
-      over90: totalOutstanding > 0 ? (summary.over90Total / totalOutstanding) * 100 : 0,
+      current: totalOutstanding > 0 ? (summary.current / totalOutstanding) * 100 : 0,
+      days1to30: totalOutstanding > 0 ? (summary.days1to30 / totalOutstanding) * 100 : 0,
+      days31to60: totalOutstanding > 0 ? (summary.days31to60 / totalOutstanding) * 100 : 0,
+      days61to90: totalOutstanding > 0 ? (summary.days61to90 / totalOutstanding) * 100 : 0,
+      over90: totalOutstanding > 0 ? (summary.over90 / totalOutstanding) * 100 : 0,
     };
 
     const response = {

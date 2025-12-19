@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
 
     // Customer summaries
     const customerAging: Record<string, {
+      customerId: string;
+      customerName: string;
       customer: any;
       current: number;
       days1to30: number;
@@ -112,6 +114,8 @@ export async function GET(request: NextRequest) {
       if (custId) {
         if (!customerAging[custId]) {
           customerAging[custId] = {
+            customerId: custId,
+            customerName: customer.name,
             customer: customer,
             current: 0,
             days1to30: 0,
@@ -134,19 +138,24 @@ export async function GET(request: NextRequest) {
       aging.over90.total;
 
     return NextResponse.json({
-      data: {
-        asOfDate,
-        summary: {
-          current: aging.current.total,
-          days1to30: aging.days1to30.total,
-          days31to60: aging.days31to60.total,
-          days61to90: aging.days61to90.total,
-          over90: aging.over90.total,
-          total: totalOutstanding,
-        },
-        aging,
-        byCustomer: Object.values(customerAging).sort((a, b) => b.total - a.total),
+      asOfDate,
+      summary: {
+        totalReceivables: totalOutstanding,
+        current: aging.current.total,
+        days1to30: aging.days1to30.total,
+        days31to60: aging.days31to60.total,
+        days61to90: aging.days61to90.total,
+        over90: aging.over90.total,
+        buckets: [
+          { label: 'Current', amount: aging.current.total, count: aging.current.count },
+          { label: '1-30 Days', amount: aging.days1to30.total, count: aging.days1to30.count },
+          { label: '31-60 Days', amount: aging.days31to60.total, count: aging.days31to60.count },
+          { label: '61-90 Days', amount: aging.days61to90.total, count: aging.days61to90.count },
+          { label: 'Over 90 Days', amount: aging.over90.total, count: aging.over90.count },
+        ],
       },
+      aging,
+      customers: Object.values(customerAging).sort((a, b) => b.total - a.total),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

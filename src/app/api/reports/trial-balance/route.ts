@@ -74,16 +74,14 @@ export async function GET(request: NextRequest) {
     const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
     return NextResponse.json({
-      data: {
-        asOfDate,
-        accounts: trialBalance,
-        totals: {
-          debit: totalDebits,
-          credit: totalCredits,
-        },
+      asOfDate,
+      accounts: trialBalance,
+      totals: {
+        totalDebits: totalDebits,
+        totalCredits: totalCredits,
         isBalanced,
-        difference: totalDebits - totalCredits,
       },
+      difference: totalDebits - totalCredits,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
