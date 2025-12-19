@@ -11,7 +11,7 @@ import Decimal from 'decimal.js';
 
 // Default account codes
 const DEFAULT_INVENTORY_ACCOUNT_CODE = '1300'; // Inventory Asset
-const DEFAULT_COGS_ACCOUNT_CODE = '5100'; // Cost of Goods Sold
+const DEFAULT_COGS_ACCOUNT_CODE = '5000'; // Cost of Goods Sold
 const DEFAULT_INVENTORY_ADJUSTMENT_ACCOUNT_CODE = '5900'; // Inventory Adjustments
 
 export interface InventoryConsumptionResult {
@@ -132,8 +132,8 @@ export async function consumeInventory(
     .from('inventory_cost_layers')
     .select('*')
     .eq('product_id', productId)
-    .gt('remaining_quantity', 0)
-    .order('received_date', { ascending: valuationMethod === 'fifo' ? true : false });
+    .gt('quantity_remaining', 0)
+    .order('transaction_date', { ascending: valuationMethod === 'fifo' ? true : false });
 
   if (layersError || !layers || layers.length === 0) {
     console.warn(`⚠️ No cost layers found for product ${productId}. Allowing zero-cost inventory consumption.`);
@@ -185,7 +185,7 @@ export async function consumeInventory(
   for (const layer of layers) {
     if (remainingToConsume <= 0) break;
 
-    const availableQty = layer.remaining_quantity;
+    const availableQty = layer.quantity_remaining;
     const qtyToUse = Math.min(availableQty, remainingToConsume);
     const layerCost = new Decimal(qtyToUse).times(layer.unit_cost);
 
@@ -210,7 +210,7 @@ export async function consumeInventory(
     // Fetch current layer and update manually
     const { data: currentLayer } = await supabase
       .from('inventory_cost_layers')
-      .select('remaining_quantity')
+      .select('quantity_remaining')
       .eq('id', consumed.layerId)
       .single();
 
@@ -218,7 +218,7 @@ export async function consumeInventory(
       await supabase
         .from('inventory_cost_layers')
         .update({
-          remaining_quantity: Math.max(0, currentLayer.remaining_quantity - consumed.quantityUsed)
+          quantity_remaining: Math.max(0, currentLayer.quantity_remaining - consumed.quantityUsed)
         })
         .eq('id', consumed.layerId);
     }
@@ -354,9 +354,9 @@ export async function reverseInventoryConsumption(
     await defaultSupabase.from('inventory_cost_layers').insert({
       product_id: transaction.product_id,
       location_id: transaction.location_id,
-      received_date: new Date().toISOString().split('T')[0],
+      transaction_date: new Date().toISOString().split('T')[0],
       quantity_received: reversalQuantity,
-      remaining_quantity: reversalQuantity,
+      quantity_remaining: reversalQuantity,
       unit_cost: unitCost,
       total_cost: totalCost,
       reference_type: 'reversal',
@@ -438,18 +438,19 @@ export async function createCOGSJournalEntry(
   referenceType: string,
   referenceId: string,
   userId: string,
-  description?: string
+  description?: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<string | undefined> {
   if (totalCost <= 0) return undefined;
 
   // Get account IDs
-  const { data: inventoryAccount } = await defaultSupabase
+  const { data: inventoryAccount } = await supabase
     .from('accounts')
     .select('id')
     .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
     .single();
 
-  const { data: cogsAccount } = await defaultSupabase
+  const { data: cogsAccount } = await supabase
     .from('accounts')
     .select('id')
     .eq('code', DEFAULT_COGS_ACCOUNT_CODE)
@@ -483,7 +484,8 @@ export async function createCOGSJournalEntry(
           },
         ],
       },
-      userId
+      userId,
+      supabase
     );
 
     return entry.id;
@@ -699,7 +701,9 @@ export async function processInvoiceInventory(
       consumptionResult.totalCost,
       'invoice',
       invoiceId,
-      userId
+      userId,
+      undefined,
+      supabase
     );
   }
 
@@ -808,9 +812,9 @@ export async function getInventoryValuation(
       .from('inventory_cost_layers')
       .select('*')
       .eq('product_id', product.id)
-      .gt('remaining_quantity', 0)
-      .lte('received_date', effectiveDate)
-      .order('received_date', { ascending: method === 'fifo' });
+      .gt('quantity_remaining', 0)
+      .lte('transaction_date', effectiveDate)
+      .order('transaction_date', { ascending: method === 'fifo' });
 
     if (!layers || layers.length === 0) continue;
 
@@ -818,8 +822,8 @@ export async function getInventoryValuation(
     let productQuantity = 0;
 
     for (const layer of layers) {
-      productTotal = productTotal.plus(new Decimal(layer.remaining_quantity).times(layer.unit_cost));
-      productQuantity += layer.remaining_quantity;
+      productTotal = productTotal.plus(new Decimal(layer.quantity_remaining).times(layer.unit_cost));
+      productQuantity += layer.quantity_remaining;
     }
 
     valuations.push({
@@ -1119,22 +1123,22 @@ export async function reverseBillInventory(
 
     if (costLayer) {
       // Check if any quantity has been consumed
-      if (costLayer.remaining_quantity === costLayer.quantity_received) {
+      if (costLayer.quantity_remaining === costLayer.quantity_received) {
         // Not used yet, can delete the cost layer
         await defaultSupabase
           .from('inventory_cost_layers')
           .delete()
           .eq('id', costLayer.id);
-      } else if (costLayer.remaining_quantity > 0) {
+      } else if (costLayer.quantity_remaining > 0) {
         // Partially consumed, adjust the layer
         await defaultSupabase
           .from('inventory_cost_layers')
           .update({
-            quantity_received: costLayer.remaining_quantity,
+            quantity_received: costLayer.quantity_remaining,
           })
           .eq('id', costLayer.id);
       }
-      // If remaining_quantity is 0, the layer is fully consumed, leave it for history
+      // If quantity_remaining is 0, the layer is fully consumed, leave it for history
     }
 
     // Create reversal transaction

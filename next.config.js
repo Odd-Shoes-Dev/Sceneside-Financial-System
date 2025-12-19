@@ -16,8 +16,6 @@ const nextConfig = {
     // Optimize builds
     optimizePackageImports: ['@heroicons/react'],
   },
-  // Production optimizations
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },

@@ -135,7 +135,8 @@ export async function GET(request: NextRequest) {
           amount: balance,
         };
 
-        if (account.code.startsWith('51')) {
+        // Cost of Sales: 5000-5499 (COGS and related costs)
+        if (account.code >= '5000' && account.code < '5500') {
           costOfSales.push(item);
           totalCostOfSales += balance;
         } else if (account.code.startsWith('5') || account.code.startsWith('6')) {

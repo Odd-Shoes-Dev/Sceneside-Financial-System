@@ -4,6 +4,7 @@
 // =====================================================
 
 import { supabase } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   JournalEntry,
   JournalLine,
@@ -81,7 +82,8 @@ export async function generateJournalNumber(): Promise<string> {
  */
 export async function createJournalEntry(
   input: CreateJournalEntryInput,
-  userId: string
+  userId: string,
+  supabaseClient: SupabaseClient = supabase
 ): Promise<JournalEntryWithLines> {
   // Validate balance
   const balance = validateJournalBalance(input.lines);
@@ -95,7 +97,7 @@ export async function createJournalEntry(
   const entryNumber = await generateJournalNumber();
 
   // Get period for the entry date
-  const { data: period } = await supabase
+  const { data: period } = await supabaseClient
     .from('fiscal_periods')
     .select('id')
     .eq('level', 'monthly')
@@ -104,7 +106,7 @@ export async function createJournalEntry(
     .single();
 
   // Create journal entry
-  const { data: entry, error: entryError } = await supabase
+  const { data: entry, error: entryError } = await supabaseClient
     .from('journal_entries')
     .insert({
       entry_number: entryNumber,
@@ -146,7 +148,7 @@ export async function createJournalEntry(
     department: line.department,
   }));
 
-  const { data: lines, error: linesError } = await supabase
+  const { data: lines, error: linesError } = await supabaseClient
     .from('journal_lines')
     .insert(linesWithEntry)
     .select();
@@ -154,7 +156,7 @@ export async function createJournalEntry(
   if (linesError) throw new Error(`Failed to create journal lines: ${linesError.message}`);
 
   // Log activity
-  await supabase.from('activity_logs').insert({
+  await supabaseClient.from('activity_logs').insert({
     user_id: userId,
     action: 'create',
     entity_type: 'journal_entry',
