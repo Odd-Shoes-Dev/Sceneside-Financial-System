@@ -76,13 +76,16 @@ export async function PATCH(request: NextRequest, context: any) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Prevent editing paid/void invoices
-    if (['paid', 'void'].includes(existing.status)) {
+    // Prevent editing paid/void invoices (unless we're voiding it)
+    if (['paid', 'void'].includes(existing.status) && body.status !== 'void') {
       return NextResponse.json(
         { error: 'Cannot edit paid or voided invoices' },
         { status: 400 }
       );
     }
+
+    // Check if invoice is being voided
+    const isBeingVoided = existing.status !== 'void' && body.status === 'void';
 
     // Check if status is changing from draft to sent/paid (invoice is being finalized)
     const isBeingFinalized = existing.status === 'draft' && 
@@ -209,6 +212,34 @@ export async function PATCH(request: NextRequest, context: any) {
       }
     }
 
+    // Handle voiding - reverse inventory consumption
+    if (isBeingVoided && existing.status !== 'draft') {
+      console.log('🔄 Voiding invoice, reversing inventory:', resolvedParams.id);
+      try {
+        const reversalResult = await reverseInvoiceInventory(resolvedParams.id, user.id, supabase);
+        console.log('✅ Inventory reversed:', reversalResult);
+        
+        return NextResponse.json({ 
+          data: invoice,
+          message: 'Invoice voided',
+          inventory: {
+            reversed: reversalResult.success,
+            journalEntryId: reversalResult.journalEntryId,
+          }
+        });
+      } catch (inventoryError: any) {
+        console.error('Inventory reversal error:', inventoryError);
+        return NextResponse.json({ 
+          data: invoice,
+          message: 'Invoice voided but inventory reversal failed',
+          inventory: {
+            reversed: false,
+            error: inventoryError.message,
+          }
+        });
+      }
+    }
+
     return NextResponse.json({ data: invoice });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -218,6 +249,7 @@ export async function PATCH(request: NextRequest, context: any) {
 // DELETE /api/invoices/[id] - Delete or void invoice
 export async function DELETE(request: NextRequest, context: any) {
   const { params } = context || {};
+  const resolvedParams = await params;
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
@@ -233,7 +265,7 @@ export async function DELETE(request: NextRequest, context: any) {
     const { data: existing, error: fetchError } = await supabase
       .from('invoices')
       .select('status, amount_paid')
-      .eq('id', params.id)
+      .eq('id', resolvedParams.id)
       .single();
 
     if (fetchError) {
@@ -254,10 +286,10 @@ export async function DELETE(request: NextRequest, context: any) {
       }
 
       // Delete lines first
-      await supabase.from('invoice_lines').delete().eq('invoice_id', params.id);
+      await supabase.from('invoice_lines').delete().eq('invoice_id', resolvedParams.id);
       
       // Delete invoice
-      const { error } = await supabase.from('invoices').delete().eq('id', params.id);
+      const { error } = await supabase.from('invoices').delete().eq('id', resolvedParams.id);
       
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -269,7 +301,7 @@ export async function DELETE(request: NextRequest, context: any) {
       const { data, error } = await supabase
         .from('invoices')
         .update({ status: 'void' })
-        .eq('id', params.id)
+        .eq('id', resolvedParams.id)
         .select()
         .single();
 
@@ -283,9 +315,10 @@ export async function DELETE(request: NextRequest, context: any) {
       
       if (existing.status !== 'draft') {
         try {
-          const reversalResult = await reverseInvoiceInventory(params.id, user.id);
+          const reversalResult = await reverseInvoiceInventory(resolvedParams.id, user.id, supabase);
           inventoryReversed = reversalResult.success;
           reversalJournalEntryId = reversalResult.journalEntryId;
+          console.log('🔄 Inventory reversed for voided invoice:', resolvedParams.id, reversalResult);
         } catch (inventoryError: any) {
           console.error('Inventory reversal error:', inventoryError);
         }

@@ -140,17 +140,26 @@ export async function consumeInventory(
     
     // Allow consumption without cost layers (quantity deduction only, no COGS)
     // Create transaction record
-    await supabase.from('inventory_transactions').insert({
+    const transactionNumber = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const { error: transactionError } = await supabase.from('inventory_transactions').insert({
       product_id: productId,
       location_id: effectiveLocationId,
+      transaction_number: transactionNumber,
       transaction_type: 'sale',
+      transaction_date: new Date().toISOString().split('T')[0],
       quantity: -quantity,
       unit_cost: 0,
-      total_cost: 0,
+      total_value: 0,
       reference_type: referenceType,
       reference_id: referenceId,
       notes: notes || `Consumed for ${referenceType} ${referenceId} (no cost layers available)`,
     });
+
+    if (transactionError) {
+      console.error('❌ Failed to create inventory transaction (zero-cost):', transactionError);
+    } else {
+      console.log('✅ Zero-cost inventory transaction created for product:', productId);
+    }
 
     // Update product quantity_on_hand
     const { data: currentProduct } = await supabase
@@ -225,17 +234,26 @@ export async function consumeInventory(
   }
 
   // Create inventory transaction record
-  await supabase.from('inventory_transactions').insert({
+  const transactionNumber = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const { error: transactionError } = await supabase.from('inventory_transactions').insert({
     product_id: productId,
     location_id: effectiveLocationId,
+    transaction_number: transactionNumber,
     transaction_type: 'sale',
+    transaction_date: new Date().toISOString().split('T')[0],
     quantity: -quantity,
     unit_cost: totalCost.div(quantity - remainingToConsume || 1).toNumber(),
-    total_cost: totalCost.toNumber(),
+    total_value: totalCost.toNumber(),
     reference_type: referenceType,
     reference_id: referenceId,
     notes: notes || `Consumed for ${referenceType} ${referenceId}`,
   });
+
+  if (transactionError) {
+    console.error('❌ Failed to create inventory transaction:', transactionError);
+  } else {
+    console.log('✅ Inventory transaction created for product:', productId);
+  }
 
   // Update product quantity_on_hand
   const { data: currentProduct } = await supabase
@@ -328,17 +346,21 @@ export async function consumeInventoryBatch(
 export async function reverseInventoryConsumption(
   referenceType: string,
   referenceId: string,
-  userId: string
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<{ reversed: boolean; journalEntryId?: string }> {
   // Find original transactions
-  const { data: transactions, error } = await defaultSupabase
+  const { data: transactions, error } = await supabase
     .from('inventory_transactions')
     .select('*')
     .eq('reference_type', referenceType)
     .eq('reference_id', referenceId)
     .eq('transaction_type', 'sale');
 
+  console.log('🔍 Looking for inventory transactions to reverse:', { referenceType, referenceId, found: transactions?.length || 0 });
+
   if (error || !transactions || transactions.length === 0) {
+    console.log('⚠️ No inventory transactions found to reverse');
     return { reversed: false };
   }
 
@@ -347,54 +369,60 @@ export async function reverseInventoryConsumption(
   // Reverse each transaction
   for (const transaction of transactions) {
     const reversalQuantity = Math.abs(transaction.quantity);
-    const unitCost = transaction.unit_cost;
-    const totalCost = Math.abs(transaction.total_cost);
+    const unitCost = transaction.unit_cost || 0;
+    const totalCost = Math.abs(transaction.total_value || 0);
+
+    console.log('🔄 Reversing transaction:', { productId: transaction.product_id, quantity: reversalQuantity, cost: totalCost });
 
     // Create a new cost layer for the returned inventory
-    await defaultSupabase.from('inventory_cost_layers').insert({
+    await supabase.from('inventory_cost_layers').insert({
       product_id: transaction.product_id,
       location_id: transaction.location_id,
+      transaction_type: 'return',
       transaction_date: new Date().toISOString().split('T')[0],
       quantity_received: reversalQuantity,
       quantity_remaining: reversalQuantity,
       unit_cost: unitCost,
-      total_cost: totalCost,
       reference_type: 'reversal',
       reference_id: referenceId,
     });
 
     // Create reversal transaction
-    await defaultSupabase.from('inventory_transactions').insert({
+    const reversalTxnNumber = `TXN-REV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    await supabase.from('inventory_transactions').insert({
       product_id: transaction.product_id,
       location_id: transaction.location_id,
+      transaction_number: reversalTxnNumber,
       transaction_type: 'return',
+      transaction_date: new Date().toISOString().split('T')[0],
       quantity: reversalQuantity,
       unit_cost: unitCost,
-      total_cost: totalCost,
+      total_value: totalCost,
       reference_type: `${referenceType}_reversal`,
       reference_id: referenceId,
       notes: `Reversal of ${referenceType} ${referenceId}`,
     });
 
     // Update product quantity
-    const { data: product } = await defaultSupabase
+    const { data: product } = await supabase
       .from('products')
       .select('quantity_on_hand')
       .eq('id', transaction.product_id)
       .single();
 
     if (product) {
-      await defaultSupabase
+      await supabase
         .from('products')
         .update({
           quantity_on_hand: (product.quantity_on_hand || 0) + reversalQuantity
         })
         .eq('id', transaction.product_id);
+      console.log('✅ Product quantity restored:', { productId: transaction.product_id, newQuantity: (product.quantity_on_hand || 0) + reversalQuantity });
     }
 
     // Update location stock
     if (transaction.location_id) {
-      const { data: locationStock } = await defaultSupabase
+      const { data: locationStock } = await supabase
         .from('product_stock_locations')
         .select('quantity_on_hand')
         .eq('product_id', transaction.product_id)
@@ -402,7 +430,7 @@ export async function reverseInventoryConsumption(
         .single();
 
       if (locationStock) {
-        await defaultSupabase
+        await supabase
           .from('product_stock_locations')
           .update({
             quantity_on_hand: locationStock.quantity_on_hand + reversalQuantity
@@ -422,10 +450,12 @@ export async function reverseInventoryConsumption(
       totalCostReversed.toNumber(),
       referenceType,
       referenceId,
-      userId
+      userId,
+      supabase
     );
   }
 
+  console.log('✅ Inventory reversal complete:', { totalCostReversed: totalCostReversed.toNumber(), journalEntryId });
   return { reversed: true, journalEntryId };
 }
 
@@ -503,18 +533,19 @@ async function createCOGSReversalJournalEntry(
   totalCost: number,
   referenceType: string,
   referenceId: string,
-  userId: string
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<string | undefined> {
   if (totalCost <= 0) return undefined;
 
   // Get account IDs
-  const { data: inventoryAccount } = await defaultSupabase
+  const { data: inventoryAccount } = await supabase
     .from('accounts')
     .select('id')
     .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
     .single();
 
-  const { data: cogsAccount } = await defaultSupabase
+  const { data: cogsAccount } = await supabase
     .from('accounts')
     .select('id')
     .eq('code', DEFAULT_COGS_ACCOUNT_CODE)
@@ -548,7 +579,8 @@ async function createCOGSReversalJournalEntry(
           },
         ],
       },
-      userId
+      userId,
+      supabase
     );
 
     return entry.id;
@@ -731,12 +763,13 @@ export async function processInvoiceInventory(
  */
 export async function reverseInvoiceInventory(
   invoiceId: string,
-  userId: string
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<{ success: boolean; journalEntryId?: string }> {
-  const result = await reverseInventoryConsumption('invoice', invoiceId, userId);
+  const result = await reverseInventoryConsumption('invoice', invoiceId, userId, supabase);
 
   // Also reverse any tour bookings
-  const { data: bookings } = await defaultSupabase
+  const { data: bookings } = await supabase
     .from('tour_bookings')
     .select('*, tour_schedules(*)')
     .eq('invoice_id', invoiceId);
@@ -744,14 +777,14 @@ export async function reverseInvoiceInventory(
   if (bookings && bookings.length > 0) {
     for (const booking of bookings) {
       // Update booking status
-      await defaultSupabase
+      await supabase
         .from('tour_bookings')
         .update({ booking_status: 'cancelled' })
         .eq('id', booking.id);
 
       // Restore capacity
       if (booking.tour_schedules) {
-        await defaultSupabase
+        await supabase
           .from('tour_schedules')
           .update({
             booked_capacity: Math.max(0, booking.tour_schedules.booked_capacity - booking.number_of_participants),
