@@ -68,6 +68,8 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [zeroCostCount, setZeroCostCount] = useState(0);
+  const [zeroCostProductIds, setZeroCostProductIds] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<InventoryStats>({
     totalItems: 0,
     totalValue: 0,
@@ -128,6 +130,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadStats();
+    loadZeroCostCheck();
   }, []);
 
   const loadStats = async () => {
@@ -139,6 +142,19 @@ export default function InventoryPage() {
       }
     } catch (error) {
       console.error('Failed to load stats:', error);
+    }
+  };
+
+  const loadZeroCostCheck = async () => {
+    try {
+      const response = await fetch('/api/inventory/zero-cost-check');
+      if (response.ok) {
+        const data = await response.json();
+        setZeroCostCount(data.count || 0);
+        setZeroCostProductIds(new Set(data.zeroCostProducts?.map((p: any) => p.id) || []));
+      }
+    } catch (error) {
+      console.error('Failed to load zero-cost check:', error);
     }
   };
 
@@ -277,7 +293,7 @@ export default function InventoryPage() {
     }
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="card">
           <div className="card-body">
             <p className="text-sm text-gray-500">Total Items</p>
@@ -300,6 +316,18 @@ export default function InventoryPage() {
           <div className="card-body">
             <p className="text-sm text-gray-500">Out of Stock</p>
             <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1">{stats.outOfStock}</p>
+          </div>
+        </div>
+        <div className="card border-2 border-amber-200 bg-amber-50">
+          <div className="card-body">
+            <div className="flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-5 h-5 text-amber-600" />
+              <p className="text-sm text-amber-700 font-medium">No Cost Layers</p>
+            </div>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-amber-600 mt-1">{zeroCostCount}</p>
+            {zeroCostCount > 0 && (
+              <p className="text-xs text-amber-600 mt-1">Products will invoice at $0 COGS</p>
+            )}
           </div>
         </div>
       </div>
@@ -454,12 +482,25 @@ export default function InventoryPage() {
           {items.map((item) => {
             const status = getStockStatus(item);
             const available = (item.quantity_on_hand || 0) - (item.quantity_reserved || 0);
+            const hasZeroCost = zeroCostProductIds.has(item.id);
+            
             return (
               <tr key={item.id}>
                 <td>
-                  <Link href={`/dashboard/inventory/${item.id}`} className="font-medium text-gray-900 hover:text-navy-600">
-                    {item.name}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/dashboard/inventory/${item.id}`} className="font-medium text-gray-900 hover:text-navy-600">
+                      {item.name}
+                    </Link>
+                    {hasZeroCost && (
+                      <span 
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
+                        title="No cost layers available - will invoice at $0 COGS"
+                      >
+                        <ExclamationTriangleIcon className="w-3 h-3" />
+                        No Cost
+                      </span>
+                    )}
+                  </div>
                   {item.description && <p className="text-sm text-gray-500 truncate max-w-xs">{item.description}</p>}
                 </td>
                 <td><span className="font-mono text-sm">{item.sku || '-'}</span></td>

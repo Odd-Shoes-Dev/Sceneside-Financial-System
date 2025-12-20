@@ -78,10 +78,13 @@ export default function InventoryDetailPage() {
   const [item, setItem] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [hasCostLayers, setHasCostLayers] = useState<boolean | null>(null);
+  const [costLayersLoading, setCostLayersLoading] = useState(false);
 
   useEffect(() => {
     if (params.id) {
       loadItemDetails();
+      checkCostLayers();
     }
   }, [params.id]);
 
@@ -115,6 +118,28 @@ export default function InventoryDetailPage() {
       console.error('Failed to load item:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkCostLayers = async () => {
+    try {
+      setCostLayersLoading(true);
+      
+      const { data: costLayers, error } = await supabase
+        .from('inventory_cost_layers')
+        .select('quantity_remaining')
+        .eq('product_id', params.id)
+        .gt('quantity_remaining', 0)
+        .limit(1);
+
+      if (error) throw error;
+      
+      setHasCostLayers(costLayers && costLayers.length > 0);
+    } catch (error) {
+      console.error('Failed to check cost layers:', error);
+      setHasCostLayers(null);
+    } finally {
+      setCostLayersLoading(false);
     }
   };
 
@@ -231,7 +256,38 @@ export default function InventoryDetailPage() {
         {!item.is_active && (
           <span className="badge badge-gray">Inactive</span>
         )}
+        {/* Zero-Cost Warning */}
+        {(item.track_inventory || item.inventory_category === 'physical_stock') && 
+         (item.quantity_on_hand || 0) > 0 && 
+         hasCostLayers === false && (
+          <span className="badge bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+            <ExclamationTriangleIcon className="w-4 h-4" />
+            No Cost Layers
+          </span>
+        )}
       </div>
+
+      {/* Cost Layer Alert */}
+      {(item.track_inventory || item.inventory_category === 'physical_stock') && 
+       (item.quantity_on_hand || 0) > 0 && 
+       hasCostLayers === false && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+          <div className="flex items-start gap-3">
+            <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-900">No Cost Layers Available</h3>
+              <p className="text-sm text-amber-800 mt-1">
+                This product has <span className="font-semibold">{item.quantity_on_hand} {item.unit_of_measure}</span> in stock 
+                but no cost layers. Invoicing this product will result in <span className="font-semibold">$0 COGS</span>, 
+                which may affect your profit margins and financial reporting.
+              </p>
+              <p className="text-sm text-amber-800 mt-2">
+                <span className="font-semibold">Action required:</span> Create a bill or inventory adjustment to establish cost layers.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

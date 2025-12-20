@@ -183,7 +183,7 @@ export default function BillDetailPage() {
   };
 
   const handleVoid = async () => {
-    if (!confirm('Void this bill? This action cannot be undone.')) return;
+    if (!confirm('Void this bill? This will reverse any inventory received. This action cannot be undone.')) return;
     
     setActionLoading(true);
     try {
@@ -194,6 +194,13 @@ export default function BillDetailPage() {
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error);
+      }
+
+      const data = await response.json();
+      
+      // Show inventory reversal info if available
+      if (data.inventory?.reversed) {
+        alert(`Bill voided!\n\nInventory reversed successfully.${data.inventory.journalEntryId ? `\nJournal Entry: ${data.inventory.journalEntryId}` : ''}`);
       }
 
       router.push('/dashboard/bills');

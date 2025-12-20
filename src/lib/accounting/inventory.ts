@@ -969,6 +969,7 @@ export async function processBillInventory(
         unit_cost: line.unit_cost,
         currency: 'USD',
         exchange_rate: 1.000000,
+        reference_type: 'bill',
       })
       .select()
       .single();
@@ -995,17 +996,26 @@ export async function processBillInventory(
     }
 
     // Create inventory transaction record
-    await supabase.from('inventory_transactions').insert({
+    const transactionNumber = `BILL-${billId.substring(0, 8)}-${Date.now()}`;
+    const { error: txnError } = await supabase.from('inventory_transactions').insert({
       product_id: line.product_id,
       location_id: locationId,
+      transaction_number: transactionNumber,
       transaction_type: 'purchase',
+      transaction_date: billDate,
       quantity: line.quantity,
       unit_cost: line.unit_cost,
-      total_cost: lineCost.toNumber(),
+      total_value: lineCost.toNumber(),
       reference_type: 'bill',
       reference_id: billId,
       notes: `Received from bill ${billId} - ${line.description || ''}`,
     });
+
+    if (txnError) {
+      console.error('❌ Failed to create inventory transaction:', txnError);
+    } else {
+      console.log('✅ Inventory transaction created');
+    }
 
     // Update location stock if applicable
     if (locationId) {
@@ -1055,7 +1065,8 @@ export async function processBillInventory(
     journalEntryId = await createInventoryReceiptJournalEntry(
       totalCost.toNumber(),
       billId,
-      userId
+      userId,
+      supabase
     );
   }
 
@@ -1073,7 +1084,8 @@ export async function processBillInventory(
 async function createInventoryReceiptJournalEntry(
   totalCost: number,
   billId: string,
-  userId: string
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<string | undefined> {
   if (totalCost <= 0) return undefined;
 
@@ -1091,7 +1103,7 @@ async function createInventoryReceiptJournalEntry(
         source_document_id: billId,
         lines: [
           {
-            account_id: (await defaultSupabase
+            account_id: (await supabase
               .from('accounts')
               .select('id')
               .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
@@ -1101,7 +1113,7 @@ async function createInventoryReceiptJournalEntry(
             credit: 0,
           },
           {
-            account_id: (await defaultSupabase
+            account_id: (await supabase
               .from('accounts')
               .select('id')
               .eq('code', '2000') // AP Account
@@ -1112,7 +1124,8 @@ async function createInventoryReceiptJournalEntry(
           },
         ],
       },
-      userId
+      userId,
+      supabase
     );
 
     return entry.id;
@@ -1127,17 +1140,23 @@ async function createInventoryReceiptJournalEntry(
  */
 export async function reverseBillInventory(
   billId: string,
-  userId: string
+  userId: string,
+  supabase: SupabaseClient = defaultSupabase
 ): Promise<{ reversed: boolean; journalEntryId?: string }> {
-  // Find original transactions
-  const { data: transactions, error } = await defaultSupabase
+  console.log('🔄 Starting bill inventory reversal for:', billId);
+  
+  // Find original transactions using reference fields
+  const { data: transactions, error } = await supabase
     .from('inventory_transactions')
     .select('*')
     .eq('reference_type', 'bill')
     .eq('reference_id', billId)
     .eq('transaction_type', 'purchase');
 
+  console.log('📦 Found transactions to reverse:', transactions?.length || 0);
+
   if (error || !transactions || transactions.length === 0) {
+    console.log('⚠️ No transactions found to reverse');
     return { reversed: false };
   }
 
@@ -1145,67 +1164,83 @@ export async function reverseBillInventory(
 
   // Reverse each transaction
   for (const transaction of transactions) {
+    console.log(`🔄 Reversing transaction for product ${transaction.product_id}, qty: ${transaction.quantity}`);
+    
     // Remove cost layer or reduce its quantity
-    const { data: costLayer } = await defaultSupabase
+    const { data: costLayer } = await supabase
       .from('inventory_cost_layers')
       .select('*')
       .eq('product_id', transaction.product_id)
-      .eq('reference_type', 'bill')
-      .eq('reference_id', billId)
+      .eq('transaction_id', billId)
       .single();
 
+    console.log('💰 Cost layer found:', costLayer ? 'YES' : 'NO');
+
     if (costLayer) {
+      console.log(`💰 Cost layer: received=${costLayer.quantity_received}, remaining=${costLayer.quantity_remaining}`);
+      
       // Check if any quantity has been consumed
       if (costLayer.quantity_remaining === costLayer.quantity_received) {
         // Not used yet, can delete the cost layer
-        await defaultSupabase
+        console.log('🗑️ Deleting unused cost layer');
+        await supabase
           .from('inventory_cost_layers')
           .delete()
           .eq('id', costLayer.id);
       } else if (costLayer.quantity_remaining > 0) {
         // Partially consumed, adjust the layer
-        await defaultSupabase
+        console.log('📉 Adjusting partially consumed cost layer');
+        await supabase
           .from('inventory_cost_layers')
           .update({
             quantity_received: costLayer.quantity_remaining,
           })
           .eq('id', costLayer.id);
+      } else {
+        console.log('✅ Cost layer fully consumed, keeping for history');
       }
       // If quantity_remaining is 0, the layer is fully consumed, leave it for history
     }
 
     // Create reversal transaction
-    await defaultSupabase.from('inventory_transactions').insert({
+    console.log('📝 Creating reversal transaction');
+    await supabase.from('inventory_transactions').insert({
       product_id: transaction.product_id,
       location_id: transaction.location_id,
-      transaction_type: 'adjustment',
+      transaction_number: `REV-${transaction.transaction_number || billId}`,
+      transaction_type: 'adjustment_out',
+      transaction_date: new Date().toISOString().split('T')[0],
       quantity: -transaction.quantity,
       unit_cost: transaction.unit_cost,
-      total_cost: -transaction.total_cost,
+      total_value: -transaction.total_cost,
       reference_type: 'bill_void',
       reference_id: billId,
       notes: `Reversal of voided bill ${billId}`,
     });
 
     // Update product quantity
-    const { data: product } = await defaultSupabase
+    console.log('📊 Updating product quantity');
+    const { data: product } = await supabase
       .from('products')
       .select('quantity_on_hand')
       .eq('id', transaction.product_id)
       .single();
 
     if (product) {
-      await defaultSupabase
+      const newQuantity = Math.max(0, (product.quantity_on_hand || 0) - transaction.quantity);
+      console.log(`📊 Product quantity: ${product.quantity_on_hand} → ${newQuantity}`);
+      await supabase
         .from('products')
         .update({
-          quantity_on_hand: Math.max(0, (product.quantity_on_hand || 0) - transaction.quantity),
+          quantity_on_hand: newQuantity,
         })
         .eq('id', transaction.product_id);
     }
 
     // Update location stock
     if (transaction.location_id) {
-      const { data: locationStock } = await defaultSupabase
+      console.log('📍 Updating location stock');
+      const { data: locationStock } = await supabase
         .from('product_stock_locations')
         .select('quantity_on_hand')
         .eq('product_id', transaction.product_id)
@@ -1213,7 +1248,7 @@ export async function reverseBillInventory(
         .single();
 
       if (locationStock) {
-        await defaultSupabase
+        await supabase
           .from('product_stock_locations')
           .update({
             quantity_on_hand: Math.max(0, locationStock.quantity_on_hand - transaction.quantity),
@@ -1223,12 +1258,15 @@ export async function reverseBillInventory(
       }
     }
 
-    totalCostReversed = totalCostReversed.plus(Math.abs(transaction.total_cost));
+    totalCostReversed = totalCostReversed.plus(Math.abs(transaction.total_cost || transaction.total_value || 0));
   }
+
+  console.log('💵 Total cost reversed:', totalCostReversed.toNumber());
 
   // Create reversal journal entry if there was cost involved
   let journalEntryId: string | undefined;
   if (totalCostReversed.greaterThan(0)) {
+    console.log('📖 Creating reversal journal entry');
     try {
       const entry = await createJournalEntry(
         {
@@ -1239,7 +1277,7 @@ export async function reverseBillInventory(
           source_document_id: billId,
           lines: [
             {
-              account_id: (await defaultSupabase
+              account_id: (await supabase
                 .from('accounts')
                 .select('id')
                 .eq('code', '2000') // AP Account
@@ -1249,7 +1287,7 @@ export async function reverseBillInventory(
               credit: 0,
             },
             {
-              account_id: (await defaultSupabase
+              account_id: (await supabase
                 .from('accounts')
                 .select('id')
                 .eq('code', DEFAULT_INVENTORY_ACCOUNT_CODE)
@@ -1260,14 +1298,17 @@ export async function reverseBillInventory(
             },
           ],
         },
-        userId
+        userId,
+        supabase
       );
       journalEntryId = entry.id;
+      console.log('✅ Journal entry created:', journalEntryId);
     } catch (error) {
-      console.error('Failed to create inventory reversal journal entry:', error);
+      console.error('❌ Failed to create inventory reversal journal entry:', error);
     }
   }
 
+  console.log('✅ Bill inventory reversal complete');
   return { reversed: true, journalEntryId };
 }
 

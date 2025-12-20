@@ -295,17 +295,30 @@ export async function DELETE(request: NextRequest, context: any) {
       }
 
       // Reverse inventory if this was an approved bill
+      let inventoryReversed = false;
+      let reversalJournalEntryId: string | undefined;
+      
       if (existing.status === 'approved') {
+        console.log('🔄 Voiding approved bill, reversing inventory:', resolvedParams.id);
         try {
-          const reversalResult = await reverseBillInventory(resolvedParams.id, user.id);
-          console.log('Inventory reversed:', reversalResult);
-        } catch (error) {
-          console.error('Failed to reverse bill inventory:', error);
+          const reversalResult = await reverseBillInventory(resolvedParams.id, user.id, supabase);
+          inventoryReversed = reversalResult.reversed;
+          reversalJournalEntryId = reversalResult.journalEntryId;
+          console.log('✅ Inventory reversed for voided bill:', resolvedParams.id, reversalResult);
+        } catch (error: any) {
+          console.error('❌ Failed to reverse bill inventory:', error);
           // Don't fail the whole request, just log the error
         }
       }
 
-      return NextResponse.json({ data });
+      return NextResponse.json({ 
+        data,
+        message: 'Bill voided',
+        inventory: {
+          reversed: inventoryReversed,
+          journalEntryId: reversalJournalEntryId,
+        }
+      });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

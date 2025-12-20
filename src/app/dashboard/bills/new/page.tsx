@@ -9,7 +9,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { formatCurrency as currencyFormatter, convertCurrency, SupportedCurrency } from '@/lib/currency';
 import { CurrencySelect } from '@/components/ui';
 import { supabase } from '@/lib/supabase/client';
 
@@ -117,19 +117,31 @@ export default function NewBillPage() {
   const handleProductChange = async (id: string, productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
+      // Use cost_price for bills (purchase price), not selling price
+      let convertedPrice = product.cost_price || product.unit_price;
+      
+      // Convert price if currencies don't match
+      const productCurrency = (product.currency || 'USD') as SupportedCurrency;
+      const billCurrency = formData.currency as SupportedCurrency;
+      
+      if (productCurrency !== billCurrency && convertedPrice > 0) {
+        const converted = await convertCurrency(
+          supabase,
+          convertedPrice,
+          productCurrency,
+          billCurrency,
+          formData.bill_date
+        );
+        if (converted !== null) {
+          convertedPrice = converted;
+        } else {
+          console.warn(`Currency conversion failed from ${productCurrency} to ${billCurrency}, using original price`);
+        }
+      }
+      
       setLineItems((prev) =>
         prev.map((item) => {
           if (item.id !== id) return item;
-          
-          // Use cost_price for bills (purchase price), not selling price
-          let convertedPrice = product.cost_price || product.unit_price;
-          
-          // Convert price if currencies don't match
-          const productCurrency = product.currency || 'USD';
-          if (productCurrency !== formData.currency && convertedPrice > 0) {
-            // TODO: Add currency conversion if needed
-            console.log(`Price conversion needed from ${productCurrency} to ${formData.currency}`);
-          }
           
           // Set appropriate account based on inventory category
           let accountCode = '5100'; // Default COGS

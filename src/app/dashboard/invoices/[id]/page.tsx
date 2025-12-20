@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner, ConfirmModal } from '@/components/ui';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 import {
   ArrowLeftIcon,
@@ -15,6 +15,7 @@ import {
   DocumentDuplicateIcon,
   TrashIcon,
   CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 interface Invoice {
@@ -75,6 +76,12 @@ export default function InvoiceDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showZeroCostWarning, setShowZeroCostWarning] = useState(false);
+  const [zeroCostProducts, setZeroCostProducts] = useState<Array<{
+    productName: string;
+    sku: string | null;
+    quantity: number;
+  }>>([]);
 
   useEffect(() => {
     fetchInvoice();
@@ -512,6 +519,30 @@ export default function InvoiceDetailPage() {
   };
 
   const handleMarkAsSent = async () => {
+    // First check if any products have no cost layers
+    setActionLoading('send');
+    try {
+      const checkResponse = await fetch(`/api/invoices/${params.id}/check-cost-layers`);
+      const checkData = await checkResponse.json();
+
+      if (checkData.hasZeroCostProducts && checkData.zeroCostProducts.length > 0) {
+        // Show warning modal
+        setZeroCostProducts(checkData.zeroCostProducts);
+        setShowZeroCostWarning(true);
+        setActionLoading(null);
+        return;
+      }
+
+      // No issues, proceed with marking as sent
+      await proceedWithMarkAsSent();
+    } catch (error: any) {
+      console.error('Error checking cost layers:', error);
+      // Continue anyway if check fails
+      await proceedWithMarkAsSent();
+    }
+  };
+
+  const proceedWithMarkAsSent = async () => {
     setActionLoading('send');
     try {
       const response = await fetch(`/api/invoices/${params.id}`, {
@@ -533,6 +564,7 @@ export default function InvoiceDetailPage() {
         alert(`Invoice marked as sent!\n\nInventory processed:\n- ${data.inventory.itemsConsumed} items consumed\n- Total COGS: $${data.inventory.totalCost.toFixed(2)}`);
       }
       
+      setShowZeroCostWarning(false);
       fetchInvoice();
     } catch (error: any) {
       console.error('Error updating invoice:', error);
@@ -909,6 +941,22 @@ export default function InvoiceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Zero-Cost Warning Modal */}
+      <ConfirmModal
+        isOpen={showZeroCostWarning}
+        onClose={() => {
+          setShowZeroCostWarning(false);
+          setActionLoading(null);
+        }}
+        onConfirm={proceedWithMarkAsSent}
+        title="⚠️ Products Without Cost Layers"
+        message={`The following products have no cost layers and will be invoiced with $0 COGS:\n\n${zeroCostProducts.map(p => `• ${p.productName}${p.sku ? ` (${p.sku})` : ''} - Qty: ${p.quantity}`).join('\n')}\n\nThis means no inventory cost will be recorded, potentially affecting your profit margins.\n\nDo you want to continue?`}
+        confirmLabel="Continue Anyway"
+        cancelLabel="Cancel"
+        variant="warning"
+        isLoading={actionLoading === 'send'}
+      />
     </div>
   );
 }
