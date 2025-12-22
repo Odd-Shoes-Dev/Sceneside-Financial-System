@@ -139,7 +139,7 @@ export default function ContactPage() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="input w-full"
-                      placeholder="(123) 456-7890"
+                      placeholder="+1 (857) 384-2899"
                     />
                   </div>
                   <div>
@@ -202,8 +202,8 @@ export default function ContactPage() {
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Address</p>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      123 Main Street<br />
-                      City, State 12345<br />
+                      121 Bedford Street<br />
+                      Waltham, MA 02453<br />
                       United States
                     </p>
                   </div>
@@ -212,8 +212,8 @@ export default function ContactPage() {
                   <PhoneIcon className="w-6 h-6 text-sceneside-navy flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Phone</p>
-                    <a href="tel:+1234567890" className="text-sceneside-navy hover:underline text-sm">
-                      (123) 456-7890
+                    <a href="tel:+18573842899" className="text-sceneside-navy hover:underline text-sm">
+                      +1 (857) 384-2899
                     </a>
                   </div>
                 </div>

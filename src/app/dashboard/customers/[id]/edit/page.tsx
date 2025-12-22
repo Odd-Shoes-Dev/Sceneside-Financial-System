@@ -273,7 +273,7 @@ export default function EditCustomerPage({ params }: PageProps) {
                 value={formData.phone}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]"
-                placeholder="(555) 123-4567"
+                placeholder="+1 (857) 384-2899"
               />
             </div>
 

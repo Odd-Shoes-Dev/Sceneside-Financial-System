@@ -20,9 +20,9 @@ export default function ContentPage() {
     { key: 'hero_subtitle', title: 'Homepage Hero Subtitle', placeholder: 'Explore amazing destinations...' },
     { key: 'about_title', title: 'About Section Title', placeholder: 'About Us' },
     { key: 'about_content', title: 'About Section Content', placeholder: 'We are a leading tourism company...' },
-    { key: 'contact_phone', title: 'Contact Phone', placeholder: '+1 (555) 123-4567' },
+    { key: 'contact_phone', title: 'Contact Phone', placeholder: '+1 (857) 384-2899' },
     { key: 'contact_email', title: 'Contact Email', placeholder: 'info@company.com' },
-    { key: 'contact_address', title: 'Contact Address', placeholder: '123 Main St, City, State ZIP' },
+    { key: 'contact_address', title: 'Contact Address', placeholder: '121 Bedford Street, Waltham, MA 02453' },
     { key: 'footer_text', title: 'Footer Text', placeholder: '© 2025 Company Name. All rights reserved.' },
   ];
 

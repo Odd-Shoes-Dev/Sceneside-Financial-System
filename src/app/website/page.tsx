@@ -420,9 +420,9 @@ export default function WebsiteHomePage() {
           <h2 className="text-4xl font-bold mb-4">Ready to Start Your Journey?</h2>
           <p className="text-xl mb-8 text-gray-200">Contact us today to plan your perfect trip</p>
           <div className="flex flex-wrap justify-center gap-6">
-            <a href="tel:+1234567890" className="flex items-center gap-2 text-lg hover:text-gray-200">
+            <a href="tel:+18573842899" className="flex items-center gap-2 text-lg hover:text-gray-200">
               <PhoneIcon className="w-6 h-6" />
-              {content['contact_phone'] || '(123) 456-7890'}
+              {content['contact_phone'] || '+1 (857) 384-2899'}
             </a>
             <a href="mailto:info@sceneside.com" className="flex items-center gap-2 text-lg hover:text-gray-200">
               <EnvelopeIcon className="w-6 h-6" />
@@ -462,8 +462,8 @@ export default function WebsiteHomePage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Contact</h4>
               <ul className="space-y-2 text-sm">
-                <li>{content['contact_address'] || '123 Main Street, City, State 12345'}</li>
-                <li>{content['contact_phone'] || '(123) 456-7890'}</li>
+                <li>{content['contact_address'] || '121 Bedford Street, Waltham, MA 02453'}</li>
+                <li>{content['contact_phone'] || '+1 (857) 384-2899'}</li>
                 <li>{content['contact_email'] || 'info@sceneside.com'}</li>
               </ul>
             </div>
