@@ -10,6 +10,50 @@ export async function middleware(req: NextRequest) {
     },
   });
 
+  // Handle subdomain routing
+  const hostname = req.headers.get('host') || '';
+  const url = req.nextUrl.clone();
+  
+  // Check if we're on the financial subdomain
+  const isFinancialSubdomain = hostname.startsWith('financial.');
+  
+  // If on financial subdomain and not already on dashboard/auth routes
+  if (isFinancialSubdomain) {
+    // Allow dashboard and auth routes
+    if (!url.pathname.startsWith('/dashboard') && 
+        !url.pathname.startsWith('/login') && 
+        !url.pathname.startsWith('/signup') &&
+        !url.pathname.startsWith('/api') &&
+        !url.pathname.startsWith('/_next')) {
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  } else {
+    // On main domain (sceneside.com)
+    // If trying to access dashboard/auth routes, redirect to website
+    if (url.pathname.startsWith('/dashboard') || 
+        url.pathname.startsWith('/login') || 
+        url.pathname.startsWith('/signup')) {
+      // Redirect to financial subdomain
+      url.host = 'financial.' + hostname;
+      return NextResponse.redirect(url);
+    }
+    
+    // If on root, redirect to website
+    if (url.pathname === '/') {
+      url.pathname = '/website';
+      return NextResponse.rewrite(url);
+    }
+    
+    // If not on /website path, redirect there
+    if (!url.pathname.startsWith('/website') && 
+        !url.pathname.startsWith('/api') &&
+        !url.pathname.startsWith('/_next')) {
+      url.pathname = '/website' + url.pathname;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
