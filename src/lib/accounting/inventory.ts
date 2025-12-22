@@ -247,6 +247,12 @@ export async function consumeInventory(
     reference_type: referenceType,
     reference_id: referenceId,
     notes: notes || `Consumed for ${referenceType} ${referenceId}`,
+    cost_layers_affected: consumedLayers.map(l => ({
+      layerId: l.layerId,
+      quantityUsed: l.quantityUsed,
+      unitCost: l.unitCost,
+      totalCost: l.totalCost
+    })),
   });
 
   if (transactionError) {
@@ -374,18 +380,61 @@ export async function reverseInventoryConsumption(
 
     console.log('🔄 Reversing transaction:', { productId: transaction.product_id, quantity: reversalQuantity, cost: totalCost });
 
-    // Create a new cost layer for the returned inventory
-    await supabase.from('inventory_cost_layers').insert({
-      product_id: transaction.product_id,
-      location_id: transaction.location_id,
-      transaction_type: 'return',
-      transaction_date: new Date().toISOString().split('T')[0],
-      quantity_received: reversalQuantity,
-      quantity_remaining: reversalQuantity,
-      unit_cost: unitCost,
-      reference_type: 'reversal',
-      reference_id: referenceId,
-    });
+    // Check if we have cost layer information to restore
+    if (transaction.cost_layers_affected && Array.isArray(transaction.cost_layers_affected) && transaction.cost_layers_affected.length > 0) {
+      console.log('📊 Restoring original cost layers:', transaction.cost_layers_affected.length);
+      
+      // Restore quantities to the original cost layers that were consumed
+      for (const layerInfo of transaction.cost_layers_affected) {
+        const { data: existingLayer } = await supabase
+          .from('inventory_cost_layers')
+          .select('quantity_remaining')
+          .eq('id', layerInfo.layerId)
+          .single();
+
+        if (existingLayer) {
+          await supabase
+            .from('inventory_cost_layers')
+            .update({
+              quantity_remaining: existingLayer.quantity_remaining + layerInfo.quantityUsed
+            })
+            .eq('id', layerInfo.layerId);
+          console.log(`✅ Restored ${layerInfo.quantityUsed} units to cost layer ${layerInfo.layerId}`);
+        } else {
+          console.warn(`⚠️ Cost layer ${layerInfo.layerId} not found, creating new layer`);
+          // If original layer was deleted, create a new one
+          await supabase.from('inventory_cost_layers').insert({
+            product_id: transaction.product_id,
+            location_id: transaction.location_id,
+            transaction_type: 'return',
+            transaction_date: new Date().toISOString().split('T')[0],
+            quantity_received: layerInfo.quantityUsed,
+            quantity_remaining: layerInfo.quantityUsed,
+            unit_cost: layerInfo.unitCost,
+            currency: 'USD',
+            exchange_rate: 1.0,
+            reference_type: 'reversal',
+            reference_id: referenceId,
+          });
+        }
+      }
+    } else {
+      // Fallback: Create a new cost layer with averaged cost (old behavior)
+      console.log('⚠️ No cost layer info found, creating new layer with averaged cost');
+      await supabase.from('inventory_cost_layers').insert({
+        product_id: transaction.product_id,
+        location_id: transaction.location_id,
+        transaction_type: 'return',
+        transaction_date: new Date().toISOString().split('T')[0],
+        quantity_received: reversalQuantity,
+        quantity_remaining: reversalQuantity,
+        unit_cost: unitCost,
+        currency: 'USD',
+        exchange_rate: 1.0,
+        reference_type: 'reversal',
+        reference_id: referenceId,
+      });
+    }
 
     // Create reversal transaction
     const reversalTxnNumber = `TXN-REV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
