@@ -22,22 +22,25 @@
 ### Inventory Reversal Operations ✅
 - [x] **Invoice Voiding** - Reverse inventory consumption
   - [x] Restores inventory quantity
-  - [x] Restores cost layers (adds back consumed quantities)
+  - [x] Restores cost layers (restores original consumed layers, not averaged)
   - [x] Creates reversal COGS journal entry (DR 1300, CR 5000)
+  - [x] Multi-layer restoration (4+ layers tested)
   - [ ] Updates P&L report correctly
   
-- [ ] **Bill Voiding** - Reverse inventory increase
-  - [ ] Decreases inventory quantity
-  - [ ] Removes/adjusts cost layers created
-  - [ ] Creates reversal journal entries if needed
-  - [ ] Updates inventory valuation
+- [x] **Bill Voiding** - Reverse inventory increase
+  - [x] Decreases inventory quantity
+  - [x] Removes/adjusts cost layers created
+  - [x] Creates reversal journal entries
+  - [x] Updates inventory valuation
+  - [x] Multi-product bill voiding (2+ products tested)
 
-### Cost Layer Consumption ❌
-- [ ] **Cost Layer Depletion (FIFO)**
-  - [ ] Invoice quantity fully consumes first cost layer
-  - [ ] Automatically moves to next cost layer
-  - [ ] Correctly tracks remaining quantities in each layer
-  - [ ] Journal entry reflects blended cost from multiple layers
+### Cost Layer Consumption ✅
+- [x] **Cost Layer Depletion (FIFO)**
+  - [x] Invoice quantity fully consumes first cost layer
+  - [x] Automatically moves to next cost layer
+  - [x] Correctly tracks remaining quantities in each layer
+  - [x] Journal entry reflects blended cost from multiple layers
+  - [x] 4+ layer consumption tested successfully
 
 - [ ] **LIFO Valuation Method**
   - [ ] Change product valuation method to LIFO
@@ -49,24 +52,33 @@
   - [ ] Verify average cost calculation
   - [ ] COGS uses average unit cost
 
-### Multiple Products ❌
-- [ ] **Invoice with Multiple Products**
-  - [ ] Create invoice with 2-3 different inventory products
-  - [ ] Verify each product's cost layers consumed correctly
-  - [ ] COGS calculated separately for each product
-  - [ ] Total COGS = sum of all products' costs
-  - [ ] Journal entry has correct total amount
+### Multiple Products ✅
+- [x] **Invoice with Multiple Products**
+  - [x] Create invoice with 2-3 different inventory products
+  - [x] Verify each product's cost layers consumed correctly
+  - [x] COGS calculated separately for each product
+  - [x] Total COGS = sum of all products' costs
+  - [x] Journal entry has correct total amount
+  - [x] Voiding multi-product invoice restores all products correctly
 
-### Edge Cases ❌
-- [ ] **Insufficient Inventory**
-  - [ ] Try to invoice more quantity than available
-  - [ ] System prevents or warns about overselling
-  - [ ] Partial fulfillment handling
+- [x] **Bill with Multiple Products**
+  - [x] Create bill with 2+ different inventory products
+  - [x] Cost layers created for each product
+  - [x] Inventory increased for all products
+  - [x] Voiding multi-product bill reverses all products correctly
 
-- [ ] **Zero-Cost Inventory**
-  - [ ] Invoice a product with no cost layers
-  - [ ] Verify graceful handling (COGS = $0)
-  - [ ] No errors thrown
+### Edge Cases ⚠️
+- [x] **Insufficient Inventory**
+  - [x] Try to invoice more quantity than available
+  - [x] System warns about insufficient inventory
+  - [x] Partial fulfillment handling (consumes available quantity)
+
+- [x] **Zero-Cost Inventory**
+  - [x] Invoice a product with no cost layers
+  - [x] Verify graceful handling (COGS = $0)
+  - [x] Warning modal before marking invoice as sent
+  - [x] Dashboard badge showing products with no cost layers
+  - [x] Product detail page alert for zero-cost items
 
 - [ ] **Negative Inventory**
   - [ ] Test what happens if inventory goes negative
@@ -185,14 +197,15 @@
 
 ---
 
-## Multi-Currency Operations ❌
+## Multi-Currency Operations ⚠️
 
 ### Currency Exchange
-- [ ] **Bill in Foreign Currency**
-  - [ ] Create bill in EUR/GBP/etc.
-  - [ ] Exchange rate applied
-  - [ ] Cost layer created in USD equivalent
-  - [ ] Inventory value in base currency
+- [x] **Bill in Foreign Currency**
+  - [x] Create bill in UGX/EUR/GBP with product in different currency
+  - [x] Exchange rate applied automatically
+  - [x] Cost layer created with converted USD equivalent
+  - [x] Inventory value in base currency (USD)
+  - [x] Currency conversion working (UGX → USD)
 
 - [ ] **Invoice in Foreign Currency**
   - [ ] Create invoice in EUR/GBP/etc.
@@ -366,19 +379,32 @@
 
 ## Current Status Summary
 
-**Completed (6):**
+**Completed (18):**
 - Bill approval with inventory increase ✅
 - Invoice processing with COGS calculation ✅
 - Cost layer creation (FIFO) ✅
-- P&L Report COGS display ✅
-- AP/AR Aging Reports ✅
-- Trial Balance display ✅
-
+- Cost layer depletion across 4+ layers ✅
+- Multi-layer blended COGS ✅
+- Invoice voiding with cost layer restoration ✅
+- Bill voiding with inventory reversal ✅
+- Multi-product invoices ✅
+- Multi-product bills ✅
+- Multi-product invoice voiding ✅
+- Multi-product bill voiding ✅
+- Zero-cost inventory warnings (modal + dashboard badges) ✅
+- Currency conversion in bills (UGX → USD) ✅
+- Insufficient inventory handling ✅
+- P&L Report COGS di (✅ COMPLETED - Dec 20-22, 2025)
+- Phase 2: 4-5 hours (🚧 IN PROGRESS - Payments next)
+- Phase 3: 3-4 hours
+- Phase 4: 5-6 hours
+- **Total: ~16-20 hours of thorough testing**
+- **Completed: ~6 hours** (Phase 1 + Multi-product testing)
 **Next Priority:**
-1. Invoice Voiding - Critical for production use
-2. Post Journal Entries - Verify account balances update
-3. Balance Sheet Report - Ensure inventory asset reflects correctly
-4. Multiple Products - Common scenario testing
+1. Post Journal Entries - Verify account balances update (CRITICAL)
+2. Balance Sheet Report - Ensure inventory asset reflects correctly
+3. LIFO and Average Cost methods
+4. Customer/Vendor Payments
 
 **Estimated Testing Time:**
 - Phase 1: 3-4 hours
