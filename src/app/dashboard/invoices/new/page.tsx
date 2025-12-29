@@ -41,7 +41,7 @@ export default function NewInvoicePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [taxRate] = useState(0.0625); // MA sales tax
+  const [taxRate] = useState(6.25); // MA sales tax percentage
 
   const {
     register,
@@ -159,7 +159,7 @@ export default function NewInvoicePage() {
   };
 
   const calculateLineTax = (line: InvoiceLineInput) => {
-    return calculateLineTotal(line) * line.tax_rate;
+    return calculateLineTotal(line) * (line.tax_rate / 100);
   };
 
   const calculateSubtotal = () => {
@@ -381,6 +381,17 @@ export default function NewInvoicePage() {
                     step="0.01"
                     {...register(`lines.${index}.discount_percent`, { valueAsNumber: true, min: 0, max: 100 })}
                     className="input text-sm"
+                  />
+                </div>
+
+                <div className="col-span-4 md:col-span-1">
+                  <label className="label text-xs">Tax %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`lines.${index}.tax_rate`, { valueAsNumber: true, min: 0, max: 100 })}
+                    className="input text-sm"
+                    placeholder="6.25"
                   />
                 </div>
 

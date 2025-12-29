@@ -167,7 +167,8 @@ export async function PATCH(request: NextRequest, context: any) {
     }
 
     // Process inventory when invoice is finalized (status changes from draft)
-    if (isBeingFinalized) {
+    // Only process inventory for regular invoices, not quotations or proformas
+    if (isBeingFinalized && existing.document_type === 'invoice') {
       console.log('🔄 Processing inventory for invoice:', resolvedParams.id);
       console.log('📦 Status changing from:', existing.status, 'to:', body.status);
       try {
@@ -212,8 +213,8 @@ export async function PATCH(request: NextRequest, context: any) {
       }
     }
 
-    // Handle voiding - reverse inventory consumption
-    if (isBeingVoided && existing.status !== 'draft') {
+    // Handle voiding - reverse inventory consumption (only for regular invoices)
+    if (isBeingVoided && existing.status !== 'draft' && existing.document_type === 'invoice') {
       console.log('🔄 Voiding invoice, reversing inventory:', resolvedParams.id);
       try {
         const reversalResult = await reverseInvoiceInventory(resolvedParams.id, user.id, supabase);
