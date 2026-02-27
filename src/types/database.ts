@@ -74,6 +74,21 @@ export type MaintenanceType = 'scheduled' | 'repair' | 'inspection' | 'cleaning'
 // CORE ENTITIES
 // =====================================================
 
+export interface PdfSettings {
+  template: 'classic' | 'modern' | 'minimal';
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: 'sans-serif' | 'serif' | 'mono';
+  showLogo: boolean;
+  logoPosition: 'left' | 'right';
+  showBankDetails: boolean;
+  showPaymentTerms: boolean;
+  showSignatureLine: boolean;
+  showTaxId: boolean;
+  footerText: string;
+  headerText: string;
+}
+
 export interface CompanySettings {
   id: string;
   name: string;
@@ -94,6 +109,7 @@ export interface CompanySettings {
   inventory_method: InventoryMethod;
   default_payment_terms: number;
   sales_tax_rate: number;
+  pdf_settings?: PdfSettings | null;
   created_at: string;
   updated_at: string;
 }

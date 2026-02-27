@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   BuildingOfficeIcon,
@@ -13,6 +14,7 @@ import {
   UserGroupIcon,
   ShieldCheckIcon,
   PaintBrushIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import type { CompanySettings } from '@/types/database';
 
@@ -419,6 +421,7 @@ export default function SettingsPage() {
 
           {/* Branding */}
           {activeTab === 'branding' && (
+            <div className="space-y-4">
             <div className="card">
               <div className="card-header">
                 <h2 className="font-semibold text-gray-900">Branding</h2>
@@ -475,6 +478,24 @@ export default function SettingsPage() {
               <div className="card-footer flex justify-end">
                 <button className="btn-primary">Save Changes</button>
               </div>
+            </div>
+
+            {/* PDF Templates */}
+            <Link
+              href="/dashboard/settings/pdf"
+              className="card flex items-center gap-4 p-5 hover:bg-blue-50 transition-colors cursor-pointer mt-4 group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <DocumentTextIcon className="w-5 h-5 text-blue-700" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900">PDF Templates</p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Choose layout, colors, fonts and sections for all exported PDFs
+                </p>
+              </div>
+              <ArrowRightIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+            </Link>
             </div>
           )}
 

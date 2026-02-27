@@ -1,16 +1,19 @@
 // Quotation PDF Generation Utility
 
-import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { Invoice, InvoiceLine, Customer, PdfSettings } from '@/types/database';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { mergePdfSettings, buildPdfCssOverrides } from '@/lib/pdf/pdf-settings';
 
 interface QuotationPDFData {
   invoice: Invoice;
   lineItems: InvoiceLine[];
   customer: Customer;
+  settings?: Partial<PdfSettings> | null;
 }
 
 export function generateQuotationHTML(data: QuotationPDFData): string {
   const { invoice, lineItems, customer } = data;
+  const s = mergePdfSettings(data.settings);
 
   const formatCurrency = (amount: number) => {
     return currencyFormatter(amount, invoice.currency as any || 'USD');
@@ -226,9 +229,10 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
           .quotation { padding: 20px; }
         }
       </style>
+      <style>${buildPdfCssOverrides(s)}</style>
     </head>
     <body>
-      <div class="quotation">
+      <div class="quotation document-wrapper">
         <div class="header">
           <div class="logo-section">
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside" class="logo">
@@ -242,7 +246,7 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
             </div>
           </div>
           <div class="quotation-title">
-            <h1>QUOTATION</h1>
+            <h1 class="document-type-label">QUOTATION</h1>
             <p class="quotation-number">${invoice.quotation_number}</p>
           </div>
         </div>
@@ -347,10 +351,15 @@ export function generateQuotationHTML(data: QuotationPDFData): string {
         </div>
         ` : ''}
 
+        ${s.showSignatureLine ? `
+        <div style="margin-top: 40px; display: flex; justify-content: flex-end;">
+          <div style="width: 250px; border-top: 1px solid #333; padding-top: 8px; text-align: center; font-size: 12px; color: #666;">Authorized Signature</div>
+        </div>
+        ` : ''}
+
         <div class="footer">
-          <p>We look forward to working with you!</p>
+          <p>${s.footerText || 'We look forward to working with you!'}</p>
           <p style="margin-top: 8px;">Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899</p>
-          <p>Director: N.Maureen</p>
         </div>
       </div>
     </body>

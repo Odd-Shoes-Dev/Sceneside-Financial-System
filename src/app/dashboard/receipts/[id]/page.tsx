@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
@@ -14,6 +14,7 @@ import {
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import type { Invoice, InvoiceLine, Customer } from '@/types/database';
+import PreExportModal, { type ExportOverrides } from '@/components/pre-export-modal';
 
 export default function ReceiptDetailPage() {
   const params = useParams();
@@ -22,6 +23,7 @@ export default function ReceiptDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [lineItems, setLineItems] = useState<InvoiceLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPreExport, setShowPreExport] = useState(false);
 
   useEffect(() => {
     fetchReceipt();
@@ -95,8 +97,8 @@ export default function ReceiptDetailPage() {
     });
   };
 
-  const handlePrint = () => {
-    if (!receipt) return;
+  const buildPrintHTML = useCallback((overrides: ExportOverrides): string => {
+    if (!receipt) return '';
 
     const printHTML = `
       <html>
@@ -331,7 +333,7 @@ export default function ReceiptDetailPage() {
             <!-- Customer -->
             <div class="section">
               <h3>Received From</h3>
-              <p><strong>${customer?.name || 'N/A'}</strong></p>
+              <p><strong>${overrides.recipientNameOverride || customer?.name || 'N/A'}</strong></p>
               ${customer?.email ? `<p>${customer.email}</p>` : ''}
               ${customer?.phone ? `<p>${customer.phone}</p>` : ''}
               ${customer?.address_line1 ? `<p style="margin-top: 8px;">${customer.address_line1}</p>` : ''}
@@ -405,7 +407,7 @@ export default function ReceiptDetailPage() {
 
           <!-- Thank You -->
           <div class="thank-you">
-            Thank you for your business!
+            ${overrides.customFooter || 'Thank you for your business!'}
           </div>
 
           <!-- Notes -->
@@ -416,27 +418,42 @@ export default function ReceiptDetailPage() {
           </div>
           ` : ''}
 
+          ${overrides.extraNote ? `
+          <div style="margin:25px 0;padding:16px;background:#f9fafb;border-left:4px solid #1e3a5f;border-radius:4px;">
+            <h3 style="font-size:12px;font-weight:bold;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Additional Note</h3>
+            <p style="font-size:14px;color:#111827;white-space:pre-wrap;">${overrides.extraNote}</p>
+          </div>
+          ` : ''}
+
+          ${overrides.showBankDetails ? `
+          <div style="margin:25px 0;padding:16px;background:#f0f4f8;border:1px solid #cbd5e1;border-radius:8px;">
+            <h3 style="font-size:12px;font-weight:bold;color:#1e3a5f;margin-bottom:8px;text-transform:uppercase;">Payment Information</h3>
+            <p style="font-size:13px;color:#333;line-height:1.7;">Bank of America &nbsp;&bull;&nbsp; Routing: 026009593 &nbsp;&bull;&nbsp; Account: 466021944682</p>
+          </div>
+          ` : ''}
+
+          ${overrides.showSignatureLine ? `
+          <div style="display:flex;justify-content:flex-end;margin:20px 0;">
+            <div style="width:220px;border-top:1px solid #333;padding-top:8px;text-align:center;font-size:11px;color:#6b7280;">
+              Authorized Signature
+            </div>
+          </div>
+          ` : ''}
+
           <!-- Footer -->
           <div class="footer">
-            <p>This is a computer-generated receipt. No signature required.</p>
             <p>Generated on ${new Date().toLocaleString()}</p>
           </div>
         </body>
       </html>
     `;
+    return printHTML;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipt, customer, lineItems]);
 
-    // Open print dialog in new window
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printHTML);
-      printWindow.document.close();
-      printWindow.focus();
-
-      // Wait a moment for content to load, then show print dialog
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+  const handlePrint = () => {
+    if (!receipt) return;
+    setShowPreExport(true);
   };
 
   const handleDelete = async () => {
@@ -730,6 +747,15 @@ export default function ReceiptDetailPage() {
           <p className="mt-2 text-xs">This is an official receipt for accounting purposes.</p>
         </div>
       </div>
+
+      <PreExportModal
+        open={showPreExport && !!receipt}
+        onClose={() => setShowPreExport(false)}
+        documentType="receipt"
+        documentNumber={receipt?.receipt_number || ''}
+        recipientName={customer?.name || 'Customer'}
+        generateHTML={buildPrintHTML}
+      />
     </div>
   );
 }

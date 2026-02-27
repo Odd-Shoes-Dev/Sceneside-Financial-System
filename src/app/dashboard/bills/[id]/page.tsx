@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +14,8 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { supabase } from '@/lib/supabase/client';
-import { printBill } from '@/lib/pdf/bill';
+import { generateBillHTML } from '@/lib/pdf/bill';
+import PreExportModal, { type ExportOverrides } from '@/components/pre-export-modal';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
 
 interface BillLine {
@@ -62,6 +63,7 @@ export default function BillDetailPage() {
   const [lines, setLines] = useState<BillLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showPreExport, setShowPreExport] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -140,14 +142,32 @@ export default function BillDetailPage() {
     return styles[status] || 'badge-gray';
   };
 
+  const buildPrintHTML = useCallback((overrides: ExportOverrides): string => {
+    if (!bill) return '';
+    let html = generateBillHTML({
+      bill,
+      vendor: bill.vendors || {},
+      lines,
+      settings: { footerText: overrides.customFooter || undefined },
+    });
+    const extras = [
+      overrides.extraNote
+        ? `<div style="margin:25px 40px;padding:16px;background:#f9fafb;border-left:4px solid #1e3a5f;border-radius:4px;"><h3 style="font-size:12px;font-weight:bold;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Additional Note</h3><p style="font-size:14px;color:#111827;white-space:pre-wrap;">${overrides.extraNote}</p></div>`
+        : '',
+      overrides.showBankDetails
+        ? `<div style="margin:25px 40px;padding:16px;background:#f0f4f8;border:1px solid #cbd5e1;border-radius:8px;"><h3 style="font-size:12px;font-weight:bold;color:#1e3a5f;margin-bottom:8px;text-transform:uppercase;">Payment Information</h3><p style="font-size:13px;color:#333;line-height:1.7;">Bank of America &nbsp;&bull;&nbsp; Routing: 026009593 &nbsp;&bull;&nbsp; Account: 466021944682</p></div>`
+        : '',
+      overrides.showSignatureLine
+        ? `<div style="display:flex;justify-content:flex-end;margin:20px 40px;"><div style="width:220px;border-top:1px solid #333;padding-top:8px;text-align:center;font-size:11px;color:#6b7280;">Authorized Signature</div></div>`
+        : '',
+    ].join('');
+    if (extras) html = html.replace('</body>', extras + '</body>');
+    return html;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bill, lines]);
+
   const handlePrint = () => {
-    if (bill && lines) {
-      printBill({
-        bill,
-        vendor: bill.vendors || {},
-        lines,
-      });
-    }
+    if (bill && lines) setShowPreExport(true);
   };
 
   const handleApprove = async () => {
@@ -502,6 +522,15 @@ export default function BillDetailPage() {
           </div>
         )}
       </div>
+
+      <PreExportModal
+        open={showPreExport}
+        onClose={() => setShowPreExport(false)}
+        documentType="bill"
+        documentNumber={bill.bill_number}
+        recipientName={bill.vendors?.name || bill.vendors?.company_name || 'Vendor'}
+        generateHTML={buildPrintHTML}
+      />
     </div>
   );
 }

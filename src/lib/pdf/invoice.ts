@@ -1,17 +1,20 @@
 // Invoice PDF Generation Utility
 // Uses html-to-canvas approach for browser-side generation
 
-import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { Invoice, InvoiceLine, Customer, PdfSettings } from '@/types/database';
 import { formatCurrency as currencyFormatter, getCurrencyInfo } from '@/lib/currency';
+import { mergePdfSettings, buildPdfCssOverrides } from '@/lib/pdf/pdf-settings';
 
 interface InvoicePDFData {
   invoice: Invoice;
   lineItems: InvoiceLine[];
   customer: Customer;
+  settings?: Partial<PdfSettings> | null;
 }
 
 export function generateInvoiceHTML(data: InvoicePDFData): string {
   const { invoice, lineItems, customer } = data;
+  const s = mergePdfSettings(data.settings);
 
   const formatCurrency = (amount: number) => {
     return currencyFormatter(amount, invoice.currency as any || 'USD');
@@ -231,9 +234,10 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
           .invoice { padding: 20px; }
         }
       </style>
+      <style>${buildPdfCssOverrides(s)}</style>
     </head>
     <body>
-      <div class="invoice">
+      <div class="invoice document-wrapper">
         <div class="header">
           <div class="logo-section">
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside" class="logo">
@@ -247,7 +251,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
             </div>
           </div>
           <div class="invoice-title">
-            <h1>INVOICE</h1>
+            <h1 class="document-type-label">INVOICE</h1>
             <p class="invoice-number">${invoice.invoice_number}</p>
             <span class="status-badge status-${invoice.status}">${invoice.status}</span>
           </div>
@@ -344,6 +348,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
           </div>
         </div>
 
+        ${s.showBankDetails ? `
         <div class="payment-info">
           <h3>Payment Information</h3>
           <div class="payment-details">
@@ -351,10 +356,10 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
             <span>Bank of America</span>
             <span class="label">Account:</span>
             <span>466021944682</span>
-            <span class="label">EIN:</span>
-            <span>99-3334108</span>
+            ${s.showTaxId ? `<span class="label">EIN:</span><span>99-3334108</span>` : ''}
           </div>
         </div>
+        ` : ''}
 
         ${invoice.notes ? `
         <div class="notes">
@@ -363,10 +368,15 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
         </div>
         ` : ''}
 
+        ${s.showSignatureLine ? `
+        <div style="margin-top: 40px; display: flex; justify-content: flex-end;">
+          <div style="width: 250px; border-top: 1px solid #333; padding-top: 8px; text-align: center; font-size: 12px; color: #666;">Authorized Signature</div>
+        </div>
+        ` : ''}
+
         <div class="footer">
-          <p>Thank you for your business!</p>
+          <p>${s.footerText || 'Thank you for your business!'}</p>
           <p style="margin-top: 8px;">Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899</p>
-          <p>Director: N.Maureen</p>
         </div>
       </div>
     </body>

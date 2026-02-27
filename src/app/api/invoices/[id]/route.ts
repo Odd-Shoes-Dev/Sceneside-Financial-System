@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest, context: any) {
         const lineSubtotal = line.quantity * line.unit_price;
         const lineDiscount = lineSubtotal * ((line.discount_percent || 0) / 100);
         const lineNet = lineSubtotal - lineDiscount;
-        const lineTax = lineNet * (line.tax_rate || 0);
+        const lineTax = lineNet * ((line.tax_rate || 0) / 100);
 
         subtotal += lineNet;
         taxAmount += lineTax;

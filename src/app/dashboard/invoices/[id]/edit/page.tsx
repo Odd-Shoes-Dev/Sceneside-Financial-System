@@ -45,7 +45,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [taxRate] = useState(0.0625); // MA sales tax
+  const [taxRate] = useState(6.25); // MA sales tax percentage
 
   const {
     register,
@@ -179,7 +179,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   };
 
   const calculateLineTax = (line: InvoiceLineInput) => {
-    return calculateLineTotal(line) * line.tax_rate;
+    return calculateLineTotal(line) * (line.tax_rate / 100);
   };
 
   const calculateSubtotal = () => {
@@ -484,6 +484,17 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
 
+                <div className="col-span-4 md:col-span-1">
+                  <label className="label text-xs">Tax %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`lines.${index}.tax_rate`, { valueAsNumber: true, min: 0, max: 100 })}
+                    className="input text-sm"
+                    placeholder="6.25"
+                  />
+                </div>
+
                 <div className="col-span-6 md:col-span-2">
                   <label className="label text-xs">Line Total</label>
                   <div className="input bg-gray-100 text-sm">
@@ -549,7 +560,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                 <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (6.25%)</span>
+                <span className="text-gray-600">Tax</span>
                 <span className="font-medium">{formatCurrency(calculateTax())}</span>
               </div>
               <div className="border-t pt-3 flex justify-between">

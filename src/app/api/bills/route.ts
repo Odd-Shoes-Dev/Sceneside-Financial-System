@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     lines.forEach((line: any) => {
       const unitCost = line.unit_cost || line.unit_price || 0;
       const lineSubtotal = line.quantity * unitCost;
-      const lineTax = lineSubtotal * (line.tax_rate || 0);
+      const lineTax = lineSubtotal * ((line.tax_rate || 0) / 100);
       subtotal += lineSubtotal;
       taxAmount += lineTax;
     });
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
             quantity: line.quantity,
             unit_cost: unitCost,
             tax_rate: line.tax_rate || 0,
-            tax_amount: line.quantity * unitCost * (line.tax_rate || 0),
+            tax_amount: line.quantity * unitCost * ((line.tax_rate || 0) / 100),
             line_total: line.quantity * unitCost,
           };
         });

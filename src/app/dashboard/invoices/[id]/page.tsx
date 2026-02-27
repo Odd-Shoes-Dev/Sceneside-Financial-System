@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PreExportModal, { type ExportOverrides } from '@/components/pre-export-modal';
 import { supabase } from '@/lib/supabase/client';
 import { Button, Card, CardHeader, CardTitle, CardBody, Badge, LoadingSpinner, ConfirmModal } from '@/components/ui';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
@@ -55,7 +56,7 @@ interface LineItem {
   description: string;
   quantity: number;
   unit_price: number;
-  amount: number;
+  line_total: number;
   inventory_item_id: string | null;
 }
 
@@ -77,6 +78,7 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showZeroCostWarning, setShowZeroCostWarning] = useState(false);
+  const [showPreExport, setShowPreExport] = useState(false);
   const [zeroCostProducts, setZeroCostProducts] = useState<Array<{
     productName: string;
     sku: string | null;
@@ -126,7 +128,7 @@ export default function InvoiceDetailPage() {
         ...item,
         quantity: parseFloat(item.quantity || 0),
         unit_price: parseFloat(item.unit_price || 0),
-        amount: parseFloat(item.amount || 0),
+        line_total: parseFloat(item.line_total || 0),
       }));
 
       setLineItems(parsedItems);
@@ -189,10 +191,10 @@ export default function InvoiceDetailPage() {
     );
   };
 
-  const handlePrint = () => {
-    if (!invoice) return;
+  const buildPrintHTML = useCallback((overrides: ExportOverrides): string => {
+    if (!invoice) return '';
 
-    const printHTML = `
+    return `
       <html>
         <head>
           <title>Invoice #${invoice.invoice_number} - Sceneside L.L.C</title>
@@ -413,7 +415,7 @@ export default function InvoiceDetailPage() {
             <!-- Customer -->
             <div class="section">
               <h3>Bill To</h3>
-              <p><strong>${invoice.customer?.name || 'N/A'}</strong></p>
+              <p><strong>${overrides.recipientNameOverride || invoice.customer?.name || 'N/A'}</strong></p>
               ${invoice.customer?.email ? `<p>${invoice.customer.email}</p>` : ''}
               ${invoice.customer?.phone ? `<p>${invoice.customer.phone}</p>` : ''}
               ${invoice.customer?.address ? `<p style="margin-top: 8px;">${invoice.customer.address}</p>` : ''}
@@ -447,7 +449,7 @@ export default function InvoiceDetailPage() {
                   <td>${item.description}</td>
                   <td class="text-right">${item.quantity}</td>
                   <td class="text-right">${formatCurrency(Number(item.unit_price))}</td>
-                  <td class="text-right"><strong>${formatCurrency(Number(item.amount))}</strong></td>
+                  <td class="text-right"><strong>${formatCurrency(Number(item.line_total))}</strong></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -495,27 +497,42 @@ export default function InvoiceDetailPage() {
           </div>
           ` : ''}
 
+          ${overrides.extraNote ? `
+          <div style="margin:25px 0;padding:16px;background:#f9fafb;border-left:4px solid #1e3a5f;border-radius:4px;">
+            <h3 style="font-size:12px;font-weight:bold;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Additional Note</h3>
+            <p style="font-size:14px;color:#111827;white-space:pre-wrap;">${overrides.extraNote}</p>
+          </div>
+          ` : ''}
+
+          ${overrides.showBankDetails ? `
+          <div style="margin:25px 0;padding:16px;background:#f0f4f8;border:1px solid #cbd5e1;border-radius:8px;">
+            <h3 style="font-size:12px;font-weight:bold;color:#1e3a5f;margin-bottom:8px;text-transform:uppercase;">Payment Information</h3>
+            <p style="font-size:13px;color:#333;line-height:1.7;">Bank of America &nbsp;&bull;&nbsp; Routing: 026009593 &nbsp;&bull;&nbsp; Account: 466021944682</p>
+          </div>
+          ` : ''}
+
+          ${overrides.showSignatureLine ? `
+          <div style="display:flex;justify-content:flex-end;margin:20px 0;">
+            <div style="width:220px;border-top:1px solid #333;padding-top:8px;text-align:center;font-size:11px;color:#6b7280;">
+              Authorized Signature
+            </div>
+          </div>
+          ` : ''}
+
           <!-- Footer -->
           <div class="footer">
-            <p>This is a computer-generated document. No signature required.</p>
+            <p>${overrides.customFooter || 'This is a computer-generated document. No signature required.'}</p>
             <p>Generated on ${new Date().toLocaleString()}</p>
           </div>
         </body>
       </html>
     `;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice, lineItems]);
 
-    // Open print dialog in new window
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printHTML);
-      printWindow.document.close();
-      printWindow.focus();
-
-      // Wait a moment for content to load, then show print dialog
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+  const handlePrint = () => {
+    if (!invoice) return;
+    setShowPreExport(true);
   };
 
   const handleMarkAsSent = async () => {
@@ -784,7 +801,7 @@ export default function InvoiceDetailPage() {
                         <td className="py-2 sm:py-3 px-2 text-xs sm:text-sm">{item.description}</td>
                         <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm">{item.quantity}</td>
                         <td className="py-2 sm:py-3 px-2 text-right text-xs sm:text-sm hidden sm:table-cell">{formatCurrency(Number(item.unit_price))}</td>
-                        <td className="py-2 sm:py-3 px-2 text-right font-medium text-xs sm:text-sm">{formatCurrency(Number(item.amount))}</td>
+                        <td className="py-2 sm:py-3 px-2 text-right font-medium text-xs sm:text-sm">{formatCurrency(Number(item.line_total))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -943,6 +960,22 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Zero-Cost Warning Modal */}
+      <PreExportModal
+        open={showPreExport && !!invoice}
+        onClose={() => setShowPreExport(false)}
+        documentType={
+          invoice?.document_type === 'quotation' ? 'quotation' :
+          invoice?.document_type === 'proforma' ? 'proforma' : 'invoice'
+        }
+        documentNumber={
+          invoice?.document_type === 'quotation' ? (invoice.quotation_number || invoice.invoice_number) :
+          invoice?.document_type === 'proforma' ? (invoice.proforma_number || invoice.invoice_number) :
+          invoice?.invoice_number || ''
+        }
+        recipientName={invoice?.customer?.name || 'Customer'}
+        generateHTML={buildPrintHTML}
+      />
+
       <ConfirmModal
         isOpen={showZeroCostWarning}
         onClose={() => {

@@ -557,15 +557,62 @@ Receipts are payment confirmations for customers.
 
 ---
 
-## 12. Bank Management
+## 12. Bank & Cash Management
 
-**Path:** Bank
+**Path:** Bank & Cash
 
-### 12.1 Recording Transactions
+### Overview
+
+Your system tracks two types of cash:
+1. **Cash Account (Code 1000)** - Physical cash on hand
+2. **Bank Accounts (Code 1010+)** - Money in bank accounts (checking, savings, etc.)
+
+All bank and cash balances are updated **automatically** through database triggers when you record transactions.
+
+### 12.1 Creating Bank Accounts
+
+**To Add a Bank Account:**
+
+1. Go to Bank & Cash → Bank Accounts
+2. Click "Add Account"
+3. Enter account details:
+   - **Account Name:** e.g., "Bank of America - Checking"
+   - **Bank Name:** e.g., "Bank of America"
+   - **Account Type:** Checking, Savings, Money Market, etc.
+   - **Currency:** USD, EUR, GBP, or UGX
+   - **Account Number:** (encrypted for security)
+   - **Routing Number:** (optional)
+   - **Opening Balance:** Starting balance (if any)
+   - **Is Primary:** Set as default account
+4. Click "Save"
+
+**Important:** Create bank accounts before recording transactions.
+
+### 12.2 How Money Flows Through Bank/Cash
+
+Your bank and cash accounts connect to all financial transactions:
+
+#### Money Coming IN (Increases Balance):
+| Transaction | Journal Entry | Result |
+|-------------|---------------|--------|
+| **Invoice Payment** | DR: Bank (+) <br> CR: AR (-) | Customer pays invoice |
+| **Cash Deposit** | DR: Bank (+) <br> CR: Cash (-) | Deposit cash to bank |
+| **Bank Interest** | DR: Bank (+) <br> CR: Interest Income (+) | Bank pays interest |
+| **Loan Received** | DR: Bank (+) <br> CR: Loan Payable (+) | Receive loan funds |
+
+#### Money Going OUT (Decreases Balance):
+| Transaction | Journal Entry | Result |
+|-------------|---------------|--------|
+| **Bill Payment** | DR: AP (-) <br> CR: Bank (-) | Pay vendor bill |
+| **Expense Payment** | DR: Expense (+) <br> CR: Bank (-) | Pay direct expense |
+| **Cash Withdrawal** | DR: Cash (+) <br> CR: Bank (-) | Withdraw from bank |
+| **Loan Payment** | DR: Loan Payable (-) <br> CR: Bank (-) | Repay loan |
+
+### 12.3 Recording Bank Transactions
 
 **To Record a Bank Transaction:**
 
-1. Go to Bank → Transactions
+1. Go to Bank & Cash → Transactions
 2. Click "Add Transaction"
 3. Select transaction type:
    - **Deposit:** Money coming in
@@ -573,38 +620,209 @@ Receipts are payment confirmations for customers.
    - **Transfer:** Between accounts
 
 4. Fill in details:
-   - **Date**
-   - **Bank Account**
-   - **Amount**
-   - **Payee/Description**
-   - **Category/Account**
+   - **Date:** Transaction date
+   - **Bank Account:** Which account (dropdown)
+   - **Amount:** Transaction amount
+   - **Payee/Description:** Who/what
+   - **Category/Account:** GL account affected
+   - **Reference:** Check number, confirmation number
 
 5. Click "Save"
 
-### 12.2 Bank Transfers
+**What Happens Automatically:**
+- Bank balance updates instantly
+- Journal entry is created and posted
+- Transaction appears in bank account history
+- Balance Sheet reflects new amount
+
+### 12.4 Bank Transfers
 
 **To Transfer Between Accounts:**
 
-1. Go to Bank → Transfers
+1. Go to Bank & Cash → Transfers
 2. Click "New Transfer"
-3. Select:
-   - **From Account**
-   - **To Account**
-   - **Amount**
-   - **Date**
+3. Fill in details:
+   - **From Account:** Source bank account
+   - **To Account:** Destination bank account
+   - **Amount:** Transfer amount
+   - **Date:** Transfer date
+   - **Reference:** Transaction reference (optional)
+   - **Notes:** Purpose of transfer (optional)
+
 4. Click "Create Transfer"
 
-**Note:** If accounts have different currencies, exchange rate is applied automatically.
+**What Happens:**
+```
+DR: To Account (Bank B)        $1,000
+CR: From Account (Bank A)      $1,000
+```
+- Bank A balance decreases by $1,000
+- Bank B balance increases by $1,000
+- Total cash unchanged (just moved)
 
-### 12.3 Reconciliation
+**Multi-Currency Transfers:**
+If transferring between different currency accounts:
+- Exchange rate is applied automatically
+- Amount converts based on current rate
+- Example: Transfer $1,000 USD → €900 EUR (at 1.11 rate)
 
-Monthly bank reconciliation ensures your records match bank statements:
+### 12.5 Bank Reconciliation
 
-1. Go to Bank → Select Account → Reconcile
-2. Enter statement date and ending balance
-3. Check off transactions that appear on statement
-4. Review difference (should be $0.00)
-5. Click "Finish Reconciliation"
+**Purpose:** Match your system records with bank statements to ensure accuracy.
+
+**Reconciliation Process:**
+
+1. **Prepare:**
+   - Obtain bank statement (paper or download)
+   - Note statement ending date and balance
+
+2. **Start Reconciliation:**
+   - Go to Bank & Cash → Select Account → Reconcile
+   - Enter statement ending date
+   - Enter statement ending balance
+
+3. **Match Transactions:**
+   - Review list of transactions in system
+   - Check off transactions that appear on bank statement
+   - Leave unchecked if not on statement (outstanding)
+
+4. **Review Difference:**
+   - System calculates: (Your Balance) - (Bank Balance)
+   - **Goal: Difference = $0.00**
+
+5. **Common Differences:**
+   | Reason | Solution |
+   |--------|----------|
+   | Outstanding checks | Normal - not yet cleared |
+   | Bank fees not recorded | Add bank fee transaction |
+   | Interest not recorded | Add interest income transaction |
+   | Missing deposits | Add missing deposit |
+   | Data entry error | Correct the transaction amount |
+
+6. **Finish Reconciliation:**
+   - Once difference is $0.00, click "Finish Reconciliation"
+   - Account is marked as reconciled for that period
+   - Reconciled transactions are locked
+
+**Best Practice:** Reconcile all bank accounts monthly.
+
+### 12.6 Viewing Bank Balances
+
+**Dashboard View:**
+- Shows total cash balance across all accounts
+- Displays recent transactions
+- Alerts for low balances
+
+**Bank & Cash Page:**
+- Lists all bank accounts with current balances
+- Shows account details (currency, type, status)
+- Quick access to transactions and reconciliation
+
+**Balance Sheet Report:**
+- Cash (1000) - Physical cash on hand
+- Bank Accounts (1010, 1020, etc.) - Bank balances
+- All listed under "Current Assets"
+- Multi-currency accounts converted to USD
+
+### 12.7 Multi-Currency Bank Accounts
+
+You can maintain bank accounts in different currencies:
+
+**Example Setup:**
+| Account | Currency | Balance | USD Equivalent |
+|---------|----------|---------|----------------|
+| BOA Checking | USD | $50,000 | $50,000 |
+| Barclays EUR | EUR | €20,000 | $22,000 |
+| HSBC GBP | GBP | £15,000 | $19,050 |
+| Stanbic UGX | UGX | 50,000,000 USh | $13,500 |
+| **Total** | | | **$104,550** |
+
+**How It Works:**
+- Each account tracks balance in its own currency
+- For reporting, all converted to USD
+- Exchange rates update automatically
+- Historical transactions use rate from transaction date
+
+### 12.8 Bank Account Security
+
+**Account Number Encryption:**
+- Account numbers are encrypted in database
+- Uses PostgreSQL pgcrypto extension
+- Not visible in plain text reports
+
+**Access Control:**
+- Only authorized users can view bank accounts
+- Audit trail tracks all changes
+- User role determines access level
+
+### 12.9 Understanding Your Cash Position
+
+**Key Metrics:**
+
+1. **Total Cash Available:**
+   - Sum of all bank accounts + cash
+   - Shows on Dashboard and Balance Sheet
+
+2. **Cash Flow:**
+   - Money coming in: Invoice payments, deposits
+   - Money going out: Bill payments, expenses
+   - Net cash flow = Inflows - Outflows
+
+3. **Working Capital:**
+   - Current Assets (includes cash) - Current Liabilities
+   - Measures ability to pay short-term obligations
+
+**Example:**
+- Total Cash: $100,000
+- Accounts Receivable: $57,858 (money coming in soon)
+- Accounts Payable: $15,390 (money going out soon)
+- **Net Position: $142,468** (strong cash position)
+
+### 12.10 Common Bank/Cash Transactions
+
+**Daily Operations:**
+| Activity | How to Record | Account Effect |
+|----------|---------------|----------------|
+| Customer pays invoice | Record payment on invoice | Bank ↑, AR ↓ |
+| Pay vendor bill | Record payment on bill | Bank ↓, AP ↓ |
+| Pay expense directly | Create expense entry | Bank ↓, Expense ↑ |
+| Receive bank interest | Record deposit transaction | Bank ↑, Interest Income ↑ |
+| Bank charges fee | Record withdrawal transaction | Bank ↓, Bank Fees ↑ |
+| Cash deposit to bank | Record transfer | Bank ↑, Cash ↓ |
+| ATM withdrawal | Record withdrawal | Bank ↓, Cash ↑ |
+
+### 12.11 Bank & Cash Best Practices
+
+1. **Reconcile Monthly**
+   - Match with bank statements every month
+   - Catch errors early
+   - Required for accurate financial statements
+
+2. **Record All Transactions**
+   - Enter every deposit and withdrawal
+   - Don't skip small amounts
+   - Include bank fees and interest
+
+3. **Use Appropriate Payment Methods**
+   - Check: Use for larger vendor payments
+   - Bank Transfer: Use for electronic payments
+   - Cash: Use for small expenses
+   - Credit Card: Track separately
+
+4. **Maintain Adequate Balance**
+   - Monitor cash flow projections
+   - Ensure enough to cover upcoming bills
+   - Avoid overdraft fees
+
+5. **Separate Business and Personal**
+   - Use dedicated business accounts
+   - Don't mix personal transactions
+   - Makes accounting easier
+
+6. **Review Regularly**
+   - Check bank balances daily
+   - Review transaction history weekly
+   - Compare to budget monthly
 
 ---
 

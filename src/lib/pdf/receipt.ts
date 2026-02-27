@@ -1,16 +1,19 @@
 // Receipt PDF Generation Utility
 
-import { Invoice, InvoiceLine, Customer } from '@/types/database';
+import { Invoice, InvoiceLine, Customer, PdfSettings } from '@/types/database';
 import { formatCurrency as currencyFormatter } from '@/lib/currency';
+import { mergePdfSettings, buildPdfCssOverrides } from '@/lib/pdf/pdf-settings';
 
 interface ReceiptPDFData {
   invoice: Invoice;
   lineItems: InvoiceLine[];
   customer: Customer;
+  settings?: Partial<PdfSettings> | null;
 }
 
 export function generateReceiptHTML(data: ReceiptPDFData): string {
   const { invoice, lineItems, customer } = data;
+  const s = mergePdfSettings(data.settings);
 
   const formatCurrency = (amount: number) => {
     return currencyFormatter(amount, invoice.currency as any || 'USD');
@@ -270,9 +273,10 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           .receipt { padding: 20px; }
         }
       </style>
+      <style>${buildPdfCssOverrides(s)}</style>
     </head>
     <body>
-      <div class="receipt">
+      <div class="receipt document-wrapper">
         <div class="header">
           <div class="logo-section">
             <img src="/Sceneside assets/Sceneside_logo.png" alt="Sceneside" class="logo">
@@ -286,7 +290,7 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
             </div>
           </div>
           <div class="receipt-title">
-            <h1>RECEIPT</h1>
+            <h1 class="document-type-label">RECEIPT</h1>
             <p class="receipt-number">${invoice.receipt_number}</p>
             <span class="paid-stamp">✓ PAID IN FULL</span>
           </div>
@@ -424,13 +428,15 @@ export function generateReceiptHTML(data: ReceiptPDFData): string {
           </div>
         </div>
 
+        ${s.showSignatureLine ? `
+        <div style="margin-top: 40px; display: flex; justify-content: flex-end;">
+          <div style="width: 250px; border-top: 1px solid #333; padding-top: 8px; text-align: center; font-size: 12px; color: #666;">Authorized Signature</div>
+        </div>
+        ` : ''}
+
         <div class="footer">
-          <p>Thank you for your payment!</p>
+          <p>${s.footerText || 'Thank you for your payment!'}</p>
           <p style="margin-top: 8px;">Sceneside L.L.C • 121 Bedford Street, Waltham, MA 02453 • 857-384-2899</p>
-          <p>EIN: 99-3334108 • Director: N.Maureen</p>
-          <p style="margin-top: 12px; color: #666; font-size: 11px;">
-            This is an official receipt for accounting purposes.
-          </p>
         </div>
       </div>
     </body>
