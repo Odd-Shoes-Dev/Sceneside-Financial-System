@@ -676,7 +676,7 @@ export default function PreExportModal({
   const [editorReady, setEditorReady] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [initDone, setInitDone] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [srcdoc, setSrcdoc] = useState('');
 
   useEffect(() => {
@@ -819,8 +819,8 @@ export default function PreExportModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-gray-50 shrink-0 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-3 border-b bg-gray-50 shrink-0 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors shrink-0"
@@ -830,8 +830,8 @@ export default function PreExportModal({
                 : <Bars3Icon className="w-4 h-4 text-gray-500" />}
             </button>
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-gray-900">Document Editor</h2>
-              <p className="text-xs text-gray-400 truncate">{docLabel} {documentNumber}</p>
+              <h2 className="text-xs sm:text-sm font-bold text-gray-900 truncate">Document Editor</h2>
+              <p className="text-xs text-gray-400 truncate hidden sm:block">{docLabel} {documentNumber}</p>
             </div>
           </div>
 
@@ -848,27 +848,34 @@ export default function PreExportModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handleGenerate}
               disabled={generating || !initDone}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <DocumentArrowDownIcon className="w-4 h-4" />
-              {generating ? 'Opening' : 'Print / Save PDF'}
+              <span className="hidden sm:inline">{generating ? 'Opening' : 'Print / Save PDF'}</span>
+              <span className="sm:hidden">{generating ? '...' : 'Print'}</span>
             </button>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-200 transition-colors" aria-label="Close">
+            <button onClick={onClose} className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-200 transition-colors" aria-label="Close">
               <XMarkIcon className="w-4 h-4 text-gray-500" />
             </button>
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+        <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
 
-          {/* Sidebar */}
+          {/* Sidebar — overlays on mobile, side-by-side on desktop */}
           {sidebarOpen && (
-            <aside className="w-72 shrink-0 border-r bg-white overflow-y-auto flex flex-col">
+            <>
+              {/* Mobile backdrop */}
+              <div
+                className="absolute inset-0 bg-black/30 z-10 sm:hidden"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <aside className="absolute sm:relative z-20 sm:z-auto w-72 h-full shrink-0 border-r bg-white overflow-y-auto flex flex-col shadow-2xl sm:shadow-none">
               <div className="p-4 space-y-4 flex-1">
 
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">How to use</p>
@@ -982,20 +989,38 @@ export default function PreExportModal({
                    Changing a Quick Setting <strong>reloads</strong> the document and discards direct edits.
                 </p>
               </div>
-            </aside>
+              </aside>
+            </>
           )}
 
           {/* Editor canvas */}
           <div className="flex-1 bg-slate-200 flex flex-col overflow-hidden" style={{ minWidth: 0 }}>
-            <div className="flex-1 overflow-auto p-6 flex justify-center items-start" style={{ minHeight: 0 }}>
+            <div className="flex-1 overflow-auto p-2 sm:p-6 flex justify-center items-start" style={{ minHeight: 0 }}>
               {!initDone ? (
                 <div className="flex items-center justify-center w-full h-full">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
                 </div>
               ) : (
                 <div
-                  className="bg-white shadow-2xl"
-                  style={{ width: '210mm', minHeight: '297mm', position: 'relative', borderRadius: '2px' }}
+                  className="bg-white shadow-2xl origin-top"
+                  style={{
+                    width: '210mm',
+                    minHeight: '297mm',
+                    position: 'relative',
+                    borderRadius: '2px',
+                    transform: 'scale(var(--doc-scale, 1))',
+                    marginBottom: 'calc((var(--doc-scale, 1) - 1) * 297mm)',
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      const parent = el.parentElement;
+                      if (parent) {
+                        const scale = Math.min(1, (parent.clientWidth - 16) / el.offsetWidth);
+                        el.style.setProperty('--doc-scale', String(scale));
+                        el.style.transformOrigin = 'top center';
+                      }
+                    }
+                  }}
                 >
                   <iframe
                     ref={iframeRef}
