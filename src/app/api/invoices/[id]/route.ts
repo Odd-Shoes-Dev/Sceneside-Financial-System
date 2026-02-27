@@ -155,6 +155,7 @@ export async function PATCH(request: NextRequest, context: any) {
 
       // Update invoice totals
       const total = subtotal + taxAmount;
+      const effectiveTaxRate = body.lines.find((l: any) => (l.tax_rate || 0) > 0)?.tax_rate || 0;
       await supabase
         .from('invoices')
         .update({
@@ -162,6 +163,7 @@ export async function PATCH(request: NextRequest, context: any) {
           tax_amount: taxAmount,
           discount_amount: discountAmount,
           total,
+          tax_rate: effectiveTaxRate,
         })
         .eq('id', resolvedParams.id);
     }

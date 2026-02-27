@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
       tax_amount: taxAmount,
       discount_amount: discountAmount,
       total,
+      tax_rate: lines.find((l: any) => (l.tax_rate || 0) > 0)?.tax_rate || 0,
       amount_paid: 0,
       status: body.status || 'draft',
       ar_account_id: arAccount?.id,

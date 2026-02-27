@@ -469,7 +469,7 @@ export default function InvoiceDetailPage() {
               </div>
               ` : ''}
               <div class="total-row subtotal">
-                <span>Tax (${invoice.tax_rate}%)</span>
+                <span>Tax (${Number(invoice.subtotal) > 0 ? Math.round((Number(invoice.tax_amount)/Number(invoice.subtotal))*10000)/100 : 0}%)</span>
                 <span>${formatCurrency(Number(invoice.tax_amount))}</span>
               </div>
               <div class="total-row total">
@@ -821,7 +821,7 @@ export default function InvoiceDetailPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-xs sm:text-sm">
-                  <span className="text-gray-500">Tax ({invoice.tax_rate}%)</span>
+                  <span className="text-gray-500">Tax ({invoice.subtotal > 0 ? Math.round((invoice.tax_amount / invoice.subtotal) * 10000) / 100 : 0}%)</span>
                   <span>{formatCurrency(Number(invoice.tax_amount))}</span>
                 </div>
                 <div className="flex justify-between text-base sm:text-lg font-semibold pt-1.5 sm:pt-2 border-t">
