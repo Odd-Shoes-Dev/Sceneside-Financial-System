@@ -45,7 +45,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [taxRate] = useState(6.25); // MA sales tax percentage
+  const [defaultTaxRate, setDefaultTaxRate] = useState(6.25);
 
   const {
     register,
@@ -67,7 +67,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
           quantity: 1,
           unit_price: 0,
           discount_percent: 0,
-          tax_rate: taxRate,
+          tax_rate: defaultTaxRate,
         },
       ],
     },
@@ -101,13 +101,17 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       setLoading(true);
 
       // Load customers and products
-      const [customersRes, productsRes] = await Promise.all([
+      const [customersRes, productsRes, settingsRes] = await Promise.all([
         supabase.from('customers').select('*').eq('is_active', true).order('name'),
         supabase.from('products').select('*').eq('is_active', true).order('name'),
+        supabase.from('company_settings').select('sales_tax_rate').single(),
       ]);
 
       setCustomers(customersRes.data || []);
       setProducts(productsRes.data || []);
+      if (settingsRes.data?.sales_tax_rate) {
+        setDefaultTaxRate(parseFloat(settingsRes.data.sales_tax_rate) * 100);
+      }
 
       // Load invoice data
       const { data: invoiceData, error: invoiceError } = await supabase
@@ -168,7 +172,10 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
     if (product) {
       setValue(`lines.${index}.description`, product.name);
       setValue(`lines.${index}.unit_price`, product.unit_price);
-      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+      const lineTaxRate = product.is_taxable
+        ? (product.tax_rate ? parseFloat(String(product.tax_rate)) * 100 : defaultTaxRate)
+        : 0;
+      setValue(`lines.${index}.tax_rate`, lineTaxRate);
     }
   };
 
@@ -529,7 +536,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                   quantity: 1,
                   unit_price: 0,
                   discount_percent: 0,
-                  tax_rate: taxRate,
+                  tax_rate: defaultTaxRate,
                 })
               }
               className="btn-secondary"

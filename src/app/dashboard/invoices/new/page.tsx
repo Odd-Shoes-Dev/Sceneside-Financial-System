@@ -41,7 +41,7 @@ export default function NewInvoicePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [taxRate] = useState(6.25); // MA sales tax percentage
+  const [defaultTaxRate, setDefaultTaxRate] = useState(6.25);
 
   const {
     register,
@@ -64,7 +64,7 @@ export default function NewInvoicePage() {
           quantity: 1,
           unit_price: 0,
           discount_percent: 0,
-          tax_rate: taxRate,
+          tax_rate: defaultTaxRate,
         },
       ],
     },
@@ -106,13 +106,18 @@ export default function NewInvoicePage() {
 
   const loadData = async () => {
     try {
-      const [customersRes, productsRes] = await Promise.all([
+      const [customersRes, productsRes, settingsRes] = await Promise.all([
         supabase.from('customers').select('*').eq('is_active', true).order('name'),
         supabase.from('products').select('*').eq('is_active', true).order('name'),
+        supabase.from('company_settings').select('sales_tax_rate').single(),
       ]);
 
       setCustomers(customersRes.data || []);
       setProducts(productsRes.data || []);
+      if (settingsRes.data?.sales_tax_rate) {
+        // sales_tax_rate is stored as a decimal fraction (e.g. 0.0625 = 6.25%)
+        setDefaultTaxRate(parseFloat(settingsRes.data.sales_tax_rate) * 100);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -148,7 +153,11 @@ export default function NewInvoicePage() {
       }
       
       setValue(`lines.${index}.unit_price`, convertedPrice);
-      setValue(`lines.${index}.tax_rate`, product.is_taxable ? taxRate : 0);
+      // use product's own tax_rate (stored as fraction, e.g. 0.0625) converted to %, or fall back to company default
+      const lineTaxRate = product.is_taxable
+        ? (product.tax_rate ? parseFloat(String(product.tax_rate)) * 100 : defaultTaxRate)
+        : 0;
+      setValue(`lines.${index}.tax_rate`, lineTaxRate);
     }
   };
 
@@ -429,7 +438,7 @@ export default function NewInvoicePage() {
                   quantity: 1,
                   unit_price: 0,
                   discount_percent: 0,
-                  tax_rate: taxRate,
+                  tax_rate: defaultTaxRate,
                 })
               }
               className="btn-secondary"
