@@ -57,6 +57,9 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  tax_rate: number;
+  tax_amount: number;
+  discount_amount: number;
   inventory_item_id: string | null;
 }
 
@@ -460,21 +463,21 @@ export default function InvoiceDetailPage() {
             <div class="totals-box">
               <div class="total-row subtotal">
                 <span>Subtotal</span>
-                <span>${formatCurrency(Number(invoice.subtotal))}</span>
+                <span>${formatCurrency(computedSubtotal)}</span>
               </div>
-              ${Number(invoice.discount_amount) > 0 ? `
+              ${computedDiscount > 0 ? `
               <div class="total-row subtotal" style="color: #16a34a;">
                 <span>Discount</span>
-                <span>-${formatCurrency(Number(invoice.discount_amount))}</span>
+                <span>-${formatCurrency(computedDiscount)}</span>
               </div>
               ` : ''}
               <div class="total-row subtotal">
-                <span>Tax (${(() => { const rates = [...new Set(lineItems.filter((l:any)=>parseFloat(l.tax_rate)>0).map((l:any)=>parseFloat(l.tax_rate)))]; return rates.length===1?rates[0]+'%':rates.length>1?'mixed rates':'0%'; })()})</span>
-                <span>${formatCurrency(Number(invoice.tax_amount))}</span>
+                <span>Tax (${(() => { const rates = [...new Set(lineItems.filter((l:any) => Number(l.tax_rate) > 0).map((l:any) => Number(l.tax_rate)))]; return rates.length === 1 ? rates[0] + '%' : rates.length > 1 ? 'mixed rates' : '0%'; })()})</span>
+                <span>${formatCurrency(computedTax)}</span>
               </div>
               <div class="total-row total">
                 <span>TOTAL</span>
-                <span>${formatCurrency(Number(invoice.total_amount))}</span>
+                <span>${formatCurrency(computedTotal)}</span>
               </div>
               ${Number(invoice.amount_paid) > 0 ? `
               <div class="total-row paid">
@@ -483,7 +486,7 @@ export default function InvoiceDetailPage() {
               </div>
               <div class="total-row balance-due">
                 <span>BALANCE DUE</span>
-                <span>${formatCurrency(Number(invoice.total_amount) - Number(invoice.amount_paid))}</span>
+                <span>${formatCurrency(computedTotal - Number(invoice.amount_paid))}</span>
               </div>
               ` : ''}
             </div>
@@ -663,7 +666,12 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const balanceDue = Number(invoice.total_amount) - Number(invoice.amount_paid);
+  // Compute totals from line items (source of truth) rather than stale header values
+  const computedSubtotal = lineItems.reduce((sum, item) => sum + Number(item.line_total), 0);
+  const computedTax = lineItems.reduce((sum, item) => sum + Number(item.tax_amount), 0);
+  const computedDiscount = lineItems.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0);
+  const computedTotal = computedSubtotal + computedTax;
+  const balanceDue = computedTotal - Number(invoice.amount_paid);
 
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
@@ -812,21 +820,21 @@ export default function InvoiceDetailPage() {
               <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t space-y-1.5 sm:space-y-2">
                 <div className="flex justify-between text-xs sm:text-sm">
                   <span className="text-gray-500">Subtotal</span>
-                  <span>{formatCurrency(Number(invoice.subtotal))}</span>
+                  <span>{formatCurrency(computedSubtotal)}</span>
                 </div>
-                {Number(invoice.discount_amount) > 0 && (
+                {computedDiscount > 0 && (
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-500">Discount</span>
-                    <span className="text-green-600">-{formatCurrency(Number(invoice.discount_amount))}</span>
+                    <span className="text-green-600">-{formatCurrency(computedDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-xs sm:text-sm">
-                  <span className="text-gray-500">Tax ({(() => { const rates = [...new Set(lineItems.filter(l=>parseFloat(String(l.tax_rate))>0).map(l=>parseFloat(String(l.tax_rate))))]; return rates.length===1?rates[0]+'%':rates.length>1?'mixed rates':'0%'; })()})</span>
-                  <span>{formatCurrency(Number(invoice.tax_amount))}</span>
+                  <span className="text-gray-500">Tax ({(() => { const rates = [...new Set(lineItems.filter(l => Number(l.tax_rate) > 0).map(l => Number(l.tax_rate)))]; return rates.length === 1 ? rates[0] + '%' : rates.length > 1 ? 'mixed rates' : '0%'; })()})</span>
+                  <span>{formatCurrency(computedTax)}</span>
                 </div>
                 <div className="flex justify-between text-base sm:text-lg font-semibold pt-1.5 sm:pt-2 border-t">
                   <span>Total</span>
-                  <span>{formatCurrency(Number(invoice.total_amount))}</span>
+                  <span>{formatCurrency(computedTotal)}</span>
                 </div>
                 {Number(invoice.amount_paid) > 0 && (
                   <>
@@ -900,7 +908,7 @@ export default function InvoiceDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Total Amount</span>
-                  <span className="font-medium">{formatCurrency(Number(invoice.total_amount))}</span>
+                  <span className="font-medium">{formatCurrency(computedTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount Paid</span>
