@@ -24,7 +24,10 @@ export async function middleware(req: NextRequest) {
         !url.pathname.startsWith('/login') && 
         !url.pathname.startsWith('/signup') &&
         !url.pathname.startsWith('/api') &&
-        !url.pathname.startsWith('/_next')) {
+        !url.pathname.startsWith('/_next') &&
+        !url.pathname.startsWith('/Sceneside') &&
+        url.pathname !== '/manifest.json' &&
+        url.pathname !== '/favicon.ico') {
       url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
@@ -48,7 +51,10 @@ export async function middleware(req: NextRequest) {
     // If not on /website path, redirect there
     if (!url.pathname.startsWith('/website') && 
         !url.pathname.startsWith('/api') &&
-        !url.pathname.startsWith('/_next')) {
+        !url.pathname.startsWith('/_next') &&
+        !url.pathname.startsWith('/Sceneside') &&
+        url.pathname !== '/manifest.json' &&
+        url.pathname !== '/favicon.ico') {
       url.pathname = '/website' + url.pathname;
       return NextResponse.rewrite(url);
     }

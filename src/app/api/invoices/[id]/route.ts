@@ -155,17 +155,20 @@ export async function PATCH(request: NextRequest, context: any) {
 
       // Update invoice totals
       const total = subtotal + taxAmount;
-      const effectiveTaxRate = body.lines.find((l: any) => (l.tax_rate || 0) > 0)?.tax_rate || 0;
-      await supabase
+      const { error: totalsError } = await supabase
         .from('invoices')
         .update({
           subtotal,
           tax_amount: taxAmount,
           discount_amount: discountAmount,
           total,
-          tax_rate: effectiveTaxRate,
         })
         .eq('id', resolvedParams.id);
+
+      if (totalsError) {
+        console.error('Failed to update invoice totals:', totalsError);
+        return NextResponse.json({ error: 'Failed to update invoice totals: ' + totalsError.message }, { status: 400 });
+      }
     }
 
     // Process inventory when invoice is finalized (status changes from draft)
