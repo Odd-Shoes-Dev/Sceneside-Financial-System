@@ -257,7 +257,7 @@ export function generateBillHTML(data: BillPDFData): string {
               <div class="company-name">Sceneside L.L.C</div>
               <div class="company-details">
                 <p>121 Bedford Street, Waltham, MA 02453</p>
-                <p>Phone: 857-384-2899 • Email: info@sceneside.com</p>
+                <p>Phone: 857-384-2899 • Email: sales@sceneside.com</p>
                 <p>Director: N.Maureen</p>
               </div>
             </div>

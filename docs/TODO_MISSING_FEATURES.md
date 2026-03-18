@@ -968,7 +968,7 @@ export interface EmailLog {
       type="email"
       {...companyForm.register('firm_email')}
       className="input"
-      placeholder="info@sceneside.com"
+      placeholder="sales@sceneside.com"
     />
     <p className="text-sm text-gray-500 mt-1">
       This email will receive copies of all outgoing documents

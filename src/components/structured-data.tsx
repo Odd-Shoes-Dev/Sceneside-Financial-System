@@ -7,7 +7,7 @@ export default function StructuredData() {
     url: 'https://sceneside.com',
     logo: 'https://sceneside.com/Sceneside%20assets/logo.png',
     telephone: '+1-857-384-2899',
-    email: 'info@sceneside.com',
+    email: 'sales@sceneside.com',
     address: {
       '@type': 'PostalAddress',
       streetAddress: '121 Bedford Street',

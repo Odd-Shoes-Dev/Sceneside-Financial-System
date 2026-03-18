@@ -221,8 +221,8 @@ export default function ContactPage() {
                   <EnvelopeIcon className="w-6 h-6 text-sceneside-navy flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Email</p>
-                    <a href="mailto:info@sceneside.com" className="text-sceneside-navy hover:underline text-sm break-all">
-                      info@sceneside.com
+                    <a href="mailto:sales@sceneside.com" className="text-sceneside-navy hover:underline text-sm break-all">
+                      sales@sceneside.com
                     </a>
                   </div>
                 </div>

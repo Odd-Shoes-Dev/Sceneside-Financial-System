@@ -1,7 +1,7 @@
 # Sceneside L.L.C - Complete User Manual
 
-**Version:** 1.0  
-**Last Updated:** December 23, 2025  
+**Version:** 1.1  
+**Last Updated:** February 28, 2026  
 **System:** Sceneside Integrated Business Management System
 
 ---
@@ -21,6 +21,7 @@
    - 7.1 [Adding Products](#71-adding-products)
    - 7.2 [Inventory Categories](#72-inventory-categories)
    - 7.3 [Cost Tracking (FIFO)](#73-cost-tracking-fifo)
+   - 7.4 [Inventory Adjustments & Stock Movements](#74-inventory-adjustments--stock-movements)
 8. [Creating Invoices (Sales)](#8-creating-invoices-sales)
    - 8.1 [Creating a New Invoice](#81-creating-a-new-invoice)
    - 8.2 [Sending Invoices](#82-sending-invoices)
@@ -32,22 +33,28 @@
    - 9.3 [Voiding Bills](#93-voiding-bills)
 10. [Recording Expenses](#10-recording-expenses)
 11. [Creating Receipts](#11-creating-receipts)
-12. [Bank Management](#12-bank-management)
-    - 12.1 [Recording Transactions](#121-recording-transactions)
-    - 12.2 [Bank Transfers](#122-bank-transfers)
-    - 12.3 [Reconciliation](#123-reconciliation)
-13. [Journal Entries](#13-journal-entries)
-14. [Financial Reports](#14-financial-reports)
-15. [Multi-Currency Operations](#15-multi-currency-operations)
-16. [Website Management (CMS)](#16-website-management-cms)
-    - 16.1 [Managing Hotels](#161-managing-hotels)
-    - 16.2 [Managing Tours](#162-managing-tours)
-    - 16.3 [Managing Car Rentals](#163-managing-car-rentals)
-    - 16.4 [Website Content](#164-website-content)
-    - 16.5 [Customer Inquiries](#165-customer-inquiries)
-17. [Frequently Asked Questions (FAQ)](#17-frequently-asked-questions-faq)
-18. [Troubleshooting](#18-troubleshooting)
-19. [Glossary](#19-glossary)
+12. [Fixed Assets & Depreciation](#12-fixed-assets--depreciation)
+    - 12.1 [Adding a Fixed Asset](#121-adding-a-fixed-asset)
+    - 12.2 [Asset Statuses](#122-asset-statuses)
+    - 12.3 [Running Depreciation](#123-running-depreciation)
+    - 12.4 [Depreciation Methods](#124-depreciation-methods)
+    - 12.5 [Understanding the Asset Register](#125-understanding-the-asset-register)
+13. [Bank Management](#13-bank--cash-management)
+    - 13.1 [Recording Transactions](#133-recording-bank-transactions)
+    - 13.2 [Bank Transfers](#134-bank-transfers)
+    - 13.3 [Reconciliation](#135-bank-reconciliation)
+14. [Journal Entries](#14-journal-entries)
+15. [Financial Reports](#15-financial-reports)
+16. [Multi-Currency Operations](#16-multi-currency-operations)
+17. [Website Management (CMS)](#17-website-management-cms)
+    - 17.1 [Managing Hotels](#171-managing-hotels)
+    - 17.2 [Managing Tours](#172-managing-tours)
+    - 17.3 [Managing Car Rentals](#173-managing-car-rentals)
+    - 17.4 [Website Content](#174-website-content)
+    - 17.5 [Customer Inquiries](#175-customer-inquiries)
+18. [Frequently Asked Questions (FAQ)](#18-frequently-asked-questions-faq)
+19. [Troubleshooting](#19-troubleshooting)
+20. [Glossary](#20-glossary)
 
 ---
 
@@ -102,6 +109,7 @@ The main navigation menu is on the left sidebar:
 | Bills | Track vendor bills and purchases |
 | Expenses | Record business expenses |
 | Inventory | Manage products and stock levels |
+| Fixed Assets | Fixed asset register and depreciation |
 | Customers | Customer database |
 | Vendors | Vendor/supplier database |
 | Bank | Bank accounts and transactions |
@@ -349,6 +357,51 @@ The system tracks inventory costs using **FIFO (First In, First Out)**:
 - 20 units @ $12 = $240 (partial March layer)
 - **Total COGS = $1,240**
 
+### 7.4 Inventory Adjustments & Stock Movements
+
+**Path:** Inventory → Stock Movements
+
+Use this section to view the full history of all stock changes and to track manual adjustments.
+
+### Viewing Stock Movements
+
+The Stock Movements log records every inventory change:
+
+| Movement Type | Triggered By | Effect |
+|--------------|--------------|--------|
+| **Purchase** | Bill approved | Stock increases |
+| **Sale** | Invoice sent (status → Sent) | Stock decreases |
+| **Return** | Bill voided | Stock increases |
+| **Adjustment** | Manual correction | Increases or decreases |
+| **Void** | Invoice voided | Stock restored |
+
+**To View Movements:**
+1. Go to Inventory
+2. Click **Stock Movements**
+3. Filter by product name, SKU, or movement type
+4. Review quantity changes and associated costs
+
+**Key Columns:**
+- **Product:** Which item was affected
+- **Type:** What caused the movement
+- **Quantity:** How many units (positive = in, negative = out)
+- **Unit Cost:** Cost per unit at time of movement
+- **Total Cost:** Total value of the movement
+- **Date:** When the movement occurred
+
+### Manual Inventory Adjustments
+
+If you need to correct a stock discrepancy (e.g., after a physical count):
+
+1. Navigate to the product record (Inventory → click product name)
+2. Record a bill to add stock, or contact your system administrator to apply a manual adjustment entry
+3. A journal entry is created automatically to reflect the cost change
+
+**When to Adjust:**
+- Physical count reveals a discrepancy
+- Damaged or lost goods
+- Write-off of expired stock
+
 ---
 
 ## 8. Creating Invoices (Sales)
@@ -557,7 +610,123 @@ Receipts are payment confirmations for customers.
 
 ---
 
-## 12. Bank & Cash Management
+## 12. Fixed Assets & Depreciation
+
+**Path:** Fixed Assets
+
+Fixed assets are long-term physical or intangible items your business owns and uses over multiple years (vehicles, equipment, computers, furniture, etc.). The system tracks their value and automatically calculates depreciation.
+
+### Overview — Key Metrics
+
+The Fixed Assets dashboard shows four summary figures:
+
+| Metric | Description |
+|--------|-------------|
+| **Active Assets** | Count of assets currently in service |
+| **Total Cost** | Sum of all original purchase prices |
+| **Accumulated Depreciation** | Total depreciation recorded to date |
+| **Net Book Value** | Total Cost minus Accumulated Depreciation |
+
+### 12.1 Adding a Fixed Asset
+
+**Path:** Fixed Assets → Add Asset
+
+1. Click **Add Asset**
+2. Fill in the form:
+
+**Asset Information:**
+- **Asset Name** (required): Descriptive name (e.g., "2024 Toyota Hiace Van")
+- **Asset Type:** Select the category:
+  - Equipment, Furniture & Fixtures, Vehicles, Computers & IT, Buildings, Land, Leasehold Improvements, Software, Machinery, Other
+- **Asset Tag / Number:** Your internal reference code (e.g., "VEH-001")
+- **Serial Number:** Manufacturer serial number (optional)
+- **Location:** Where the asset is physically located
+- **Description:** Additional notes about the asset
+
+**Purchase Details:**
+- **Purchase Date:** Date asset was acquired
+- **Purchase Cost:** Total acquisition cost
+- **Currency:** Currency of purchase
+- **Salvage Value:** Estimated value at end of useful life (for depreciation calculation)
+
+**Depreciation Settings:**
+- **Depreciation Method:** See Section 12.4 for details
+- **Useful Life (Years):** How many years the asset will be used
+  - System converts to months internally
+  - Example: 5 years = 60 months
+
+**Preview:** Before saving, the form shows a calculated **Annual Depreciation** estimate based on your entries.
+
+3. Click **Save** — the asset is added as active and ready for depreciation.
+
+### 12.2 Asset Statuses
+
+| Status | Description |
+|--------|-------------|
+| **Active** | In use, depreciating |
+| **Fully Depreciated** | Book value has reached salvage value; no further depreciation |
+| **Disposed** | Asset has been sold or scrapped |
+
+### 12.3 Running Depreciation
+
+**Path:** Fixed Assets → Run Depreciation
+
+Depreciation must be run manually each month. This calculates and records the monthly reduction in asset value.
+
+**Steps:**
+1. Click **Run Depreciation** from the Fixed Assets page
+2. Select the **Depreciation Period** (month and year, e.g., "February 2026")
+3. Review the list of active assets and their calculated monthly depreciation amounts
+4. Click **Run Depreciation for [Month]**
+5. Confirm when prompted
+
+**What happens:**
+- Accumulated depreciation increases for each asset
+- Book value decreases accordingly
+- A depreciation entry is recorded for each asset
+- Journal entry: DR Depreciation Expense / CR Accumulated Depreciation
+
+> **Best Practice:** Run depreciation on the last day of each month before generating financial reports.
+
+> **Important:** Running depreciation twice for the same month will double-count it. Always verify the period before confirming.
+
+### 12.4 Depreciation Methods
+
+| Method | How It Works | Best For |
+|--------|-------------|----------|
+| **Straight Line** | Equal amount each year: (Cost − Salvage) ÷ Useful Life | Most assets (default) |
+| **Declining Balance** | Fixed % applied to remaining book value each year | Assets that lose value faster early on |
+| **Double Declining Balance** | 2× the straight-line rate applied to book value | Rapid early depreciation |
+| **Sum of Years Digits** | Accelerated method based on sum of years | Moderate acceleration |
+| **No Depreciation** | No depreciation calculated | Land (never depreciates) |
+
+**Example — Straight Line:**
+- Purchase Cost: $10,000
+- Salvage Value: $1,000
+- Useful Life: 5 years
+- Annual Depreciation: ($10,000 − $1,000) ÷ 5 = **$1,800/year** ($150/month)
+
+### 12.5 Understanding the Asset Register
+
+**Columns in the Asset List:**
+
+| Column | Description |
+|--------|-------------|
+| **Asset** | Name and asset tag/serial number |
+| **Category** | Asset type |
+| **Purchase Date** | When acquired |
+| **Cost** | Original purchase price |
+| **Depreciation** | Total accumulated depreciation (shown in amber) |
+| **Book Value** | Current net value (shown in green) |
+| **Status** | Active / Fully Depreciated / Disposed |
+
+**On the Balance Sheet:**
+- Fixed assets appear under **Non-Current Assets**
+- Shown as: Cost − Accumulated Depreciation = Net Book Value
+
+---
+
+## 13. Bank & Cash Management
 
 **Path:** Bank & Cash
 
@@ -569,7 +738,7 @@ Your system tracks two types of cash:
 
 All bank and cash balances are updated **automatically** through database triggers when you record transactions.
 
-### 12.1 Creating Bank Accounts
+### 13.1 Creating Bank Accounts
 
 **To Add a Bank Account:**
 
@@ -588,7 +757,7 @@ All bank and cash balances are updated **automatically** through database trigge
 
 **Important:** Create bank accounts before recording transactions.
 
-### 12.2 How Money Flows Through Bank/Cash
+### 13.2 How Money Flows Through Bank/Cash
 
 Your bank and cash accounts connect to all financial transactions:
 
@@ -608,7 +777,7 @@ Your bank and cash accounts connect to all financial transactions:
 | **Cash Withdrawal** | DR: Cash (+) <br> CR: Bank (-) | Withdraw from bank |
 | **Loan Payment** | DR: Loan Payable (-) <br> CR: Bank (-) | Repay loan |
 
-### 12.3 Recording Bank Transactions
+### 13.3 Recording Bank Transactions
 
 **To Record a Bank Transaction:**
 
@@ -635,7 +804,7 @@ Your bank and cash accounts connect to all financial transactions:
 - Transaction appears in bank account history
 - Balance Sheet reflects new amount
 
-### 12.4 Bank Transfers
+### 13.4 Bank Transfers
 
 **To Transfer Between Accounts:**
 
@@ -666,7 +835,7 @@ If transferring between different currency accounts:
 - Amount converts based on current rate
 - Example: Transfer $1,000 USD → €900 EUR (at 1.11 rate)
 
-### 12.5 Bank Reconciliation
+### 13.5 Bank Reconciliation
 
 **Purpose:** Match your system records with bank statements to ensure accuracy.
 
@@ -706,7 +875,7 @@ If transferring between different currency accounts:
 
 **Best Practice:** Reconcile all bank accounts monthly.
 
-### 12.6 Viewing Bank Balances
+### 13.6 Viewing Bank Balances
 
 **Dashboard View:**
 - Shows total cash balance across all accounts
@@ -724,7 +893,7 @@ If transferring between different currency accounts:
 - All listed under "Current Assets"
 - Multi-currency accounts converted to USD
 
-### 12.7 Multi-Currency Bank Accounts
+### 13.7 Multi-Currency Bank Accounts
 
 You can maintain bank accounts in different currencies:
 
@@ -743,7 +912,7 @@ You can maintain bank accounts in different currencies:
 - Exchange rates update automatically
 - Historical transactions use rate from transaction date
 
-### 12.8 Bank Account Security
+### 13.8 Bank Account Security
 
 **Account Number Encryption:**
 - Account numbers are encrypted in database
@@ -755,7 +924,7 @@ You can maintain bank accounts in different currencies:
 - Audit trail tracks all changes
 - User role determines access level
 
-### 12.9 Understanding Your Cash Position
+### 13.9 Understanding Your Cash Position
 
 **Key Metrics:**
 
@@ -778,7 +947,7 @@ You can maintain bank accounts in different currencies:
 - Accounts Payable: $15,390 (money going out soon)
 - **Net Position: $142,468** (strong cash position)
 
-### 12.10 Common Bank/Cash Transactions
+### 13.10 Common Bank/Cash Transactions
 
 **Daily Operations:**
 | Activity | How to Record | Account Effect |
@@ -791,7 +960,7 @@ You can maintain bank accounts in different currencies:
 | Cash deposit to bank | Record transfer | Bank ↑, Cash ↓ |
 | ATM withdrawal | Record withdrawal | Bank ↓, Cash ↑ |
 
-### 12.11 Bank & Cash Best Practices
+### 13.11 Bank & Cash Best Practices
 
 1. **Reconcile Monthly**
    - Match with bank statements every month
@@ -826,7 +995,7 @@ You can maintain bank accounts in different currencies:
 
 ---
 
-## 13. Journal Entries
+## 14. Journal Entries
 
 **Path:** Journal Entries
 
@@ -855,7 +1024,7 @@ For manual accounting adjustments.
 
 ---
 
-## 14. Financial Reports
+## 15. Financial Reports
 
 **Path:** Reports
 
@@ -886,7 +1055,7 @@ For manual accounting adjustments.
 
 ---
 
-## 15. Multi-Currency Operations
+## 16. Multi-Currency Operations
 
 The system supports multiple currencies:
 - **USD** - US Dollar ($)
@@ -914,11 +1083,11 @@ The system supports multiple currencies:
 
 ---
 
-## 16. Website Management (CMS)
+## 17. Website Management (CMS)
 
 **Path:** Website
 
-### 16.1 Managing Hotels
+### 17.1 Managing Hotels
 
 **Path:** Website → Hotels
 
@@ -933,7 +1102,7 @@ The system supports multiple currencies:
    - Featured toggle
 3. Click "Save"
 
-### 16.2 Managing Tours
+### 17.2 Managing Tours
 
 **Path:** Website → Tours
 
@@ -950,7 +1119,7 @@ The system supports multiple currencies:
    - Upload images
 3. Click "Save"
 
-### 16.3 Managing Car Rentals
+### 17.3 Managing Car Rentals
 
 **Path:** Website → Cars
 
@@ -964,7 +1133,7 @@ The system supports multiple currencies:
    - Upload images
 3. Click "Save"
 
-### 16.4 Website Content
+### 17.4 Website Content
 
 **Path:** Website → Content
 
@@ -974,7 +1143,7 @@ Edit text content displayed on the public website:
 - Contact information
 - Footer text
 
-### 16.5 Customer Inquiries
+### 17.5 Customer Inquiries
 
 **Path:** Website → Inquiries
 
@@ -988,7 +1157,7 @@ View and manage inquiries from website visitors:
 
 ---
 
-## 17. Frequently Asked Questions (FAQ)
+## 18. Frequently Asked Questions (FAQ)
 
 ### General Questions
 
@@ -1070,7 +1239,7 @@ A: Run Profit & Loss report with your desired date range.
 
 ---
 
-## 18. Troubleshooting
+## 19. Troubleshooting
 
 ### Common Issues and Solutions
 
@@ -1100,11 +1269,11 @@ If you encounter issues not covered here:
 1. Check this manual's relevant section
 2. Review the FAQ above
 3. Contact system administrator
-4. Email support at info@sceneside.com
+4. Email support at sales@sceneside.com
 
 ---
 
-## 19. Glossary
+## 20. Glossary
 
 | Term | Definition |
 |------|------------|
@@ -1170,7 +1339,7 @@ If you encounter issues not covered here:
 121 Bedford Street  
 Waltham, MA 02453  
 Phone: +1 (857) 384-2899  
-Email: info@sceneside.com  
+Email: sales@sceneside.com  
 Website: www.sceneside.com
 
 ---

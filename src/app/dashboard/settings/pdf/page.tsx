@@ -115,7 +115,7 @@ ${overrides}
       <div class="company-name">Sceneside L.L.C</div>
       <div class="company-details">
         121 Bedford Street, Waltham, MA 02453<br>
-        Phone: 857-384-2899 • Email: info@sceneside.com
+        Phone: 857-384-2899 • Email: sales@sceneside.com
         ${s.headerText ? `<br><em>${s.headerText}</em>` : ''}
       </div>
     </div>
