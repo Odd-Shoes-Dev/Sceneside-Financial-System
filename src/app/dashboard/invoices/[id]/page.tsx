@@ -197,6 +197,12 @@ export default function InvoiceDetailPage() {
   const buildPrintHTML = useCallback((overrides: ExportOverrides): string => {
     if (!invoice) return '';
 
+    // Calculate totals from line items
+    const computedSubtotal = lineItems.reduce((sum, item) => sum + Number(item.line_total), 0);
+    const computedDiscount = invoice.discount_amount || 0;
+    const computedTax = lineItems.reduce((sum, item) => sum + Number(item.tax_amount), 0);
+    const computedTotal = computedSubtotal - computedDiscount + computedTax;
+
     return `
       <html>
         <head>
