@@ -469,7 +469,12 @@ export default function NewInvoicePage() {
                 <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (6.25%)</span>
+                <span className="text-gray-600">
+                  {(() => {
+                    const rates = [...new Set(watchLines.map((l) => l.tax_rate || 0).filter((r) => r > 0))];
+                    return rates.length === 1 ? `Tax (${rates[0]}%)` : 'Tax';
+                  })()}
+                </span>
                 <span className="font-medium">{formatCurrency(calculateTax())}</span>
               </div>
               <div className="border-t pt-3 flex justify-between">
