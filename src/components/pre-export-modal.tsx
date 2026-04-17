@@ -78,10 +78,30 @@ var rsX=0, rsY=0, rsW=0, rsH=0;
 
 /*  HISTORY  */
 var hist=[], hIdx=-1, MAX_H=80, _noHist=false;
+/* Snapshot body content WITHOUT editor chrome so restoring never orphans live nodes */
+function _bodySnap(){
+  var tmp=document.createElement('div');
+  tmp.innerHTML=document.body.innerHTML;
+  ['#pde-bar','#pde-xbtn','#pde-status'].forEach(function(sel){
+    var el=tmp.querySelector(sel);if(el)el.parentNode.removeChild(el);
+  });
+  tmp.querySelectorAll('.pde-rh').forEach(function(el){el.parentNode.removeChild(el);});
+  return tmp.innerHTML;
+}
+/* Restore body content then re-attach live chrome so event listeners survive */
+function _restoreBody(snap){
+  [bar,xbtn,statusBar].forEach(function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+  DIRS.forEach(function(d){if(RH[d]&&RH[d].parentNode)RH[d].parentNode.removeChild(RH[d]);});
+  document.body.innerHTML=snap;
+  document.body.insertBefore(bar,document.body.firstChild);
+  document.body.appendChild(xbtn);
+  document.body.appendChild(statusBar);
+  DIRS.forEach(function(d){document.body.appendChild(RH[d]);});
+}
 function saveHist(){
   if(_noHist) return;
   hist=hist.slice(0,hIdx+1);
-  hist.push(document.body.innerHTML);
+  hist.push(_bodySnap());
   if(hist.length>MAX_H) hist.shift();
   hIdx=hist.length-1;
   refreshBar();
@@ -89,13 +109,13 @@ function saveHist(){
 function undo(){
   if(hIdx<=0) return;
   exitAll(); hIdx--;
-  _noHist=true; document.body.innerHTML=hist[hIdx]; _noHist=false;
+  _noHist=true; _restoreBody(hist[hIdx]); _noHist=false;
   reattach();
 }
 function redo(){
   if(hIdx>=hist.length-1) return;
   exitAll(); hIdx++;
-  _noHist=true; document.body.innerHTML=hist[hIdx]; _noHist=false;
+  _noHist=true; _restoreBody(hist[hIdx]); _noHist=false;
   reattach();
 }
 
@@ -256,16 +276,18 @@ DIRS.forEach(function(d){
 });
 function showRH(el){
   if(!el){hideRH();return;}
-  var r=el.getBoundingClientRect(),sx=window.scrollX,sy=window.scrollY,hw=5;
+  /* position:fixed coords are viewport-relative — getBoundingClientRect() already accounts
+     for scroll, so do NOT add scrollX/scrollY here or handles drift on smaller screens */
+  var r=el.getBoundingClientRect(),hw=5;
   var pos={
-    nw:{top:r.top+sy-hw,     left:r.left+sx-hw},
-    n :{top:r.top+sy-hw,     left:r.left+sx+r.width/2-hw},
-    ne:{top:r.top+sy-hw,     left:r.right+sx-hw},
-    e :{top:r.top+sy+r.height/2-hw,left:r.right+sx-hw},
-    se:{top:r.bottom+sy-hw,  left:r.right+sx-hw},
-    s :{top:r.bottom+sy-hw,  left:r.left+sx+r.width/2-hw},
-    sw:{top:r.bottom+sy-hw,  left:r.left+sx-hw},
-    w :{top:r.top+sy+r.height/2-hw,left:r.left+sx-hw}
+    nw:{top:r.top-hw,          left:r.left-hw},
+    n :{top:r.top-hw,          left:r.left+r.width/2-hw},
+    ne:{top:r.top-hw,          left:r.right-hw},
+    e :{top:r.top+r.height/2-hw,left:r.right-hw},
+    se:{top:r.bottom-hw,       left:r.right-hw},
+    s :{top:r.bottom-hw,       left:r.left+r.width/2-hw},
+    sw:{top:r.bottom-hw,       left:r.left-hw},
+    w :{top:r.top+r.height/2-hw,left:r.left-hw}
   };
   DIRS.forEach(function(d){
     RH[d].style.top =pos[d].top +'px';
@@ -296,8 +318,9 @@ tagAll();
 function posXBtn(el){
   if(!el){xbtn.style.display='none';return;}
   var r=el.getBoundingClientRect();
-  xbtn.style.top =(r.top +window.scrollY-8)+'px';
-  xbtn.style.left=(r.right+window.scrollX-8)+'px';
+  /* position:fixed — viewport-relative only, no scroll offset */
+  xbtn.style.top =(r.top -8)+'px';
+  xbtn.style.left=(r.right-8)+'px';
   xbtn.style.display='flex';
 }
 function selectElement(el){
