@@ -75,6 +75,10 @@ var dragSX=0, dragSY=0;
 var freeDragOX=0, freeDragOY=0;
 var resizing=false, resDir='', rsEl=null;
 var rsX=0, rsY=0, rsW=0, rsH=0;
+var _placeholder=null;
+var selSet=[];   /* all currently selected elements (superset of selectedEl) */
+var moveEls=[];  /* secondary elements + dx/dy offsets during group drag */
+var marquee=false,marqPending=false,marqX=0,marqY=0,_marqueeDone=false;
 
 /*  HISTORY  */
 var hist=[], hIdx=-1, MAX_H=80, _noHist=false;
@@ -82,19 +86,22 @@ var hist=[], hIdx=-1, MAX_H=80, _noHist=false;
 function _bodySnap(){
   var tmp=document.createElement('div');
   tmp.innerHTML=document.body.innerHTML;
-  ['#pde-bar','#pde-xbtn','#pde-status'].forEach(function(sel){
+  ['#pde-bar','#pde-xbtn','#pde-status','#pde-marquee'].forEach(function(sel){
     var el=tmp.querySelector(sel);if(el)el.parentNode.removeChild(el);
   });
   tmp.querySelectorAll('.pde-rh').forEach(function(el){el.parentNode.removeChild(el);});
+  /* .pde-ph placeholders are intentionally kept in snapshots so undo/redo restores
+     the correct layout — stripping them caused flow siblings to collapse on restore */
   return tmp.innerHTML;
 }
 /* Restore body content then re-attach live chrome so event listeners survive */
 function _restoreBody(snap){
-  [bar,xbtn,statusBar].forEach(function(el){if(el.parentNode)el.parentNode.removeChild(el);});
+  [bar,xbtn,statusBar,marqEl].forEach(function(el){if(el&&el.parentNode)el.parentNode.removeChild(el);});
   DIRS.forEach(function(d){if(RH[d]&&RH[d].parentNode)RH[d].parentNode.removeChild(RH[d]);});
   document.body.innerHTML=snap;
   document.body.insertBefore(bar,document.body.firstChild);
   document.body.appendChild(xbtn);
+  document.body.appendChild(marqEl);
   document.body.appendChild(statusBar);
   DIRS.forEach(function(d){document.body.appendChild(RH[d]);});
 }
@@ -175,7 +182,11 @@ S.textContent=
   'font-family:system-ui,sans-serif;font-size:10.5px;background:rgba(15,23,42,.88);'+
   'color:#64748b;display:flex;align-items:center;gap:6px}'+
   '#pde-status .hi{font-weight:700;color:#e2e8f0}'+
-  '#pde-status kbd{background:#1e293b;color:#94a3b8;padding:0 4px;border-radius:3px;font-size:10px}';
+  '#pde-status kbd{background:#1e293b;color:#94a3b8;padding:0 4px;border-radius:3px;font-size:10px}'+
+  /* prevent browser text-highlight while editing; marquee rect */
+  'body{user-select:none!important;-webkit-user-select:none!important}'+
+  '#pde-marquee{position:fixed;border:1.5px solid #3b82f6;background:rgba(59,130,246,.07);'+
+  'pointer-events:none;z-index:9998;box-sizing:border-box;display:none}';
 document.head.appendChild(S);
 
 /*  TOOLBAR  */
@@ -250,6 +261,10 @@ xbtn.innerHTML='&times;';xbtn.title='Delete element';
 document.body.appendChild(xbtn);
 xbtn.addEventListener('click',function(){doDelete();});
 
+/* marquee selection rectangle */
+var marqEl=document.createElement('div');marqEl.id='pde-marquee';
+document.body.appendChild(marqEl);
+
 /* no drop line — all drags are free-floating */
 
 /* status bar */
@@ -303,7 +318,7 @@ function isSel(el){
   if(!el||el.nodeType!==1)return false;
   if(SKIP.test(el.tagName))return false;
   if(el===bar||bar.contains(el))return false;
-  if(el===statusBar||el===xbtn)return false;
+  if(el===statusBar||el===xbtn||el===marqEl)return false;
   if(el.classList.contains('pde-rh')||el.classList.contains('pde-grip'))return false;
   /* children inside a text box must not be individually selectable or draggable */
   if(el.closest&&el.closest('.pde-tb')&&!el.classList.contains('pde-tb'))return false;
@@ -324,14 +339,29 @@ function posXBtn(el){
   xbtn.style.display='flex';
 }
 function selectElement(el){
-  if(selectedEl)selectedEl.classList.remove('pde-sel-el');
+  selSet.forEach(function(s){s.classList.remove('pde-sel-el');});
+  selSet=[];
   hideRH();xbtn.style.display='none';delBtn.disabled=true;
   selectedEl=el||null;
   if(!selectedEl){setStatus('idle');return;}
+  selSet=[selectedEl];
   selectedEl.classList.add('pde-sel-el');
   posXBtn(selectedEl);showRH(selectedEl);
   delBtn.disabled=false;
   setStatus('selected');
+}
+function toggleSelect(el){
+  var idx=selSet.indexOf(el);
+  if(idx!==-1){
+    el.classList.remove('pde-sel-el');selSet.splice(idx,1);
+    if(selSet.length===0){selectElement(null);return;}
+    selectedEl=selSet[selSet.length-1];
+  }else{
+    el.classList.add('pde-sel-el');selSet.push(el);selectedEl=el;
+  }
+  delBtn.disabled=false;
+  if(selSet.length===1){posXBtn(selectedEl);showRH(selectedEl);setStatus('selected');}
+  else{hideRH();xbtn.style.display='none';setStatus('multi');}
 }
 
 /*  EDIT  */
@@ -367,10 +397,12 @@ function fmt(cmd,val){
 
 /*  DELETE  */
 function doDelete(){
-  var t=selectedEl;if(!t)return;
+  if(!selSet.length)return;
   if(editingEl)stopEdit();
-  saveHist();exitAll();
-  if(t.parentNode)t.parentNode.removeChild(t);
+  saveHist();
+  var toDelete=selSet.slice();
+  exitAll();
+  toDelete.forEach(function(el){if(el.parentNode)el.parentNode.removeChild(el);});
   refreshBar();
 }
 
@@ -443,19 +475,50 @@ document.addEventListener('mousedown',function(e){
   /* click outside editing element  stop edit */
   if(editingEl){stopEdit();}
 
-  /* prepare drag on already-selected element */
-  if(selectedEl&&(t===selectedEl||selectedEl.contains(t))){
-    dragPending=true;
-    dragSX=e.clientX;dragSY=e.clientY;
-    /* record cursor offset from element top-left for all elements */
-    var _elr=selectedEl.getBoundingClientRect();
-    freeDragOX=e.clientX-_elr.left;
-    freeDragOY=e.clientY-_elr.top;
-    e.preventDefault();
+  /* prepare drag on any element in the current selection (walk up from target) */
+  if(selSet.length>0){
+    var _dragFrom=null,_tw=t;
+    while(_tw&&_tw!==document.body){
+      if(selSet.indexOf(_tw)!==-1){_dragFrom=_tw;break;}
+      _tw=_tw.parentElement;
+    }
+    if(_dragFrom){
+      selectedEl=_dragFrom;
+      dragPending=true;
+      dragSX=e.clientX;dragSY=e.clientY;
+      var _elr=selectedEl.getBoundingClientRect();
+      freeDragOX=e.clientX-_elr.left;
+      freeDragOY=e.clientY-_elr.top;
+      e.preventDefault();
+    }
+  }
+  /* no drag target — arm marquee so empty-space drag draws a selection rect */
+  if(!dragPending&&!editDragPending){
+    marqPending=true;marqX=e.clientX;marqY=e.clientY;
+    e.preventDefault(); /* stops browser text-selection */
   }
 },true);
 
 document.addEventListener('mousemove',function(e){
+  /* marquee: start after 4px threshold */
+  if(marqPending&&!moving&&!marquee){
+    if(Math.sqrt(Math.pow(e.clientX-marqX,2)+Math.pow(e.clientY-marqY,2))>4){
+      marqPending=false;marquee=true;
+      selSet.forEach(function(s){s.classList.remove('pde-sel-el');});
+      selSet=[];selectedEl=null;
+      hideRH();xbtn.style.display='none';delBtn.disabled=true;
+      marqEl.style.cssText='position:fixed;border:1.5px solid #3b82f6;'+
+        'background:rgba(59,130,246,.09);pointer-events:none;z-index:10001;'+
+        'box-sizing:border-box;left:'+marqX+'px;top:'+marqY+'px;width:0;height:0;display:block;';
+    }
+  }
+  if(marquee){
+    var ml=Math.min(e.clientX,marqX),mt=Math.min(e.clientY,marqY);
+    marqEl.style.left=ml+'px';marqEl.style.top=mt+'px';
+    marqEl.style.width=Math.abs(e.clientX-marqX)+'px';
+    marqEl.style.height=Math.abs(e.clientY-marqY)+'px';
+    e.preventDefault();return;
+  }
   /* resize */
   if(resizing&&rsEl){
     var dx=e.clientX-rsX,dy=e.clientY-rsY,d=resDir,nw=rsW,nh=rsH;
@@ -483,29 +546,63 @@ document.addEventListener('mousemove',function(e){
       editDragPending=false;
       moving=true;moveEl=selectedEl;dragPending=false;
       saveHist();
-      /* lift element into absolute positioning at its current visual position */
+      /* hoist wrapper/wr/mr for both primary and secondary lifts */
+      var wrapper=document.querySelector('.invoice')||
+                  document.querySelector('.document-wrapper')||document.body;
+      wrapper.style.position='relative';
+      var wr=wrapper.getBoundingClientRect();
+      var mr=moveEl.getBoundingClientRect();
+      /* lift primary element into absolute positioning at its current visual position */
       if(!moveEl.classList.contains('pde-tb')){
-        var wrapper=document.querySelector('.invoice')||
-                    document.querySelector('.document-wrapper')||document.body;
-        wrapper.style.position='relative';
-        var wr=wrapper.getBoundingClientRect();
-        var mr=moveEl.getBoundingClientRect();
-        /* store original DOM position for undo */
-        moveEl._origParent=moveEl.parentNode;
-        moveEl._origNext  =moveEl.nextSibling;
-        /* snapshot current size before detaching from flow */
         var mw=moveEl.offsetWidth;
         var mh=moveEl.offsetHeight;
-        /* detach and re-attach to wrapper as overlay */
-        moveEl.style.position='absolute';
-        moveEl.style.width   =mw+'px';
-        moveEl.style.minHeight=mh+'px';
-        moveEl.style.left=(mr.left-wr.left)+'px';
-        moveEl.style.top =(mr.top -wr.top +window.scrollY)+'px';
+        if(moveEl.style.position!=='absolute'){
+          /* element is in normal flow — lift it and insert placeholder */
+          moveEl._origParent=moveEl.parentNode;
+          moveEl._origNext  =moveEl.nextSibling;
+          _placeholder=document.createElement('div');
+          _placeholder.className='pde-ph';
+          _placeholder.style.cssText='display:block;width:'+mw+'px;min-height:'+mh+'px;'+
+            'visibility:hidden;pointer-events:none;flex-shrink:0;box-sizing:border-box;';
+          moveEl.parentNode.insertBefore(_placeholder,moveEl);
+          moveEl.style.position='absolute';
+          moveEl.style.width   =mw+'px';
+          moveEl.style.minHeight=mh+'px';
+          moveEl.style.left=(mr.left-wr.left)+'px';
+          moveEl.style.top =(mr.top -wr.top +window.scrollY)+'px';
+          wrapper.appendChild(moveEl);
+          tagAll();
+        }
+        /* element already absolute (restored from snapshot) — placeholder already present */
         moveEl.style.zIndex='200';
         moveEl.style.boxShadow='0 4px 16px rgba(0,0,0,.18)';
-        wrapper.appendChild(moveEl);
-        tagAll();
+      }
+      /* lift any secondary selected elements so the whole group moves together */
+      moveEls=[];
+      if(selSet.length>1){
+        selSet.forEach(function(el){
+          if(el===moveEl)return;
+          var r2=el.getBoundingClientRect();
+          if(!el.classList.contains('pde-tb')){
+            if(el.style.position!=='absolute'){
+              var mw2=el.offsetWidth,mh2=el.offsetHeight;
+              var ph2=document.createElement('div');
+              ph2.className='pde-ph';
+              ph2.style.cssText='display:block;width:'+mw2+'px;min-height:'+mh2+'px;'+
+                'visibility:hidden;pointer-events:none;flex-shrink:0;box-sizing:border-box;';
+              el.parentNode.insertBefore(ph2,el);
+              el.style.position='absolute';
+              el.style.width=mw2+'px';
+              el.style.minHeight=mh2+'px';
+              el.style.left=(r2.left-wr.left)+'px';
+              el.style.top=(r2.top-wr.top+window.scrollY)+'px';
+              wrapper.appendChild(el);
+            }
+            el.style.zIndex='200';
+          }
+          el.style.boxShadow='0 4px 16px rgba(0,0,0,.18)';
+          moveEls.push({el:el,dx:r2.left-mr.left,dy:r2.top-mr.top});
+        });
       }
     }
   }
@@ -517,23 +614,65 @@ document.addEventListener('mousemove',function(e){
     var ny=e.clientY-cr.top -freeDragOY;
     moveEl.style.left=Math.max(0,nx)+'px';
     moveEl.style.top =Math.max(0,ny)+'px';
+    /* move secondary elements maintaining their relative offsets */
+    moveEls.forEach(function(item){
+      item.el.style.left=Math.max(0,nx+item.dx)+'px';
+      item.el.style.top =Math.max(0,ny+item.dy)+'px';
+    });
     showRH(moveEl);posXBtn(moveEl);
     e.preventDefault();
   }
 });
 
 document.addEventListener('mouseup',function(){
+  marqPending=false;
+  if(marquee){
+    marquee=false;
+    var mr2=marqEl.getBoundingClientRect();
+    marqEl.style.display='none';
+    if(mr2.width>5||mr2.height>5){
+      /* Test direct children of the invoice wrapper — that is the natural
+         "section" granularity (header, bill-to block, items table, totals, footer).
+         Testing all tagged descendants collapsed to the outermost .invoice element. */
+      var _w=document.querySelector('.invoice')||
+              document.querySelector('.document-wrapper')||document.body;
+      var hits=[];
+      Array.from(_w.children).forEach(function(el){
+        if(!isSel(el))return;
+        var er=el.getBoundingClientRect();
+        if(er.right>mr2.left&&er.left<mr2.right&&er.bottom>mr2.top&&er.top<mr2.bottom)hits.push(el);
+      });
+      /* also catch floating text boxes which are absolute children of wrapper */
+      document.querySelectorAll('.pde-tb').forEach(function(el){
+        var er=el.getBoundingClientRect();
+        if(er.right>mr2.left&&er.left<mr2.right&&er.bottom>mr2.top&&er.top<mr2.bottom){
+          if(hits.indexOf(el)===-1)hits.push(el);
+        }
+      });
+      if(hits.length===1){selectElement(hits[0]);_marqueeDone=true;}
+      else if(hits.length>1){
+        selSet=hits;selectedEl=hits[hits.length-1];
+        hits.forEach(function(el){el.classList.add('pde-sel-el');});
+        hideRH();posXBtn(null);delBtn.disabled=false;setStatus('multi');
+        _marqueeDone=true;
+      }
+    }
+    return;
+  }
   dragPending=false;
   editDragPending=false;
   if(resizing){resizing=false;rsEl=null;}
   if(moving&&moveEl){
-    /* clean up lift state on non-tb elements (keep absolute, just remove shadow) */
-    if(!moveEl.classList.contains('pde-tb')){
-      moveEl.style.boxShadow='';
-      delete moveEl._origParent;
-      delete moveEl._origNext;
-    }
-    selectElement(moveEl);
+    _placeholder=null;
+    /* clean up all elements in the move group */
+    selSet.forEach(function(el){
+      el.style.boxShadow='';
+      if(!el.classList.contains('pde-tb')){delete el._origParent;delete el._origNext;}
+    });
+    moveEls=[];
+    /* keep multi-selection intact after group drag; update handle position */
+    if(selSet.length===1){showRH(selectedEl);posXBtn(selectedEl);}
+    else{hideRH();posXBtn(null);}
     moveEl=null;moving=false;
   }
 });
@@ -545,9 +684,12 @@ document.addEventListener('click',function(e){
   if(t===statusBar||statusBar.contains(t))return;
   if(t===xbtn||t.classList.contains('pde-rh'))return;
   if(moving)return;
+  /* suppress the click that fires right after a marquee drag completes */
+  if(_marqueeDone){_marqueeDone=false;return;}
   /* clicks inside already-editing element: browser handles cursor */
   if(editingEl&&(t===editingEl||editingEl.contains(t)))return;
   if(!isSel(t)){selectElement(null);return;}
+  if(e.ctrlKey||e.metaKey){toggleSelect(t);e.stopPropagation();return;}
   selectElement(t);
   e.stopPropagation();
 },true);
@@ -642,7 +784,7 @@ function refreshBar(){
       ulBtn.classList.toggle('on',  document.queryCommandState('underline'));
     }catch(ex){}
   }
-  delBtn.disabled=!selectedEl;
+  delBtn.disabled=selSet.length===0;
 }
 
 /*  STATUS  */
@@ -654,6 +796,10 @@ function setStatus(s){
     statusBar.innerHTML='<span class="hi">Selected</span> &mdash; '+
       'Drag to move &bull; Blue handles to resize &bull; Double-click to edit text &bull; '+
       '<kbd>Del</kbd>=delete &bull; <kbd>Esc</kbd>=deselect';
+  }else if(s==='multi'){
+    statusBar.innerHTML='<span class="hi">'+selSet.length+' selected</span> &mdash; '+
+      'Drag any one to move all together &bull; <kbd>Del</kbd>=delete all &bull; '+
+      '<kbd>Ctrl+Click</kbd>=toggle &bull; <kbd>Esc</kbd>=deselect';
   }else if(s==='editing'){
     var isTb=editingEl&&editingEl.classList.contains('pde-tb');
     statusBar.innerHTML='<span class="hi">Editing text</span> &mdash; '+
@@ -667,8 +813,16 @@ function setStatus(s){
 /*  EXIT ALL  */
 function exitAll(){
   if(editingEl)stopEdit();
-  selectElement(null);
-  moving=false;moveEl=null;dragPending=false;
+  selSet.forEach(function(s){s.classList.remove('pde-sel-el');});
+  selSet=[];selectedEl=null;
+  hideRH();xbtn.style.display='none';delBtn.disabled=true;
+  setStatus('idle');
+  moving=false;moveEl=null;moveEls=[];dragPending=false;editDragPending=false;
+  /* NOTE: do NOT remove .pde-ph here — handleGenerate calls exitAll() before cloning
+     the document for print, so cleaning up here would wipe placeholders before they
+     can be captured. _restoreBody() (used by undo/redo) replaces body.innerHTML
+     entirely, which already removes any .pde-ph nodes without needing explicit cleanup. */
+  _placeholder=null;
 }
 
 /*  REATTACH after undo/redo  */
@@ -701,6 +855,8 @@ export default function PreExportModal({
   const [initDone, setInitDone] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [srcdoc, setSrcdoc] = useState('');
+  const topSpacingRef = useRef(40);
+  const [topSpacing, setTopSpacing] = useState(40);
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -711,8 +867,8 @@ export default function PreExportModal({
   }, []);
 
   useEffect(() => {
-    if (!open) { setEditorReady(false); setInitDone(false); return; }
-    setEditorReady(false); setInitDone(false); setGenerating(false);
+    if (!open) { setEditorReady(false); setInitDone(false); topSpacingRef.current = 40; setTopSpacing(40); return; }
+    setEditorReady(false); setInitDone(false); setGenerating(false); topSpacingRef.current = 40; setTopSpacing(40);
     fetchPdfSettings()
       .then((settings) => {
         const initial: ExportOverrides = {
@@ -741,10 +897,22 @@ export default function PreExportModal({
     try {
       const doc = iframe.contentDocument;
       if (!doc) return;
+      /* Re-apply user's chosen top spacing — persists across Quick Setting reloads */
+      const inv = doc.querySelector<HTMLElement>('.invoice, .document-wrapper');
+      if (inv) inv.style.paddingTop = topSpacingRef.current + 'px';
       const script = doc.createElement('script');
       script.id = 'pde-editor-script';
       script.textContent = buildEditingScript();
       doc.body.appendChild(script);
+    } catch { /* cross-origin guard */ }
+  }, []);
+
+  const applyTopSpacing = useCallback((px: number) => {
+    topSpacingRef.current = px;
+    setTopSpacing(px);
+    try {
+      const inv = iframeRef.current?.contentDocument?.querySelector<HTMLElement>('.invoice, .document-wrapper');
+      if (inv) inv.style.paddingTop = px + 'px';
     } catch { /* cross-origin guard */ }
   }, []);
 
@@ -771,8 +939,12 @@ export default function PreExportModal({
       if (iframeDoc) {
         const clone = iframeDoc.documentElement.cloneNode(true) as HTMLElement;
         // strip all editor chrome
-        ['#pde-bar', '#pde-xbtn', '#pde-status',
+        ['#pde-bar', '#pde-xbtn', '#pde-status', '#pde-marquee',
          '.pde-grip', '.pde-rh'].forEach((sel) => {
+          /* NOTE: .pde-ph placeholders are intentionally kept — they are visibility:hidden
+             so invisible in print, but they preserve the layout spacing for moved elements.
+             Removing them would collapse flow siblings while absolute-moved elements stay
+             put, making the print look different from the editor view. */
           clone.querySelectorAll(sel).forEach((el) => el.remove());
         });
         // remove the editor CSS entirely (it contains dashed borders, cursor:move, etc.)
@@ -806,8 +978,17 @@ export default function PreExportModal({
         // print styles
         const ps = document.createElement('style');
         ps.textContent =
-          '@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}' +
-          '@page{margin:.5in}}';
+          /* zero browser-default body margin so the print window has no ghost top gap */
+          'html,body{margin:0!important;padding:0!important}' +
+          /* re-add position:relative so any dragged (position:absolute) elements stay
+             correctly placed after the editor CSS (which had this rule) is stripped */
+          '.invoice,.document-wrapper{position:relative!important}' +
+          '@media print{' +
+            'body{print-color-adjust:exact;-webkit-print-color-adjust:exact}' +
+            /* use a modest page margin — the user controls the document top spacing
+               via the sidebar slider, whose value is preserved as an inline style */
+            '@page{margin:0.25in}' +
+          '}';
         clone.querySelector('head')?.appendChild(ps);
         html = '<!DOCTYPE html>' + clone.outerHTML;
       } else {
@@ -942,8 +1123,30 @@ export default function PreExportModal({
                       <span><kbd className="bg-gray-200 px-1 rounded text-gray-700">Del</kbd> Delete</span>
                       <span><kbd className="bg-gray-200 px-1 rounded text-gray-700">Esc</kbd> Deselect</span>
                       <span><kbd className="bg-gray-200 px-1 rounded text-gray-700">Dbl-click</kbd> Edit</span>
+                      <span><kbd className="bg-gray-200 px-1 rounded text-gray-700">Ctrl+Click</kbd> Multi-select</span>
                     </div>
                   </div>
+                </div>
+
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest pt-2 border-t">
+                  Layout
+                </p>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-gray-700">Top Spacing</label>
+                    <span className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{topSpacing}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={120}
+                    step={4}
+                    value={topSpacing}
+                    onChange={(e) => applyTopSpacing(Number(e.target.value))}
+                    className="w-full accent-blue-600"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Blank space above document content. Edits live — no rebuild.</p>
                 </div>
 
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest pt-2 border-t">
